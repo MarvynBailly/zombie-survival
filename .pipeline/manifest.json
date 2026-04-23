@@ -1,0 +1,10 @@
+{
+  "slug": "zombie-survival",
+  "title": "Zombie Survival",
+  "description": "BoxHead-style top-down zombie arena shooter with waves, weapons, and a PocketBase leaderboard.",
+  "repo_url": "",
+  "frontend_path": "/p/zombie-survival/",
+  "collections": ["proj_zombie_survival_scores", "proj_zombie_survival_runs"],
+  "ticket_id": "20260421-053945-zombie-survival",
+  "created_at": "2026-04-21T17:00:00Z"
+}
