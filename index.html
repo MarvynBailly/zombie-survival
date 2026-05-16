@@ -67,6 +67,9 @@
 <script src="defs.js"></script>
 <script src="weather.js"></script>
 <script src="items.js"></script>
+<!-- Foundry: production-chain module. Loaded after items.js so it can
+     extend ITEMS, and before game.js so resetRun can call initFoundryState. -->
+<script src="foundry.js"></script>
 <script src="perks.js"></script>
 <script src="lore.js"></script>
 <script src="trophy.js"></script>
@@ -92,6 +95,8 @@
 <script src="game.js"></script>
 <script src="render.js"></script>
 <script src="ui.js"></script>
+<!-- Foundry overlays — must load AFTER ui.js to reuse el/clearOverlay/overlayRoot. -->
+<script src="foundry-ui.js"></script>
 <script src="bot.js"></script>
 <!-- Bot Arena: per-bot competition harness. See competition/SPEC.md for the
      bot API. api.js + harness.js must load BEFORE the individual bot files;

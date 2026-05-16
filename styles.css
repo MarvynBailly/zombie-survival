@@ -704,4 +704,107 @@ button.ghost:hover { color: var(--fg); border-left-color: var(--muted); }
 .sq-fill {
   height: 100%;
   background: var(--col, var(--accent));
+
+/* ───────────────────────────────────────────────
+   FOUNDRY — build menu + per-machine overlay
+   ─────────────────────────────────────────────── */
+.foundry-list {
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 52vh; overflow-y: auto;
+}
+.foundry-row {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.foundry-row:hover { border-color: var(--accent); background: #1f2228; }
+.foundry-row.locked { opacity: 0.45; cursor: not-allowed; }
+.foundry-row-name {
+  font-family: var(--f-display);
+  font-size: 18px;
+  letter-spacing: 3px;
+  color: var(--fg);
+}
+.foundry-row-cost {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--warn);
+  margin-top: 2px;
+}
+.foundry-row-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* status strip */
+.fnd-status {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 10px; margin-bottom: 12px;
+}
+.fnd-stat {
+  padding: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  text-align: center;
+}
+.fnd-stat .l {
+  font-family: var(--f-mono); font-size: 9px;
+  letter-spacing: 2px; color: var(--muted);
+}
+.fnd-stat .v {
+  font-family: var(--f-display);
+  font-size: 22px;
+  color: var(--fg);
+}
+
+/* recipe picker */
+.foundry-recipes {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.recipe-btn {
+  background: var(--panel2);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+.recipe-btn.active {
+  border-color: var(--accent);
+  background: #2a1814;
+  color: var(--accent-hi);
+}
+
+/* input/output slot columns */
+.fnd-cols {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+.fnd-col-h {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.fnd-slot {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  margin-bottom: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.fnd-slot:hover { border-color: var(--accent-hi); }
+.fnd-slot.fnd-slot-out { border-color: var(--border-hi); }
+.fnd-slot.has-output { border-color: var(--toxic); }
+.fnd-slot-count {
+  font-family: var(--f-mono);
+  color: var(--warn);
 }

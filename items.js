@@ -262,6 +262,8 @@ function drawItemIconShape(ctx, id, size) {
     ctx.fillStyle = '#7a7e88';
     ctx.font = 'bold 6px monospace';
     ctx.fillText('Rx', cx - 5, cy + 7);
+  } else if (typeof drawFoundryItemIcon === 'function' && drawFoundryItemIcon(ctx, id, size) !== false) {
+    // foundry resources are drawn by foundry.js' shared lump renderer
   } else {
     // unknown/fallback — gray box with a question mark
     ctx.fillStyle = '#3a3f4a';

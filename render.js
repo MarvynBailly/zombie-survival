@@ -176,6 +176,13 @@ function render(alpha) {
     // player-placed walls
     for (const w of Game.walls) if (rectInView(w)) ZSprites.drawWall(ctx, w);
 
+    // Foundry machines — drawn after walls so a machine wall'd in still
+    // renders on top. Drawn before zombies/player so survivors stand in
+    // front of their own factory.
+    if (typeof drawMachines === 'function') drawMachines(ctx, cam);
+    // Foundry build-mode ghost preview.
+    if (typeof drawFoundryGhost === 'function') drawFoundryGhost(ctx);
+
     // ghost preview of next wall placement (only while the wall slot is active)
     if (Game.player && !Game.player.dead && Game.player.weapon === 'wall' && Game.player.ammo.wall.reserve > 0) {
       const ghost = wallPlacementRect(Game.player);

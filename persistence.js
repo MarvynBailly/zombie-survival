@@ -61,6 +61,8 @@ function saveGame() {
     },
     walls: Game.walls.map(w => ({ x: w.x, y: w.y, w: w.w, h: w.h, hp: w.hp, maxHp: w.maxHp })),
     barrels: Game.barrels.map(b => ({ x: b.x, y: b.y, hp: b.hp })),
+    // Foundry machine state.
+    machines: typeof serializeMachines === 'function' ? serializeMachines() : [],
     chestOverrides,
     // Activated chunks (one-shot encounter spawns have already fired)
     activatedChunks: Array.from(World.chunks.entries())

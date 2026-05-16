@@ -201,6 +201,8 @@ function resetRun(levelIndex) {
     infection: 0,
     infectionLastHit: 0, // performance.now()/1000 of the last infecting hit
   };
+  // Foundry: reset placeable-machine state on every run.
+  if (typeof initFoundryState === 'function') initFoundryState();
   World.ensureActive(Game.player.x, Game.player.y);
   Game.camera.x = Game.player.x - VIEW_W / 2;
   Game.camera.y = Game.player.y - VIEW_H / 2;
@@ -270,11 +272,26 @@ function restoreFromSave(d) {
     p.inventory.slots = slots;
   }
 
+  // Inventory (Foundry — null-tolerant for older saves).
+  if (d.player.inventory && Array.isArray(d.player.inventory.slots)) {
+    const cap = p.inventory.capacity;
+    const slots = Array.from({ length: cap }, () => null);
+    for (let i = 0; i < Math.min(cap, d.player.inventory.slots.length); i++) {
+      const s = d.player.inventory.slots[i];
+      if (s && ITEMS[s.id] && s.count > 0) {
+        slots[i] = { id: s.id, count: Math.min(s.count, ITEMS[s.id].stackMax) };
+      }
+    }
+    p.inventory.slots = slots;
+  }
+
   // World contents
   Game.walls = (d.walls || []).map(w => ({ ...w }));
   Game.barrels = (d.barrels || []).map(b => ({
     x: b.x, y: b.y, r: 14, hp: b.hp != null ? b.hp : 30, ignited: false, igniteT: 0,
   }));
+  // Foundry machines.
+  if (typeof restoreMachines === 'function') restoreMachines(d.machines || []);
 
   // Active chunks first, then apply chest overrides.
   World.ensureActive(p.x, p.y);
@@ -804,7 +821,7 @@ function updatePlayer(dt) {
 
   // E to open the nearest unopened chest, or fall through to the workbench
   // crafting overlay if no chest is in reach, or recruit a nearby survivor,
-  // or interact with a nearby manhole (sewers).
+  // or interact with a nearby manhole (sewers), or open a foundry machine.
   if (input.keys.has('e') && p.openCd <= 0) {
     const chest = findChestNear(p.x, p.y, CHEST_PROMPT_RADIUS);
     if (chest) {
@@ -822,9 +839,21 @@ function updatePlayer(dt) {
           p.openCd = 0.4;
         } else if (typeof Sewers !== 'undefined' && Sewers.trySewerInteract()) {
           p.openCd = 0.4;
+        } else if (typeof machineNearPlayer === 'function') {
+          const m = machineNearPlayer(p);
+          if (m && typeof openMachineOverlay === 'function') {
+            openMachineOverlay(m);
+            p.openCd = 0.4;
+          }
         }
       } else if (typeof Sewers !== 'undefined' && Sewers.trySewerInteract()) {
         p.openCd = 0.4;
+      } else if (typeof machineNearPlayer === 'function') {
+        const m = machineNearPlayer(p);
+        if (m && typeof openMachineOverlay === 'function') {
+          openMachineOverlay(m);
+          p.openCd = 0.4;
+        }
       }
     }
   }
@@ -2693,6 +2722,7 @@ function tick(dt) {
   updatePickups(dt);
   updateExplosions(dt);
   updateParticles(dt);
+  if (typeof updateMachines === 'function') updateMachines(dt);
   updateDayCycle(dt);
   // Tinker perk: walls auto-repair when not being chewed. Skipped if no
   // perks gives the buff so it costs nothing on the common path.
