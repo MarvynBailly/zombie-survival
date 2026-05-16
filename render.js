@@ -939,6 +939,20 @@ function renderHUD() {
   const hpFilled = Math.round(hpPct * hpPips);
   const hpLow = hpPct < 0.3;
 
+  // Phase 0 — infection bar (under VITALS). Hidden when at 0 so it stays
+  // invisible until something inflicts it. Color gradient: green at low
+  // levels → yellow mid → red high.
+  const infectionLevel = Math.max(0, Math.min(100, p.infection || 0));
+  const infectionPct = infectionLevel / 100;
+  let infectionColor = '#7ad97a';
+  if (infectionPct >= 0.66) infectionColor = '#d24b35';
+  else if (infectionPct >= 0.33) infectionColor = '#e3c054';
+  const infectionHtml = infectionLevel > 0 ? `
+    <div class="infection-bar" title="INFECTION ${infectionLevel.toFixed(0)}%">
+      <div class="infection-fill" style="width:${(infectionPct * 100).toFixed(1)}%;background:${infectionColor}"></div>
+      <div class="infection-label">INFECTION ${infectionLevel.toFixed(0)}%</div>
+    </div>` : '';
+
   // mag bar
   let magTicks = [];
   let magText = '';
@@ -999,6 +1013,7 @@ function renderHUD() {
           `<div class="pip ${i < hpFilled ? (hpLow ? 'low' : 'on') : ''}"></div>`
         ).join('')}
       </div>
+      ${infectionHtml}
     </div>
 
     <div class="hud-box hud-wave">
@@ -1052,6 +1067,7 @@ function renderHUD() {
     ${renderSquadHud()}
     ${Game.noticeUntil > now() ? `<div class="notice">${escapeHtml(Game.notice)}</div>` : ''}
     ${Game.bannerUntil > now() ? `<div class="wave-banner show">${escapeHtml(Game.bannerText)}</div>` : ''}
+    ${renderBossBarHtml()}
   `;
 
   if (html !== __lastHudHtml) {
@@ -1071,6 +1087,23 @@ function renderHUD() {
       });
     });
   }
+}
+
+// Phase 6+ boss healthbar (drawn at top-center while Game.bossArena exists).
+// 600px wide, ~20px tall, name label above. Uses existing HUD palette
+// (--bg, --accent, var(--warn)) so it slots in with the rest of the chrome.
+function renderBossBarHtml() {
+  const arena = Game.bossArena;
+  if (!arena || !arena.ref || arena.hpAtStart <= 0) return '';
+  const boss = arena.ref;
+  const pct = Math.max(0, Math.min(1, boss.hp / arena.hpAtStart));
+  return `
+    <div class="boss-bar">
+      <div class="boss-name">${escapeHtml(arena.name || 'BOSS')}</div>
+      <div class="boss-bar-track">
+        <div class="boss-bar-fill" style="width:${(pct * 100).toFixed(1)}%"></div>
+      </div>
+    </div>`;
 }
 
 function formatTime(s) {

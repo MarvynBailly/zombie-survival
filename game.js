@@ -67,6 +67,15 @@ const Game = {
   level: null,
   player: null,
   zombies: [],
+  // Phase 5+ NPCs (raiders, looters, cultists, wildlife, the bounty).
+  // Empty in Phase 0 — targetOf() already scans this list so future enemy
+  // factions are reachable without touching the steering code again.
+  npcs: [],
+  // Phase 6+ boss arena state. While non-null, render.js draws a top-center
+  // boss healthbar + nameplate and updateZombies runs phase transition checks.
+  // Shape: { cx, cy, radius, walls: [], phases: [{atHpPct, onEnter, fired}],
+  //          hpAtStart, name, ref }
+  bossArena: null,
   bullets: [],
   pickups: [],
   particles: [],
@@ -110,6 +119,8 @@ function resetRun(levelIndex) {
   Game.level = LEVELS[levelIndex];
   Game.levelIndex = levelIndex;
   Game.zombies = [];
+  Game.npcs = [];
+  Game.bossArena = null;
   Game.bullets = [];
   Game.pickups = [];
   Game.particles = [];
@@ -172,6 +183,11 @@ function resetRun(levelIndex) {
     railCharge: 0,     // seconds the trigger has been held with the railgun
     chilledUntil: 0,   // performance.now()/1000 timestamp; <= now means no chill
     chillMult: 1,      // movement multiplier while chilled
+    // Infection % (0–100). Added by spitter projectiles, bloater gas, and
+    // future infectionOnHit enemies. Decays at 0.3/s when no recent source.
+    // Death triggers when it reaches 100 (same path as HP=0). HUD hides at 0.
+    infection: 0,
+    infectionLastHit: 0, // performance.now()/1000 of the last infecting hit
   };
   World.ensureActive(Game.player.x, Game.player.y);
   Game.camera.x = Game.player.x - VIEW_W / 2;
@@ -214,6 +230,8 @@ function restoreFromSave(d) {
   const p = Game.player;
   p.x = d.player.x; p.y = d.player.y;
   p.hp = d.player.hp;
+  p.infection = (typeof d.player.infection === 'number') ? d.player.infection : 0;
+  p.infectionLastHit = 0;
   p.weapon = d.player.weapon || 'pistol';
   p.unlocked = { ...p.unlocked, ...d.player.unlocked };
   for (const k in d.player.ammo) {
@@ -483,6 +501,12 @@ function buildZombieInstance(type, x, y) {
     damage: def.damage * dmgMul,
     color: def.color, score: def.score,
     isFire: def.isFire || false,
+    // Phase 0 — faction defaults to 'zombie'. defs.js entries can opt in to
+    // 'wildlife', 'raider', 'cultist'. Read by targetOf / factionsHostile.
+    faction: def.faction || 'zombie',
+    // Phase 6+ — passthrough boss flag. The arena framework reads `boss` on
+    // the instance, not the def. No def currently sets it.
+    boss: !!def.boss,
     onFire: 0,
     hitCd: 0, stunned: 0,
     vx: 0, vy: 0,
@@ -1591,6 +1615,9 @@ function killZombie(z, weapon) {
   }
   const idx = Game.zombies.indexOf(z);
   if (idx >= 0) Game.zombies.splice(idx, 1);
+  // Boss arena tear-down: if this kill is the arena's boss reference, drop
+  // the ring walls and clear Game.bossArena. No-op if no arena is engaged.
+  if (Game.bossArena && Game.bossArena.ref === z) disengageBoss();
 }
 
 // Tanks bias toward big, useful loot.
@@ -1667,12 +1694,50 @@ function damagePlayer(amount, attacker, opts) {
     p.chilledUntil = now() + (ch.ms / 1000);
     p.chillMult = 1 - (ch.pct || 0.4);
   }
+  // Infection — only applied if the attacker actually landed (i.e. we passed
+  // the iframe gate above and damage was dealt). For DOT auras, the source
+  // calls addPlayerInfection directly so it can scale per-tick.
+  if (!isDot && attacker && attacker.infectionOnHit) {
+    addPlayerInfection(attacker.infectionOnHit);
+  }
   if (p.hp <= 0) {
     p.hp = 0;
     p.dead = true;
     Audio.sfx.dead();
     setTimeout(() => { if (Game.mode === 'playing') showGameOver(); }, 900);
   }
+}
+
+// Add `amount`% to player.infection (clamped 0..100). Marks infectionLastHit
+// so decay won't kick in for the next ~1s. At >=100 triggers the same death
+// path as HP=0 (used by spitter projectile, bloater gas, future infection
+// enemies).
+function addPlayerInfection(amount) {
+  const p = Game.player;
+  if (!p || p.dead || !amount) return;
+  p.infection = Math.min(100, (p.infection || 0) + amount);
+  p.infectionLastHit = now();
+  if (p.infection >= 100) {
+    p.infection = 100;
+    if (!p.dead) {
+      p.hp = 0;
+      p.dead = true;
+      Audio.sfx.dead();
+      setTimeout(() => { if (Game.mode === 'playing') showGameOver(); }, 900);
+    }
+  }
+}
+
+// Per-tick infection decay. Called from the main tick loop. 0.3%/s drain
+// kicks in 1s after the last infecting hit so chip damage actually
+// accumulates instead of fizzling.
+function updateInfection(dt) {
+  const p = Game.player;
+  if (!p || p.dead) return;
+  if (!p.infection) return;
+  const sinceHit = now() - (p.infectionLastHit || 0);
+  if (sinceHit < 1.0) return;
+  p.infection = Math.max(0, p.infection - 0.3 * dt);
 }
 
 function spawnBlood(x, y, ang) {
@@ -1838,6 +1903,9 @@ function tier3PreTick(z, dt, p) {
     const dx = p.x - z.x, dy = p.y - z.y;
     if (dx * dx + dy * dy < (z.gasAura.r || 60) ** 2) {
       damagePlayer((z.gasAura.dps || 3) * dt, z, { dot: true });
+      // Infection per tick (0.5%/tick on the bloater def). Independent of
+      // the DOT iframe gate so steady gas exposure ramps the bar.
+      if (z.gasAura.infection) addPlayerInfection(z.gasAura.infection * dt);
     }
   }
 
@@ -1892,6 +1960,117 @@ function updateStationarySpawner(z, dt, p) {
   }
 }
 
+// ---------- Faction targeting ----------
+// Picks the closest valid target for zombie/npc `z`. For zombies this is
+// normally the player (preserving current behavior); a same-tile hostile of a
+// different faction within 80px is preferred so zombies don't blissfully
+// ignore a raider standing right next to them. Returns { x, y, ref } or null.
+// `ref` is the entity reference so contact-damage / projectile owners stay
+// honest (DOT iframes, attacker.chillOnHit, etc.).
+function targetOf(z) {
+  const p = Game.player;
+  const myFaction = z.faction || 'zombie';
+  // Player target — only if the unit's faction is hostile to 'player'.
+  const wantsPlayer = factionsHostile(myFaction, 'player') && p && !p.dead;
+  let bestX = 0, bestY = 0, bestRef = null, bestD2 = Infinity;
+  // Same-tile faction enemy preference window. Picked to be ~2 tiles —
+  // close enough that the unit visibly notices the cross-faction enemy,
+  // small enough that it doesn't override player-chase from across the room.
+  const PREFER_R = 80;
+  const PREFER_R2 = PREFER_R * PREFER_R;
+  // Scan zombies for cross-faction hostiles.
+  const zs = Game.zombies;
+  for (let i = 0; i < zs.length; i++) {
+    const o = zs[i];
+    if (o === z || o.hp <= 0) continue;
+    if (!factionsHostile(myFaction, o.faction || 'zombie')) continue;
+    const dx = o.x - z.x, dy = o.y - z.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < bestD2 && d2 < PREFER_R2) { bestD2 = d2; bestX = o.x; bestY = o.y; bestRef = o; }
+  }
+  // Scan future NPCs (Phase 5+). Empty in Phase 0 — costs one length check.
+  const ns = Game.npcs;
+  if (ns && ns.length) {
+    for (let i = 0; i < ns.length; i++) {
+      const o = ns[i];
+      if (!o || o.dead) continue;
+      if (!factionsHostile(myFaction, o.faction || 'raider')) continue;
+      const dx = o.x - z.x, dy = o.y - z.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2 && d2 < PREFER_R2) { bestD2 = d2; bestX = o.x; bestY = o.y; bestRef = o; }
+    }
+  }
+  if (bestRef) return { x: bestX, y: bestY, ref: bestRef };
+  if (wantsPlayer) return { x: p.x, y: p.y, ref: p };
+  return null;
+}
+
+// ---------- Boss arena framework (Phase 6+) ----------
+// Engage a boss: lock the arena around (cx, cy) with non-destructible ring
+// walls and install phase-transition triggers. `opts.phases` is an array of
+// { atHpPct: 0..1, onEnter: (boss) => void } evaluated each tick in
+// updateZombies — fired when boss.hp / hpAtStart falls past atHpPct.
+function engageBoss(zombieRef, opts) {
+  if (!zombieRef || Game.bossArena) return;
+  const o = opts || {};
+  const cx = (o.cx != null) ? o.cx : zombieRef.x;
+  const cy = (o.cy != null) ? o.cy : zombieRef.y;
+  const radius = o.radius || 360;
+  const name = o.name || 'BOSS';
+  const phases = (o.phases || []).map(p => ({
+    atHpPct: p.atHpPct, onEnter: p.onEnter, fired: false,
+  }));
+  // Build a ring of non-destructible wall segments along the arena perimeter.
+  // Uses the same Game.walls array the player's walls live on so existing
+  // collision / pathing code picks them up for free. Tag arenaWall:true so
+  // we can identify and remove them on boss death.
+  const ringWalls = [];
+  const step = WALL_SIZE;
+  // Octagonal-ish ring: sample tile cells whose center lies within
+  // (radius, radius + WALL_SIZE) of (cx, cy).
+  const rOuter = radius + WALL_SIZE;
+  const minTx = Math.floor((cx - rOuter) / WALL_SIZE);
+  const maxTx = Math.ceil((cx + rOuter) / WALL_SIZE);
+  const minTy = Math.floor((cy - rOuter) / WALL_SIZE);
+  const maxTy = Math.ceil((cy + rOuter) / WALL_SIZE);
+  for (let ty = minTy; ty <= maxTy; ty++) {
+    for (let tx = minTx; tx <= maxTx; tx++) {
+      const wx = tx * WALL_SIZE, wy = ty * WALL_SIZE;
+      if (wx < 0 || wy < 0 || wx >= WORLD_W || wy >= WORLD_H) continue;
+      const ccx = wx + WALL_SIZE / 2, ccy = wy + WALL_SIZE / 2;
+      const d = Math.hypot(ccx - cx, ccy - cy);
+      if (d >= radius && d <= radius + step) {
+        const w = {
+          x: wx, y: wy, w: WALL_SIZE, h: WALL_SIZE,
+          hp: Infinity, maxHp: Infinity, arenaWall: true,
+        };
+        Game.walls.push(w);
+        ringWalls.push(w);
+      }
+    }
+  }
+  Game.bossArena = {
+    cx, cy, radius,
+    walls: ringWalls,
+    phases,
+    hpAtStart: zombieRef.hp,
+    name,
+    ref: zombieRef,
+  };
+  // Path topology changed.
+  if (typeof NAV !== 'undefined' && NAV.markDirty) NAV.markDirty();
+}
+
+// Tear down the arena: drop ring walls, clear bossArena. Called from
+// killZombie when the boss's ref dies. Safe to call when bossArena is null.
+function disengageBoss() {
+  if (!Game.bossArena) return;
+  // Remove every arena-tagged wall in one pass.
+  Game.walls = Game.walls.filter(w => !w.arenaWall);
+  Game.bossArena = null;
+  if (typeof NAV !== 'undefined' && NAV.markDirty) NAV.markDirty();
+}
+
 // ---------- Zombies ----------
 function updateZombies(dt) {
   const p = Game.player;
@@ -1899,6 +2078,27 @@ function updateZombies(dt) {
   // Reset per-frame derived stats (screamer aura writes into o.speedBoost,
   // so we zero it at the start of each tick).
   for (let i = 0; i < zs.length; i++) zs[i].speedBoost = 1;
+
+  // Boss arena: fire phase transitions when the boss's HP crosses an
+  // atHpPct threshold. Each phase fires once. The arena is torn down in
+  // killZombie when the boss dies.
+  if (Game.bossArena && Game.bossArena.ref) {
+    const boss = Game.bossArena.ref;
+    if (boss.hp > 0 && Game.bossArena.hpAtStart > 0) {
+      const pct = boss.hp / Game.bossArena.hpAtStart;
+      const phases = Game.bossArena.phases;
+      for (let i = 0; i < phases.length; i++) {
+        const ph = phases[i];
+        if (!ph.fired && pct <= ph.atHpPct) {
+          ph.fired = true;
+          if (typeof ph.onEnter === 'function') {
+            try { ph.onEnter(boss); }
+            catch (e) { console.error('boss phase onEnter threw', e); }
+          }
+        }
+      }
+    }
+  }
 
   // Trim corpse log: drop entries older than `until`.
   if (Game.corpseLog && Game.corpseLog.length) {
@@ -2113,17 +2313,28 @@ function updateZombies(dt) {
       }
     }
 
-    // damage player on contact. Reaper has meleeReach so a scythe-arm hits
+    // damage target on contact. Reaper has meleeReach so a scythe-arm hits
     // over crates / from outside the regular contact ring. Spitter is
-    // ranged and shouldn't melee; gate by checking z.damage.
+    // ranged and shouldn't melee; gate by checking z.damage. Routed through
+    // targetOf so zombies melee whoever they're targeting (Phase 0+ — cross-
+    // faction neighbors take priority within 80px, otherwise the player).
     z.hitCd -= dt;
     if (z.hitCd < 0) z.hitCd = 0;
     if (z.damage > 0) {
-      const reach = z.meleeReach ? z.meleeReach + p.r : p.r + z.r + 1.5;
-      if (Math.hypot(p.x - z.x, p.y - z.y) <= reach) {
-        if (z.hitCd <= 0) {
-          damagePlayer(z.damage, z);
-          z.hitCd = 0.6;
+      const tgt = targetOf(z);
+      if (tgt) {
+        const tr = (tgt.ref && tgt.ref.r) || p.r;
+        const reach = z.meleeReach ? z.meleeReach + tr : tr + z.r + 1.5;
+        if (Math.hypot(tgt.x - z.x, tgt.y - z.y) <= reach) {
+          if (z.hitCd <= 0) {
+            // Player path keeps the existing iframes / hurt sfx / shake.
+            // NPC path is Phase 5 — until then targetOf only returns player
+            // or another zombie, so the else branch is a no-op shield.
+            if (tgt.ref === p) damagePlayer(z.damage, z);
+            // (cross-faction zombie-on-zombie damage is intentionally not
+            // applied here in Phase 0 — would change current gameplay.)
+            z.hitCd = 0.6;
+          }
         }
       }
     }
@@ -2426,6 +2637,7 @@ function tick(dt) {
   updateBullets(dt);
   updateRockets(dt);
   updatePuddles(dt);
+  updateInfection(dt);
   updateBarrels(dt);
   updatePickups(dt);
   updateExplosions(dt);

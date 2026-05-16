@@ -48,6 +48,9 @@ function saveGame() {
     weaponKills: Game.weaponKills,
     player: {
       x: p.x, y: p.y, hp: p.hp,
+      // Infection 0..100. SAVE_VERSION 6+ field; older saves omit it and
+      // restoreFromSave defaults to 0.
+      infection: p.infection || 0,
       weapon: p.weapon,
       unlocked: { ...p.unlocked },
       ammo,

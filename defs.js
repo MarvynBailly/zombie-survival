@@ -101,6 +101,38 @@ const WEAPON_ORDER = [
   'crossbow', 'flamer', 'minigun', 'railgun', 'gl', 'saw',
 ];
 
+// ---------- Factions ----------
+// Drives hostility / target selection in updateZombies (and Phase 5+ NPC AI).
+// Every ZOMBIES entry defaults to faction 'zombie' (applied in
+// buildZombieInstance). 'player' isn't really a faction — the player is
+// special-cased in targetOf and the hostility table only uses it to decide
+// whether non-zombie factions also chase the player.
+const FACTIONS = {
+  player:   { name: 'player' },
+  zombie:   { name: 'zombie' },
+  raider:   { name: 'raider' },
+  cultist:  { name: 'cultist' },
+  wildlife: { name: 'wildlife' },
+};
+
+// FACTION_HOSTILE[a][b] === true means faction `a` will attack `b` on sight.
+// Symmetry is NOT enforced — a wildlife stag attacks raiders only if both
+// halves are set. Read via factionsHostile(a, b).
+const FACTION_HOSTILE = {
+  zombie:   { player: true,  raider: true,  cultist: false, wildlife: true  },
+  raider:   { player: true,  zombie: true,  cultist: false, wildlife: false },
+  cultist:  { player: true,  zombie: false, raider: false,  wildlife: false },
+  wildlife: { player: true,  zombie: true,  raider: false,  cultist: false  },
+  // 'player' faction is unused — player is special-cased in targetOf.
+  player:   {},
+};
+
+function factionsHostile(a, b) {
+  if (!a || !b) return false;
+  const row = FACTION_HOSTILE[a];
+  return !!(row && row[b]);
+}
+
 // ---------- Zombie types ----------
 const ZOMBIES = {
   walker: { hp: 55, speed: 60, damage: 10, radius: 14, color: '#6fa060', score: 10 },
@@ -113,6 +145,8 @@ const ZOMBIES = {
     hp: 70, speed: 55, damage: 12, radius: 14,
     color: '#a4c45a', score: 25,
     ranged: true, range: 280, projectileDamage: 12, fireCooldown: 2.5,
+    // Phase 0: spit projectile hit adds 3% infection.
+    infectionOnHit: 3,
   },
   crawler: {
     hp: 22, speed: 160, damage: 6, radius: 9,
@@ -191,7 +225,8 @@ const ZOMBIES = {
   bloater: {
     hp: 200, speed: 45, damage: 6, radius: 22,
     color: '#5e4a3a', score: 70,
-    gasAura: { r: 60, dps: 3 },
+    // gasAura.infection is the per-tick % added while player is in radius.
+    gasAura: { r: 60, dps: 3, infection: 0.5 },
     deathCloud: { r: 100, life: 4, dps: 5 },
   },
   frost: {

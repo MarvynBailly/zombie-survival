@@ -260,6 +260,70 @@ button.ghost:hover { color: var(--fg); border-left-color: var(--muted); }
 .hud-vitals .pip.on  { background: var(--accent); box-shadow: 0 0 6px rgba(210,75,53,0.35); }
 .hud-vitals .pip.low { background: var(--warn);   box-shadow: 0 0 6px rgba(227,168,58,0.35); }
 
+/* Phase 0 infection bar — sits directly under the HP pips. Hidden by
+   gating the HTML when player.infection is 0. */
+.hud-vitals .infection-bar {
+  position: relative;
+  height: 10px;
+  margin-top: 4px;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid var(--border, #2a2c30);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.hud-vitals .infection-fill {
+  position: absolute; inset: 0 auto 0 0;
+  height: 100%;
+  transition: width 0.2s, background 0.2s;
+  box-shadow: 0 0 4px currentColor;
+  opacity: 0.85;
+}
+.hud-vitals .infection-label {
+  position: absolute; inset: 0;
+  font-family: var(--f-mono);
+  font-size: 8px; letter-spacing: 1px;
+  color: #e8e6df;
+  text-align: center;
+  line-height: 10px;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.7);
+  pointer-events: none;
+}
+
+/* Phase 6+ boss healthbar — top-center, 600px wide. Drawn whenever
+   Game.bossArena is set. */
+.boss-bar {
+  position: absolute;
+  top: 86px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  pointer-events: none;
+  text-align: center;
+}
+.boss-bar .boss-name {
+  font-family: var(--f-display);
+  font-size: 16px;
+  letter-spacing: 4px;
+  color: var(--accent);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.85);
+  margin-bottom: 4px;
+}
+.boss-bar .boss-bar-track {
+  position: relative;
+  height: 20px;
+  background: rgba(0,0,0,0.75);
+  border: 1px solid var(--accent-deep, #8a2a1a);
+  border-radius: 2px;
+  overflow: hidden;
+  box-shadow: 0 0 12px rgba(210,75,53,0.35);
+}
+.boss-bar .boss-bar-fill {
+  position: absolute; inset: 0 auto 0 0;
+  height: 100%;
+  background: linear-gradient(180deg, var(--accent-hi, #ec6448), var(--accent, #d24b35));
+  transition: width 0.2s linear;
+}
+
 /* center wave */
 .hud-wave {
   position: absolute; top: 14px; left: 50%; transform: translateX(-50%);

@@ -14,7 +14,7 @@ const PB_URL = 'https://raspberrypi.tail0bf0ce.ts.net:8443';
 const COL_SCORES = 'proj_zombie_survival_scores';
 const PREFS_KEY = 'zombie-survival:prefs';
 const SAVE_KEY = 'zombie-survival:save';
-const SAVE_VERSION = 5;
+const SAVE_VERSION = 7;
 
 // World tile grid. TILE_SIZE matches WALL_SIZE so player-placed walls and
 // generated obstacles snap to the same lattice. ZONE_CHUNKS controls POI
