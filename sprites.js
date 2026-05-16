@@ -324,6 +324,87 @@
       case 'railgun':  if (typeof window.ZExpand !== 'undefined') return ZExpand.drawRailgun(ctx); break;
       case 'gl':       if (typeof window.ZExpand !== 'undefined') return ZExpand.drawGrenadeLauncher(ctx); break;
       case 'saw':      if (typeof window.ZExpand !== 'undefined') return ZExpand.drawChainsaw(ctx); break;
+      // ---- Phase 2 weapons (procedural — no ZExpand dependency) ----
+      case 'nail': {
+        // grip / body
+        ctx.fillStyle = C.gunBody;
+        ctx.fillRect(-1, -2, 8, 4);
+        ctx.fillStyle = '#3a3f4a';
+        ctx.fillRect(0, 2, 4, 5);
+        // long industrial barrel
+        ctx.fillStyle = C.gunMetal;
+        ctx.fillRect(7, -1.4, 12, 2.8);
+        ctx.fillStyle = C.gunMetalHi;
+        ctx.fillRect(7, -1.4, 12, 0.7);
+        // sticking-out nail (loaded round)
+        ctx.fillStyle = '#e0e4ea';
+        ctx.fillRect(19, -0.4, 4, 0.8);
+        ctx.fillStyle = '#cad0d8';
+        ctx.fillRect(19, -0.8, 1.0, 1.6);
+        break;
+      }
+      case 'taser': {
+        // dark body with electric stripe
+        ctx.fillStyle = '#1c2630';
+        ctx.fillRect(-1, -2.4, 9, 4.8);
+        ctx.fillStyle = '#3a3f4a';
+        ctx.fillRect(-1, -2.4, 9, 1.0);
+        ctx.fillStyle = '#5fb6e8';
+        ctx.fillRect(0, -0.6, 7, 1.2);
+        // grip
+        ctx.fillStyle = '#1a1a1f';
+        ctx.fillRect(1, 2.4, 4, 5);
+        // dual emitter prongs
+        ctx.fillStyle = C.gunMetal;
+        ctx.fillRect(8, -2.4, 8, 1.4);
+        ctx.fillRect(8, 1.0, 8, 1.4);
+        // arc between prongs
+        ctx.strokeStyle = '#a8d8e8';
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(13, -1.4); ctx.lineTo(15, -0.2); ctx.lineTo(13, 0.6); ctx.lineTo(15, 1.4);
+        ctx.stroke();
+        break;
+      }
+      case 'katana': {
+        // grip wrap
+        ctx.fillStyle = '#1a1a1f';
+        ctx.fillRect(-4, -1.2, 6, 2.4);
+        ctx.fillStyle = '#3a3f4a';
+        ctx.fillRect(-3, -0.4, 4, 0.8);
+        // tsuba (round-ish guard)
+        ctx.fillStyle = '#caa760';
+        ctx.fillRect(2, -2, 1.4, 4);
+        // long blade
+        ctx.fillStyle = '#cfd0d3';
+        ctx.fillRect(3.4, -0.8, 22, 1.6);
+        ctx.fillStyle = '#e8e6df';
+        ctx.fillRect(3.4, -0.8, 22, 0.5);
+        // tip
+        ctx.fillStyle = '#cfd0d3';
+        ctx.beginPath();
+        ctx.moveTo(25.4, -0.8); ctx.lineTo(28, 0); ctx.lineTo(25.4, 0.8);
+        ctx.closePath(); ctx.fill();
+        break;
+      }
+      case 'sledge': {
+        // long wood haft
+        ctx.fillStyle = '#7a5a30';
+        ctx.fillRect(-4, -0.9, 22, 1.8);
+        ctx.fillStyle = '#5a4020';
+        ctx.fillRect(-4, -0.9, 22, 0.4);
+        // chunky steel head at end
+        ctx.fillStyle = '#3a3f4a';
+        ctx.fillRect(17, -4, 7, 8);
+        ctx.fillStyle = '#7e8a98';
+        ctx.fillRect(17, -4, 7, 1.4);
+        ctx.fillStyle = '#2a3038';
+        ctx.fillRect(17, 2.6, 7, 1.4);
+        // bolt detail
+        ctx.fillStyle = '#caa760';
+        ctx.fillRect(20.2, -0.6, 1.2, 1.2);
+        break;
+      }
       default: {
         ctx.fillStyle = C.gunBody;
         ctx.fillRect(8, -2, 12, 4);
@@ -332,6 +413,8 @@
   }
 
   function drawMuzzleFlash(ctx, x, y, angle, weapon, t) {
+    // Melee weapons don't muzzle-flash.
+    if (weapon === 'saw' || weapon === 'katana' || weapon === 'sledge') return;
     const len = weapon === 'shotgun' ? 22 : weapon === 'rocket' ? 0 : weapon === 'smg' ? 18 : 14;
     if (len === 0) return;
     const r = (1 - Math.abs(0.5 - t) * 2) * len;

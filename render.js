@@ -251,6 +251,44 @@ function render(alpha) {
         ctx.fillRect(p.x - bw / 2 - 1, p.y - p.r - 12, bw + 2, 4);
         ctx.fillStyle = frac >= 1 ? '#a8d8e8' : '#9fc4ff';
         ctx.fillRect(p.x - bw / 2, p.y - p.r - 11, bw * frac, 2);
+        // Glowing ring around the player — pulses with charge fraction so the
+        // player has a peripheral tell. Inner stroke pops at full charge.
+        ctx.save();
+        ctx.strokeStyle = frac >= 1 ? '#cfeaff' : '#5fb6e8';
+        ctx.globalAlpha = 0.45 + 0.55 * frac;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r + 6 + Math.sin(now() * 8) * 1.5, 0, Math.PI * 2);
+        ctx.stroke();
+        if (frac >= 1) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r + 10, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      // Riot shield overlay — small arc in front of the player + HP pip.
+      if (p.offhand === 'shield' && (p.offhandHp || 0) > 0) {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.angle);
+        ctx.fillStyle = '#3a3f4a';
+        ctx.fillRect(8, -10, 4, 20);
+        ctx.fillStyle = '#7e8a98';
+        ctx.fillRect(8, -10, 1.4, 20);
+        ctx.fillStyle = '#caa760';
+        ctx.fillRect(8, -1.4, 4, 2.8);
+        ctx.restore();
+        // Shield HP pip under the player.
+        const def = OFFHANDS.shield;
+        const pct = Math.max(0, (p.offhandHp || 0) / (def && def.hp ? def.hp : 300));
+        const bw = 24;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(p.x - bw / 2 - 1, p.y + p.r + 4, bw + 2, 3);
+        ctx.fillStyle = pct > 0.5 ? '#7e8a98' : pct > 0.25 ? '#e3c054' : '#d24b35';
+        ctx.fillRect(p.x - bw / 2, p.y + p.r + 4, bw * pct, 3);
       }
     }
 
@@ -285,6 +323,51 @@ function render(alpha) {
 
     // explosions (culled — radius can be large, so test with margin)
     for (const ex of Game.explosions) if (inView(ex.x, ex.y)) ZSprites.drawExplosion(ctx, ex);
+
+    // Smoke clouds (Phase 2 GL smoke mode). Soft drifting gray circles that
+    // fade out over the last second of their life so the player sees the
+    // boundary recede.
+    if (Game.smokeClouds && Game.smokeClouds.length) {
+      for (const sc of Game.smokeClouds) {
+        if (!inView(sc.x, sc.y)) continue;
+        const fade = Math.min(1, sc.life / 1.0);
+        ctx.save();
+        ctx.globalAlpha = 0.30 * fade;
+        ctx.fillStyle = '#8e949c';
+        ctx.beginPath(); ctx.arc(sc.x, sc.y, sc.r, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.18 * fade;
+        ctx.fillStyle = '#cad0d8';
+        ctx.beginPath(); ctx.arc(sc.x, sc.y, sc.r * 0.7, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // Chain-taser lightning polylines (Phase 2). Fades out over 0.25s.
+    if (Game.lightning && Game.lightning.length) {
+      for (const L of Game.lightning) {
+        if (!L.points || L.points.length < 2) continue;
+        const a = Math.max(0, Math.min(1, L.life / 0.25));
+        ctx.save();
+        ctx.globalAlpha = a;
+        ctx.lineWidth = 2.2;
+        ctx.strokeStyle = '#cfeaff';
+        ctx.beginPath();
+        ctx.moveTo(L.points[0].x, L.points[0].y);
+        // Add a little jitter between control points for "arc" feel.
+        for (let k = 1; k < L.points.length; k++) {
+          const px = L.points[k].x, py = L.points[k].y;
+          const mx = (L.points[k - 1].x + px) / 2 + rand(-4, 4);
+          const my = (L.points[k - 1].y + py) / 2 + rand(-4, 4);
+          ctx.lineTo(mx, my);
+          ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.lineWidth = 0.9;
+        ctx.strokeStyle = '#5fb6e8';
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
   }
 
   ctx.restore();
@@ -852,12 +935,22 @@ function findNearestUndiscoveredPOI(px, py) {
 
 // ---------- HUD (DOM) ----------
 const WEAPON_INFO = {
-  pistol:  '12 RND · SEMI',
-  shotgun: '6 PELLET · BUCK',
-  smg:     'AUTO · 14 RPS',
-  rocket:  'AoE · 120 DMG',
-  barrel:  'PLACE · CHAIN',
-  wall:    'PLACE · 250 HP',
+  pistol:   '12 RND · SEMI',
+  shotgun:  '6 PELLET · BUCK',
+  smg:      'AUTO · 14 RPS',
+  rocket:   'AoE · 120 DMG',
+  barrel:   'PLACE · CHAIN',
+  wall:     'PLACE · 250 HP',
+  crossbow: 'SILENT · PIERCE 3',
+  flamer:   'CONE · IGNITES',
+  minigun:  'SPIN-UP · DUMP',
+  railgun:  'CHARGE · NEEDS CAP',
+  gl:       'AoE/SMOKE · →TOGGLE',
+  saw:      'MELEE · FUEL-FED',
+  nail:     'PIN · ITEM-FED',
+  taser:    'CHAIN 4 · STAGGER',
+  katana:   'CLEAVE · HOLD=EXEC',
+  sledge:   'KNOCK · BREAKS WALL',
 };
 
 // cache mini weapon icon canvases so we don't re-draw every frame
@@ -874,7 +967,32 @@ function getWeaponSlotIcon(type) {
   return __slotIconCache[type];
 }
 function drawWeaponIconShape(ctx, type) {
-  if (type === 'pistol') {
+  if (type === 'nail') {
+    // industrial body + nail-shaped barrel
+    ctx.fillStyle = '#5e6a78'; ctx.fillRect(-7, -2, 11, 4);
+    ctx.fillStyle = '#3a3f4a'; ctx.fillRect(-7, 1, 4, 5);
+    ctx.fillStyle = '#cad0d8'; ctx.fillRect(4, -0.6, 6, 1.2);
+    ctx.fillStyle = '#e0e4ea'; ctx.fillRect(4, -0.8, 1, 1.6); // head of a nail in chamber
+  } else if (type === 'taser') {
+    // taser body with electric arc accent
+    ctx.fillStyle = '#3a3f4a'; ctx.fillRect(-6, -2, 10, 4);
+    ctx.fillStyle = '#1c2630'; ctx.fillRect(-6, 1, 4, 5);
+    ctx.fillStyle = '#5fb6e8'; ctx.fillRect(4, -0.5, 4, 1);
+    ctx.strokeStyle = '#a8d8e8'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(10, -1.5); ctx.lineTo(11, 1); ctx.stroke();
+  } else if (type === 'katana') {
+    // long thin blade + dark grip
+    ctx.fillStyle = '#1a1a1f'; ctx.fillRect(-7, -1, 5, 2);
+    ctx.fillStyle = '#cfd0d3'; ctx.fillRect(-2, -0.6, 12, 1.2);
+    ctx.fillStyle = '#e8e6df'; ctx.fillRect(-2, -0.6, 12, 0.4);
+    ctx.fillStyle = '#caa760'; ctx.fillRect(-3, -1.2, 1.4, 2.4); // tsuba
+  } else if (type === 'sledge') {
+    // long haft + chunky steel head
+    ctx.fillStyle = '#7a5a30'; ctx.fillRect(-7, -0.6, 12, 1.2);
+    ctx.fillStyle = '#3a3f4a'; ctx.fillRect(4, -3, 6, 6);
+    ctx.fillStyle = '#7e8a98'; ctx.fillRect(4, -3, 6, 1.2);
+    ctx.fillStyle = '#2a3038'; ctx.fillRect(4, 1.8, 6, 1.2);
+  } else if (type === 'pistol') {
     ctx.fillStyle = '#cfd0d3'; ctx.fillRect(-6, -2, 9, 4);
     ctx.fillRect(-6, 1, 4, 5);
     ctx.fillStyle = '#e3a83a'; ctx.fillRect(3, -1, 2, 1);
@@ -951,11 +1069,16 @@ function renderHUD() {
     const unlocked = p.unlocked[k];
     const active = k === p.weapon;
     const ammoData = p.ammo[k];
+    // Item-fed weapons (nail/taser): reserve is the live inventory count of
+    // the feeder item, not a separate pool.
+    const reserveForSlot = wd.consumesItem
+      ? itemCount(p.inventory, wd.consumesItem)
+      : ammoData.reserve;
     let ammoLabel = '';
     if (!unlocked) ammoLabel = '–';
     else if (wd.magSize === Infinity) ammoLabel = '∞';
-    else ammoLabel = String(ammoData.reserve + ammoData.mag);
-    const empty = unlocked && wd.magSize !== Infinity && ammoData.reserve + ammoData.mag === 0;
+    else ammoLabel = String(reserveForSlot + ammoData.mag);
+    const empty = unlocked && wd.magSize !== Infinity && reserveForSlot + ammoData.mag === 0;
     return `<div class="slot ${active ? 'active' : ''} ${!unlocked ? 'locked' : empty ? 'empty' : ''}" data-weapon="${k}">
       <div class="key">${wd.key}</div>
       <img src="${getWeaponSlotIcon(k)}" width="18" height="18" alt="${wd.name}" style="opacity:${active ? 1 : 0.7}" />
@@ -965,9 +1088,10 @@ function renderHUD() {
 
   // ammo display
   const isPistol = w.magSize === Infinity;
+  const reserveLive = w.consumesItem ? itemCount(p.inventory, w.consumesItem) : a.reserve;
   const ammoDisp = isPistol
     ? `<span style="color:var(--accent)">∞</span>`
-    : `<span>${a.mag}</span><span class="res"> / ${a.reserve === Infinity ? '∞' : a.reserve}</span>`;
+    : `<span>${a.mag}</span><span class="res"> / ${reserveLive === Infinity ? '∞' : reserveLive}</span>`;
   const reloadingClass = p.reloading > 0 ? 'reloading' : '';
   const reloadingText = p.reloading > 0 ? `<div class="info" style="color:var(--warn)">RELOADING · ${p.reloading.toFixed(1)}s</div>` : `<div class="info">${WEAPON_INFO[p.weapon] || ''}</div>`;
 

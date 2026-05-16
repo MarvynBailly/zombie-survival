@@ -39,13 +39,16 @@ const input = {
   keys: new Set(),
   mouseX: 0, mouseY: 0,
   mouseDown: false,
+  mouseRightDown: false,
+  mouseRightEdge: false,   // one-shot: set on mousedown, cleared by handler
   // world-space mouse (set each frame)
   wx: 0, wy: 0,
 };
 window.addEventListener('keydown', e => {
   input.keys.add(e.key.toLowerCase());
-  if (['w','a','s','d','r','e','i','p','h','j',' ','escape',
-       '1','2','3','4','5','6','7','8','9','0','-','='].includes(e.key.toLowerCase())) {
+  if (['w','a','s','d','r','e','i','p','h','j','b',' ','escape',
+       '1','2','3','4','5','6','7','8','9','0','-','=',
+       '[',']','\\','/','arrowright','arrowleft'].includes(e.key.toLowerCase())) {
     e.preventDefault();
   }
 });
@@ -57,8 +60,14 @@ canvas.addEventListener('mousemove', e => {
   input.mouseX = (e.clientX - r.left) * (VIEW_W / r.width);
   input.mouseY = (e.clientY - r.top) * (VIEW_H / r.height);
 });
-canvas.addEventListener('mousedown', e => { if (e.button === 0) { input.mouseDown = true; Audio.ensure(); } });
-window.addEventListener('mouseup', e => { if (e.button === 0) input.mouseDown = false; });
+canvas.addEventListener('mousedown', e => {
+  if (e.button === 0) { input.mouseDown = true; Audio.ensure(); }
+  else if (e.button === 2) { input.mouseRightDown = true; input.mouseRightEdge = true; Audio.ensure(); }
+});
+window.addEventListener('mouseup', e => {
+  if (e.button === 0) input.mouseDown = false;
+  else if (e.button === 2) input.mouseRightDown = false;
+});
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 // ---------- Game State ----------
@@ -90,6 +99,12 @@ const Game = {
   zombieProjectiles: [],
   // Necromancer corpse log (positions to be raised). Trimmed each second.
   corpseLog: [],
+  // Phase 2: smoke fields dropped by GL smoke grenades. Each entry
+  // { x, y, r, life, age }. Zombies inside lose aggro + suppress ranged fire.
+  smokeClouds: [],
+  // Phase 2: short-lived lightning visuals for the chain taser. Each entry
+  // { points: [{x,y}, ...], life: secs }.
+  lightning: [],
   // Day/night state. day counts up, t is seconds elapsed in current day,
   // phase is one of DAY_PHASES.name. spawnTimer paces zombie spawns.
   time: { day: 1, t: 0, phase: 'day' },
@@ -131,6 +146,8 @@ function resetRun(levelIndex) {
   Game.puddles = [];
   Game.zombieProjectiles = [];
   Game.corpseLog = [];
+  Game.smokeClouds = [];
+  Game.lightning = [];
   Game.time = { day: 1, t: 0, phase: 'day' };
   Game.spawnTimer = 0;
   if (typeof WEATHER !== 'undefined') WEATHER.reset();
@@ -169,6 +186,7 @@ function resetRun(levelIndex) {
       barrel: false, wall: true,
       crossbow: false, flamer: false, minigun: false,
       railgun: false, gl: false, saw: false,
+      nail: false, taser: false, katana: false, sledge: false,
     },
     ammo: {
       pistol: { mag: 12, reserve: 60 },
@@ -181,8 +199,12 @@ function resetRun(levelIndex) {
       flamer:   { mag: 0, reserve: 0 },
       minigun:  { mag: 0, reserve: 0 },
       railgun:  { mag: 0, reserve: 0 },
-      gl:       { mag: 0, reserve: 0 },
+      gl:       { mag: 0, reserve: 0, ammoMode: 'he' }, // 'he' | 'smoke'
       saw:      { mag: Infinity, reserve: Infinity }, // melee weapon
+      nail:     { mag: 0, reserve: 0 },
+      taser:    { mag: 0, reserve: 0 },
+      katana:   { mag: Infinity, reserve: Infinity }, // melee
+      sledge:   { mag: Infinity, reserve: Infinity }, // melee
     },
     // Phase 1 arsenal foundation — offhand item slot + shield HP pool. The
     // damage path / shield bash live in Phase 2.
@@ -204,6 +226,11 @@ function resetRun(levelIndex) {
     // Death triggers when it reaches 100 (same path as HP=0). HUD hides at 0.
     infection: 0,
     infectionLastHit: 0, // performance.now()/1000 of the last infecting hit
+    // Phase 2 weapon state.
+    sawFuelAccum: 0,   // chainsaw fuel consumed-this-tick accumulator
+    katanaHoldT: 0,    // seconds LMB held while on katana — charges execution
+    iframes: 0,        // melee-granted iframes (separate from hit-stun iframe)
+    bashCd: 0,         // riot shield bash cooldown (seconds)
   };
   // Foundry: reset placeable-machine state on every run.
   if (typeof initFoundryState === 'function') initFoundryState();
@@ -269,6 +296,7 @@ function restoreFromSave(d) {
     if (a.trait !== undefined) p.ammo[k].trait = a.trait;
     if (a.ammoType) p.ammo[k].ammoType = a.ammoType;
     if (a.attachments) p.ammo[k].attachments = { ...a.attachments };
+    if (a.ammoMode) p.ammo[k].ammoMode = a.ammoMode;
   }
   for (const k in p.ammo) ensureArsenalFields(p.ammo[k]);
   // Offhand slot — may be absent from v5 saves; default to empty.
@@ -699,6 +727,8 @@ function updatePlayer(dt) {
       && (p.minigunSpin || 0) >= (weapDef.spinUp || 0)) {
     speed *= weapDef.slowsWhileFiring;
   }
+  // Riot shield raised: speed is reduced.
+  if (p.offhand === 'shield' && (p.offhandHp || 0) > 0) speed *= 0.6;
   // Perks: Light Feet flat multiplier + Sprint burst with stamina.
   speed *= perkMult('speedMult');
   // Weather: blizzard slows everyone (0.8x).
@@ -787,9 +817,14 @@ function updatePlayer(dt) {
   if (input.keys.has('r')) {
     const w = WEAPONS[p.weapon];
     const a = p.ammo[p.weapon];
-    if (w.magSize !== Infinity && p.reloading <= 0 && a.mag < w.magSize && a.reserve > 0) {
-      p.reloading = w.reloadTime * perkMult('reloadMult');
-      Audio.sfx.reload();
+    if (w.magSize !== Infinity && p.reloading <= 0 && a.mag < w.magSize) {
+      const haveReserve = w.consumesItem
+        ? itemCount(p.inventory, w.consumesItem) > 0
+        : a.reserve > 0;
+      if (haveReserve) {
+        p.reloading = w.reloadTime * perkMult('reloadMult');
+        Audio.sfx.reload();
+      }
     }
   }
   if (p.reloading > 0) {
@@ -797,10 +832,22 @@ function updatePlayer(dt) {
     if (p.reloading <= 0) {
       const w = WEAPONS[p.weapon];
       const a = p.ammo[p.weapon];
-      const need = w.magSize - a.mag;
-      const taken = Math.min(need, a.reserve);
-      a.mag += taken;
-      a.reserve -= taken;
+      // Item-fed weapons pull from the inventory rather than a per-weapon
+      // reserve pool. The HUD displays the live item count as "reserve".
+      if (w.consumesItem && w.magSize !== Infinity) {
+        const need = w.magSize - a.mag;
+        const have = itemCount(p.inventory, w.consumesItem);
+        const taken = Math.min(need, have);
+        if (taken > 0) {
+          removeItem(p.inventory, w.consumesItem, taken);
+          a.mag += taken;
+        }
+      } else {
+        const need = w.magSize - a.mag;
+        const taken = Math.min(need, a.reserve);
+        a.mag += taken;
+        a.reserve -= taken;
+      }
       p.reloading = 0;
     }
   }
@@ -839,58 +886,175 @@ function updatePlayer(dt) {
     }
 
     // Railgun: hold-to-charge, release-to-fire. Doesn't share the standard
-    // mag-click flow — handled here entirely.
+    // mag-click flow — handled here entirely. Also consumes a capacitor item
+    // from the player's inventory on fire (Phase 2): no capacitor = misfire.
     if (weap.chargeTime) {
       if (input.mouseDown && p.ammo[p.weapon].mag > 0 && p.reloading <= 0) {
         p.railCharge = Math.min(weap.chargeTime, (p.railCharge || 0) + dt);
       } else if ((p.railCharge || 0) > 0) {
         if (p.railCharge >= weap.chargeTime && p.ammo[p.weapon].mag > 0) {
-          fireRailgunBeam(p, weap);
-          p.ammo[p.weapon].mag = Math.max(0, p.ammo[p.weapon].mag - 1);
-          decrementCondition(p, p.weapon, 0.0025);
-          if (p.ammo[p.weapon].mag === 0 && p.ammo[p.weapon].reserve > 0) {
-            p.reloading = weap.reloadTime;
-            Audio.sfx.reload();
+          // Capacitor cell consumption (Phase 2). Without one, the gun dry-fires
+          // regardless of mag — flavor is the slug needs an active cell to launch.
+          if (itemCount(p.inventory, 'capacitor') > 0) {
+            removeItem(p.inventory, 'capacitor', 1);
+            fireRailgunBeam(p, weap);
+            p.ammo[p.weapon].mag = Math.max(0, p.ammo[p.weapon].mag - 1);
+            decrementCondition(p, p.weapon, 0.0025);
+            if (p.ammo[p.weapon].mag === 0 && p.ammo[p.weapon].reserve > 0) {
+              p.reloading = weap.reloadTime;
+              Audio.sfx.reload();
+            }
+          } else {
+            Audio.sfx.empty();
+            setNotice('No capacitor', 1.0);
           }
         }
         p.railCharge = 0;
       }
     } else if (input.mouseDown && p.fireCd <= 0 && p.reloading <= 0) {
       const a = p.ammo[p.weapon];
+      // Resolved weapon: attachments folded in via effectiveWeapon. Damage,
+      // mag, reload, range, spread are all read from `eff` below.
+      const eff = effectiveWeapon(p, p.weapon) || weap;
       // Phase 1 jam check — jammed firearm just clicks; Phase 4 will own the
       // tap-R-twice clear UX. Melee weapons (magSize Infinity) are exempt.
-      if (a.jammed && weap.magSize !== Infinity) {
+      if (a.jammed && eff.magSize !== Infinity) {
         if (p.fireCd <= 0) { Audio.sfx.empty(); p.fireCd = 0.3; }
+      } else if (eff.consumesItem) {
+        // Item-fed weapons (nail gun, chain taser). Mag still throttles
+        // fire-rate, but reload pulls from the inventory item count, not a
+        // separate reserve pool. If both mag and inventory are empty, click.
+        const itemId = eff.consumesItem;
+        const haveItems = itemCount(p.inventory, itemId);
+        if (a.mag > 0) {
+          fireWeapon(p, eff);
+          p.fireCd = eff.fireRate * perkMult('fireRateMult');
+          if (eff.magSize !== Infinity) {
+            a.mag--;
+            decrementCondition(p, p.weapon);
+            tryJam(p, p.weapon);
+          }
+          if (eff.magSize !== Infinity && a.mag === 0 && haveItems > 0) {
+            p.reloading = eff.reloadTime * perkMult('reloadMult');
+            Audio.sfx.reload();
+          }
+        } else if (haveItems > 0) {
+          p.reloading = eff.reloadTime * perkMult('reloadMult');
+          Audio.sfx.reload();
+        } else {
+          if (p.fireCd <= 0) { Audio.sfx.empty(); p.fireCd = 0.3; }
+        }
       } else if (a.mag > 0) {
         // Minigun: don't actually fire until spun up. Show muzzle flare so
         // the player has feedback that the trigger is registering.
-        if (weap.spinUp && p.minigunSpin < weap.spinUp) {
+        if (eff.spinUp && p.minigunSpin < eff.spinUp) {
           p.fireCd = 0.05;
           p.muzzleFlash = 0.3;
         } else {
-          fireWeapon(p, weap);
-          p.fireCd = weap.fireRate * perkMult('fireRateMult');
-          if (weap.magSize !== Infinity) {
+          fireWeapon(p, eff);
+          p.fireCd = eff.fireRate * perkMult('fireRateMult');
+          if (eff.magSize !== Infinity) {
             a.mag--;
             decrementCondition(p, p.weapon);
             if (tryJam(p, p.weapon)) {
               // Jam fired this shot — leave mag where it is; next click clicks.
             }
           }
-          if (weap.magSize !== Infinity && a.mag === 0 && a.reserve > 0) {
-            p.reloading = weap.reloadTime;
+          if (eff.magSize !== Infinity && a.mag === 0 && a.reserve > 0) {
+            p.reloading = eff.reloadTime;
             Audio.sfx.reload();
           }
         }
       } else if (a.reserve > 0 && p.reloading <= 0) {
-        p.reloading = weap.reloadTime * perkMult('reloadMult');
+        p.reloading = eff.reloadTime * perkMult('reloadMult');
         Audio.sfx.reload();
       } else {
         // empty click throttle
         if (p.fireCd <= 0) { Audio.sfx.empty(); p.fireCd = 0.3; }
       }
     }
+
+    // Chainsaw fuel + idle aggro broadcast. While LMB held on the saw and
+    // there's fuel, burn one fuel item per second. Without fuel, saw still
+    // spins (so the swap-back UX is smooth) but loses its damage + armor cleave.
+    if (weap === WEAPONS.saw || p.weapon === 'saw') {
+      if (input.mouseDown) {
+        if (itemCount(p.inventory, 'fuel') > 0) {
+          p.sawFuelAccum = (p.sawFuelAccum || 0) + dt;
+          while (p.sawFuelAccum >= 1.0 && itemCount(p.inventory, 'fuel') > 0) {
+            removeItem(p.inventory, 'fuel', 1);
+            p.sawFuelAccum -= 1.0;
+          }
+        }
+        // Idle aggro pull — every 0.5s broadcast a screen-radius noise so
+        // walkers come find the loud, loud death-stick. Tracked via _sawAggroT.
+        p._sawAggroT = (p._sawAggroT || 0) - dt;
+        if (p._sawAggroT <= 0) {
+          const w = WEAPONS.saw;
+          broadcastAggro(p.x, p.y, (w && w.idleAggroR) || 200);
+          p._sawAggroT = 0.5;
+        }
+      } else {
+        p._sawAggroT = 0;
+      }
+    }
+
+    // Katana charged-swing tracker: while on katana with LMB held, count up.
+    // On release (or weapon swap) the swing executor consults p.katanaHoldT.
+    if (p.weapon === 'katana') {
+      if (input.mouseDown) p.katanaHoldT = (p.katanaHoldT || 0) + dt;
+      // Reset is handled inside applyMeleeCone — it knows when it fired.
+    } else {
+      p.katanaHoldT = 0;
+    }
+
+    // Right-arrow toggles the GL ammo mode (HE <-> smoke) when GL is active.
+    if (p.weapon === 'gl') {
+      if (input.keys.has('arrowright')) {
+        if (!p._glToggleHeld) {
+          const a = p.ammo.gl;
+          a.ammoMode = (a.ammoMode === 'smoke') ? 'he' : 'smoke';
+          setNotice(`GL: ${a.ammoMode === 'he' ? 'HE' : 'SMOKE'}`, 1.2);
+          p._glToggleHeld = true;
+        }
+      } else {
+        p._glToggleHeld = false;
+      }
+    }
   }
+
+  // B toggles shield raise/lower if the player owns a shield item.
+  if (input.keys.has('b')) {
+    if (!p._bHeld) {
+      p._bHeld = true;
+      if (hasItem(p.inventory, 'shield', 1) || p.offhand === 'shield') {
+        if (p.offhand === 'shield') {
+          p.offhand = null;
+          setNotice('Shield lowered', 1.2);
+        } else {
+          p.offhand = 'shield';
+          if ((p.offhandHp || 0) <= 0) p.offhandHp = (OFFHANDS.shield && OFFHANDS.shield.hp) || 300;
+          setNotice('Shield raised', 1.2);
+        }
+        Audio.sfx.click();
+      }
+    }
+  } else {
+    p._bHeld = false;
+  }
+
+  // Right-click: shield bash if raised and off cooldown.
+  if ((p.bashCd || 0) > 0) p.bashCd -= dt;
+  if (input.mouseRightEdge) {
+    input.mouseRightEdge = false;
+    if (p.offhand === 'shield' && (p.offhandHp || 0) > 0 && (p.bashCd || 0) <= 0) {
+      shieldBash(p);
+      p.bashCd = (OFFHANDS.shield && OFFHANDS.shield.bashCd) || 8;
+    }
+  }
+
+  // Melee iframes timer (granted by katana execution).
+  if ((p.iframes || 0) > 0) p.iframes -= dt;
 
   // Space to place barrel when not on the barrel slot
   if (input.keys.has(' ') && !weap.isPlacer && p.placeCd <= 0 && p.unlocked.barrel && p.ammo.barrel.reserve > 0) {
@@ -1213,11 +1377,12 @@ function destroyWall(index, source) {
 // Wake nearby zombies on a (non-silent) gunshot: short alert timer that boosts
 // their groan rate so the player hears the horde reacting to noise.
 // Per-shot crit helper (Last Stand) — kicks in under 30% HP.
-function broadcastAggro(x, y) {
+function broadcastAggro(x, y, radius) {
   // Silent Boots perk reduces the audible radius (crossbow is the only
   // fully silent weapon — weap.silent). Weather (fog) muffles further.
   const wMul = (typeof WEATHER !== 'undefined') ? WEATHER.aggroMult() : 1;
-  const r = 280 * perkMult('aggroMult') * wMul;
+  const base = (radius != null) ? radius : 280;
+  const r = base * perkMult('aggroMult') * wMul;
   const R2 = r * r;
   const zs = Game.zombies;
   for (let i = 0; i < zs.length; i++) {
@@ -1245,6 +1410,14 @@ function fireWeapon(p, weap) {
   const muzzleY = p.y + Math.sin(p.angle) * (p.r + 4);
   if (!weap.silent) broadcastAggro(p.x, p.y);
 
+  // Chain taser — hitscan-ish along the player aim, then BFS chains to
+  // nearby zombies. Handled here (instead of as a bullet) because the chain
+  // visual needs the full polyline at fire time.
+  if (weap.chainsTo) {
+    fireChainTaser(p, weap);
+    return;
+  }
+
   // muzzle flash particle
   const flashColor = weap.isStream ? '#ff7a33' : '#ffcc55';
   const flashCount = weap.isStream ? 2 : 3;
@@ -1265,6 +1438,9 @@ function fireWeapon(p, weap) {
   // The GL adds `bounces` so it ricochets off obstacles once before
   // detonating (see updateRockets).
   if (weap.isRocket || weap.isProjectile) {
+    // GL smoke mode: launch a "rocket" tagged smoke; on impact it spawns a
+    // smoke cloud instead of detonating. HE keeps the current behavior.
+    const isSmoke = (p.weapon === 'gl' && p.ammo.gl && p.ammo.gl.ammoMode === 'smoke');
     Game.rockets.push({
       x: muzzleX, y: muzzleY,
       vx: Math.cos(p.angle) * weap.bulletSpeed,
@@ -1272,8 +1448,9 @@ function fireWeapon(p, weap) {
       life: weap.bulletRange / weap.bulletSpeed,
       owner: 'player',
       explodeRadius: (weap.explodeRadius || 100) * explodeMult,
-      damage: weap.damage * dmgMult,
+      damage: isSmoke ? 0 : weap.damage * dmgMult,
       bounces: weap.bounces || 0,
+      smoke: isSmoke,
     });
     return;
   }
@@ -1297,19 +1474,108 @@ function fireWeapon(p, weap) {
     if (weap.pierce) { b.pierce = weap.pierce; b._pierced = new Set(); }
     // Flamethrower: short-range bullet that ignites whatever it hits.
     if (weap.ignites) { b.ignites = true; b.color = '#ff7a33'; }
+    // Nail gun: bullet pins zombies on contact (handled in updateBullets).
+    if (weap.pinsTarget) { b.pinsTarget = weap.pinsTarget; b.color = '#cad0d8'; }
     Game.bullets.push(b);
   }
 }
 
-// Chainsaw cone — damage every zombie inside meleeRange/meleeCone in front
-// of the player. Called per fire tick (saw has fireRate 0.1, so 10 ticks/sec).
+// Chain taser — instant hit on the first zombie under the cursor cone, then
+// BFS-chain to up to `chainsTo` nearest unhit zombies within `chainRange`
+// of the previous link. Each link applies damage * falloff^index and a
+// stagger. The full polyline is queued onto Game.lightning for the render.
+function fireChainTaser(p, weap) {
+  // Find the first target: nearest zombie roughly in front of the player.
+  const range = weap.bulletRange || 600;
+  const ux = Math.cos(p.angle), uy = Math.sin(p.angle);
+  const near = Spatial.query(p.x + ux * range / 2, p.y + uy * range / 2, range / 2 + 60, []);
+  let first = null, bestT = Infinity;
+  for (const z of near) {
+    const dx = z.x - p.x, dy = z.y - p.y;
+    const t = dx * ux + dy * uy;
+    if (t < 0 || t > range) continue;
+    const perp = Math.hypot(dx - ux * t, dy - uy * t);
+    if (perp > z.r + 24) continue;
+    if (t < bestT) { bestT = t; first = z; }
+  }
+  if (!first) {
+    // miss — spark at the muzzle so the player knows the shot happened.
+    spawnSpark(p.x + ux * 24, p.y + uy * 24);
+    return;
+  }
+  const dmgMult = perkMult('damageMult') * playerLastStandMult(p);
+  const chainMax = weap.chainsTo || 4;
+  const chainR2 = (weap.chainRange || 80) ** 2;
+  const fall = weap.chainFalloff || 0.7;
+  const staggerT = weap.chainStaggerT || 1.2;
+  const visited = new Set();
+  const chain = [first];
+  visited.add(first);
+  while (chain.length < chainMax) {
+    const cur = chain[chain.length - 1];
+    let bestZ = null, bestD2 = chainR2;
+    const cands = Spatial.query(cur.x, cur.y, Math.sqrt(chainR2) + 30, []);
+    for (const z of cands) {
+      if (visited.has(z) || z.hp <= 0) continue;
+      const dx = z.x - cur.x, dy = z.y - cur.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) { bestD2 = d2; bestZ = z; }
+    }
+    if (!bestZ) break;
+    visited.add(bestZ);
+    chain.push(bestZ);
+  }
+  // Apply damage + stagger.
+  for (let i = 0; i < chain.length; i++) {
+    const z = chain[i];
+    const dmg = weap.damage * dmgMult * Math.pow(fall, i);
+    damageZombie(z, dmg, 'taser', p.x, p.y);
+    z.staggerT = Math.max(z.staggerT || 0, staggerT);
+    z.stunned = Math.max(z.stunned || 0, 0.1);
+  }
+  // Lightning visual — points start at muzzle, then run through every link.
+  const points = [{ x: p.x + ux * (p.r + 4), y: p.y + uy * (p.r + 4) }];
+  for (const z of chain) points.push({ x: z.x, y: z.y });
+  Game.lightning.push({ points, life: 0.25 });
+}
+
+// Generic melee cone — chainsaw, katana, sledge. Damages every zombie inside
+// meleeRange/meleeCone in front of the player. Weapon-specific extras:
+//   - saw: fuel-out drops damage to 5 + disables cleavesArmor
+//   - saw: cleavesArmor bypasses Riot frontDR (handled in damageZombie)
+//   - katana: cleave cap, charged-swing execute under 40% HP + iframes
+//   - sledge: knocks zombies back, staggers Tank, breaks player walls
 function applyMeleeCone(p, weap) {
   Audio.sfx[weap.sfx]();
   p.muzzleFlash = 0.6;
   const reach = weap.meleeRange || 35;
   const cone = weap.meleeCone || 0.9;
   const halfCone = cone / 2;
+  const dmgMult = perkMult('damageMult') * playerLastStandMult(p);
+  const isKatana = (p.weapon === 'katana');
+  const isSledge = (p.weapon === 'sledge');
+  const isSaw    = (p.weapon === 'saw');
+  // Saw without fuel: still spins, but damage drops to 5 and armor cleave
+  // turns off. cleavesArmor is read off the weap object, so we shadow it.
+  let baseDmg = weap.damage;
+  let cleavesArmor = !!weap.cleavesArmor;
+  if (isSaw && itemCount(p.inventory, 'fuel') <= 0) {
+    baseDmg = 5;
+    cleavesArmor = false;
+  }
+  // Katana charged swing — held LMB longer than holdT executes non-boss
+  // zombies under execHpPct. Grants iframes on a successful charged swing.
+  const charged = weap.chargedSwing;
+  const isCharged = isKatana && charged && (p.katanaHoldT || 0) >= charged.holdT;
+  if (isCharged) {
+    p.iframes = Math.max(p.iframes || 0, charged.iframes || 0.5);
+  }
+  // Reset katana hold timer at swing time (it'll re-accrue while LMB held).
+  if (isKatana) p.katanaHoldT = 0;
+
+  // Build list of candidates in the cone, sorted by distance.
   const near = Spatial.query(p.x, p.y, reach + 30, []);
+  const cands = [];
   for (let i = 0; i < near.length; i++) {
     const z = near[i];
     const dx = z.x - p.x, dy = z.y - p.y;
@@ -1319,21 +1585,102 @@ function applyMeleeCone(p, weap) {
     while (ang > Math.PI) ang -= Math.PI * 2;
     while (ang < -Math.PI) ang += Math.PI * 2;
     if (Math.abs(ang) > halfCone) continue;
-    // Saw bypasses Riot frontDR (cleavesArmor: true) — damageZombie checks
-    // the weapon name and skips the DR mul.
-    damageZombie(z, weap.damage, 'saw', p.x, p.y);
-    // Splash a little blood toward the hit point for feedback.
-    spawnBlood(z.x, z.y, Math.atan2(dy, dx));
+    cands.push({ z, d, dx, dy });
   }
-  // A few sparks for chainsaw oomph.
-  for (let i = 0; i < 2; i++) {
+  cands.sort((a, b) => a.d - b.d);
+  const cap = weap.cleaves || cands.length;
+
+  for (let i = 0; i < Math.min(cap, cands.length); i++) {
+    const { z, dx, dy } = cands[i];
+    let dmg = baseDmg * dmgMult;
+    // Katana charged-swing execute on non-boss zombies under 40% HP.
+    if (isCharged && z.hp / (z.maxHp || z.hp || 1) <= (charged.execHpPct || 0.40)
+        && !z.segments) {
+      dmg = 9999;
+    }
+    // saw bypasses Riot frontDR by passing the 'saw' source. Other melee
+    // hits use the weapon key directly, so frontDR still applies to them.
+    // When saw runs out of fuel cleavesArmor goes false — pass a synthetic
+    // source so the damageZombie Riot bypass doesn't fire.
+    const src = (isSaw && !cleavesArmor) ? 'saw_dry' : (cleavesArmor ? 'saw' : p.weapon);
+    damageZombie(z, dmg, src, p.x, p.y);
+    spawnBlood(z.x, z.y, Math.atan2(dy, dx));
+    // Sledge: knockback (except Tank, who staggers instead).
+    if (isSledge) {
+      if (z.type === 'tank') {
+        z.staggerT = Math.max(z.staggerT || 0, weap.tankStaggerT || 0.4);
+        z.stunned = Math.max(z.stunned || 0, 0.4);
+      } else {
+        const knock = weap.knockback || 80;
+        const dist = Math.max(1, Math.hypot(dx, dy));
+        const nx = z.x + (dx / dist) * knock;
+        const ny = z.y + (dy / dist) * knock;
+        // Skip the knock if it'd push into an obstacle — keeps the zombie on
+        // walkable ground without per-pixel raycasting.
+        if (!inObstacle(nx, ny, z.r)) {
+          z.x = nx; z.y = ny;
+        }
+      }
+    }
+  }
+
+  // Sledge: also damages player-placed walls in reach. One wall per swing —
+  // matches the brainstorm spec ("damage any player-placed wall within reach").
+  if (isSledge && weap.breaksTerrain) {
+    for (let j = 0; j < Game.walls.length; j++) {
+      const w = Game.walls[j];
+      const cx = clamp(p.x + Math.cos(p.angle) * (reach * 0.5), w.x, w.x + w.w);
+      const cy = clamp(p.y + Math.sin(p.angle) * (reach * 0.5), w.y, w.y + w.h);
+      if (Math.hypot(cx - p.x, cy - p.y) > reach + 8) continue;
+      // Within cone?
+      let ang = Math.atan2(cy - p.y, cx - p.x) - p.angle;
+      while (ang > Math.PI) ang -= Math.PI * 2;
+      while (ang < -Math.PI) ang += Math.PI * 2;
+      if (Math.abs(ang) > halfCone) continue;
+      w.hp -= weap.breaksWallDmg || 30;
+      if (w.hp <= 0) destroyWall(j, 'sledge');
+      break;
+    }
+  }
+
+  // A few sparks/dust for feedback. Color tuned per weapon.
+  const sparkColor = isSaw ? '#ffe066' : isKatana ? '#cfeaff' : '#cad0d8';
+  for (let i = 0; i < (isCharged ? 6 : 2); i++) {
     Game.particles.push({
       x: p.x + Math.cos(p.angle) * (reach * 0.6 + rand(-6, 6)),
       y: p.y + Math.sin(p.angle) * (reach * 0.6 + rand(-6, 6)),
       vx: rand(-80, 80), vy: rand(-120, -20),
-      life: 0.18, color: '#ffe066', r: rand(1.5, 2.5),
+      life: 0.18, color: sparkColor, r: rand(1.5, 2.5),
     });
   }
+}
+
+// Riot shield bash — 60px / 90° front-cone knockback + stagger. Called
+// directly from updatePlayer when the player right-clicks with the shield up.
+function shieldBash(p) {
+  const cone = Math.PI / 2;        // 90 degrees total
+  const halfCone = cone / 2;
+  const reach = 60;
+  const near = Spatial.query(p.x, p.y, reach + 30, []);
+  for (const z of near) {
+    const dx = z.x - p.x, dy = z.y - p.y;
+    const d = Math.hypot(dx, dy);
+    if (d > reach + z.r) continue;
+    let ang = Math.atan2(dy, dx) - p.angle;
+    while (ang > Math.PI) ang -= Math.PI * 2;
+    while (ang < -Math.PI) ang += Math.PI * 2;
+    if (Math.abs(ang) > halfCone) continue;
+    const knock = 60;
+    const dist = Math.max(1, d);
+    const nx = z.x + (dx / dist) * knock;
+    const ny = z.y + (dy / dist) * knock;
+    if (!inObstacle(nx, ny, z.r)) { z.x = nx; z.y = ny; }
+    z.staggerT = Math.max(z.staggerT || 0, 0.8);
+    z.stunned = Math.max(z.stunned || 0, 0.4);
+  }
+  setNotice('Shield bash!', 1.0);
+  screenShake(4, 0.15);
+  Audio.sfx.hit();
 }
 
 // Railgun beam — hitscan from the player along p.angle. Damages every zombie
@@ -1454,6 +1801,9 @@ function updateBullets(dt) {
         if (b.ignites && (typeof WEATHER === 'undefined' || WEATHER.flamerProcOK())) {
           z.onFire = Math.max(z.onFire || 0, 2.0);
         }
+        // Nail gun pins zombies in place. The pin timer is enforced inside
+        // updateZombies (skip movement when z.pinnedT > 0).
+        if (b.pinsTarget) { z.pinned = true; z.pinnedT = b.pinsTarget; }
         if (b._pierced) {
           b._pierced.add(z);
           if (b.pierce > 0) { b.pierce--; b.damage *= 0.75; }
@@ -1495,7 +1845,11 @@ function updateRockets(dt) {
       vx: rand(-20, 20), vy: rand(-20, 20),
       life: rand(0.3, 0.6), color: '#888', r: rand(3, 6),
     });
-    if (r.life <= 0) { explodeAt(r.x, r.y, r.explodeRadius, r.damage, 'rocket'); Game.rockets.splice(i, 1); continue; }
+    if (r.life <= 0) {
+      if (r.smoke) spawnSmokeCloud(r.x, r.y);
+      else explodeAt(r.x, r.y, r.explodeRadius, r.damage, 'rocket');
+      Game.rockets.splice(i, 1); continue;
+    }
     let obstacleHit = null;
     World.forEachObstacleNear(r.x, r.y, TILE_SIZE, (o) => {
       if (obstacleHit) return;
@@ -1512,7 +1866,8 @@ function updateRockets(dt) {
         r.x = prevX; r.y = prevY;
         r.bounces--;
       } else {
-        explodeAt(r.x, r.y, r.explodeRadius, r.damage, 'rocket');
+        if (r.smoke) spawnSmokeCloud(r.x, r.y);
+        else explodeAt(r.x, r.y, r.explodeRadius, r.damage, 'rocket');
         Game.rockets.splice(i, 1);
         continue outer;
       }
@@ -1529,7 +1884,8 @@ function updateRockets(dt) {
         r.x = prevX; r.y = prevY;
         r.bounces--;
       } else {
-        explodeAt(r.x, r.y, r.explodeRadius, r.damage, 'rocket');
+        if (r.smoke) spawnSmokeCloud(r.x, r.y);
+        else explodeAt(r.x, r.y, r.explodeRadius, r.damage, 'rocket');
         Game.rockets.splice(i, 1);
         continue outer;
       }
@@ -1539,7 +1895,8 @@ function updateRockets(dt) {
       const z = nearR[j];
       const dx = r.x - z.x, dy = r.y - z.y;
       if (dx*dx + dy*dy < (z.r + 3) * (z.r + 3)) {
-        explodeAt(r.x, r.y, r.explodeRadius, r.damage, 'rocket');
+        if (r.smoke) spawnSmokeCloud(r.x, r.y);
+        else explodeAt(r.x, r.y, r.explodeRadius, r.damage, 'rocket');
         Game.rockets.splice(i, 1);
         continue outer;
       }
@@ -1620,7 +1977,7 @@ function explodeAt(x, y, radius, damage, source) {
     const d = Math.hypot(p.x - x, p.y - y);
     if (d < radius) {
       const falloff = 1 - d / radius;
-      damagePlayer(Math.max(8, 30 * falloff));
+      damagePlayer(Math.max(8, 30 * falloff), null, { ranged: true, srcX: x, srcY: y });
     }
   }
 }
@@ -1629,6 +1986,50 @@ function explodeBarrel(index) {
   const br = Game.barrels[index];
   Game.barrels.splice(index, 1);
   explodeAt(br.x, br.y, 120, 100, 'barrel');
+}
+
+// ---------- Smoke clouds (GL smoke mode) ----------
+// 8s lifetime, 100px radius drifting gray. While inside, zombies drop aggro
+// and spitters stop firing. No damage to player or squad.
+function spawnSmokeCloud(x, y) {
+  Game.smokeClouds.push({ x, y, r: 100, life: 8.0, age: 0 });
+  Audio.sfx.click();
+  // initial puff
+  for (let i = 0; i < 18; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const d = Math.random() * 40;
+    Game.particles.push({
+      x: x + Math.cos(a) * d, y: y + Math.sin(a) * d,
+      vx: Math.cos(a) * rand(8, 30), vy: Math.sin(a) * rand(8, 30) - 14,
+      life: rand(0.5, 1.0), color: '#9aa0a8', r: rand(4, 8),
+    });
+  }
+}
+function updateSmokeClouds(dt) {
+  if (!Game.smokeClouds) return;
+  for (let i = Game.smokeClouds.length - 1; i >= 0; i--) {
+    const sc = Game.smokeClouds[i];
+    sc.life -= dt; sc.age += dt;
+    if (sc.life <= 0) { Game.smokeClouds.splice(i, 1); continue; }
+    // drifting wisp particles for visual life
+    if (Math.random() < dt * 8) {
+      const a = Math.random() * Math.PI * 2;
+      const d = Math.random() * sc.r * 0.8;
+      Game.particles.push({
+        x: sc.x + Math.cos(a) * d, y: sc.y + Math.sin(a) * d,
+        vx: rand(-10, 10), vy: rand(-30, -5),
+        life: rand(0.6, 1.4), color: '#8e949c', r: rand(3, 6),
+      });
+    }
+  }
+}
+function updateLightning(dt) {
+  if (!Game.lightning) return;
+  for (let i = Game.lightning.length - 1; i >= 0; i--) {
+    const L = Game.lightning[i];
+    L.life -= dt;
+    if (L.life <= 0) Game.lightning.splice(i, 1);
+  }
 }
 
 let shakeAmt = 0, shakeTime = 0;
@@ -1802,6 +2203,9 @@ function spawnPickup(x, y, forceType) {
     // Expansion ammo. Locked weapons can still drop ammo — picking it up
     // unlocks the weapon (same UX as shotgun/smg/rocket).
     'ammo_crossbow', 'ammo_flamer', 'ammo_minigun', 'ammo_railgun', 'ammo_gl', 'saw',
+    // Phase 2 arsenal — pickups that unlock the new weapons + grant their
+    // ammo or feeder items. Nail/taser feed from the item economy.
+    'nail', 'taser', 'katana', 'sledge',
   ];
   const weights = [
     3,
@@ -1820,6 +2224,11 @@ function spawnPickup(x, y, forceType) {
     p.unlocked.railgun  ? 0.7 : 0.3,
     p.unlocked.gl       ? 1.0 : 0.4,
     p.unlocked.saw      ? 0.4 : 0.3,
+    // Phase 2 — broadly comparable rarities to the tier-2 set above.
+    p.unlocked.nail     ? 0.9 : 0.4,
+    p.unlocked.taser    ? 0.8 : 0.35,
+    p.unlocked.katana   ? 0.5 : 0.25,
+    p.unlocked.sledge   ? 0.5 : 0.25,
   ];
   const total = weights.reduce((a, b) => a + b, 0);
   if (total === 0) return;
@@ -1832,9 +2241,47 @@ function damagePlayer(amount, attacker, opts) {
   const p = Game.player;
   if (p.dead) return;
   const isDot = opts && opts.dot;
+  // Katana charged-swing iframes — stack with normal hit iframes.
+  if (!isDot && (p.iframes || 0) > 0) return;
   // DOT (puddle / bloater gas) bypasses iframes — otherwise standing in a
   // pool would only tick once per 0.6s and feel like nothing.
   if (!isDot && p.iframe > 0) return;
+
+  // Riot shield: absorb front-facing damage. Melee (no opts.ranged) is fully
+  // blocked when frontDR == 1; ranged is reduced by frontRangeDR. Attacker
+  // angle is taken from attacker.x/y when available, else from opts.srcX/Y.
+  if (p.offhand === 'shield' && (p.offhandHp || 0) > 0 && !isDot) {
+    const def = OFFHANDS.shield;
+    let sx = null, sy = null;
+    if (attacker && typeof attacker.x === 'number') { sx = attacker.x; sy = attacker.y; }
+    else if (opts && opts.srcX != null) { sx = opts.srcX; sy = opts.srcY; }
+    if (sx != null) {
+      const aFrom = Math.atan2(sy - p.y, sx - p.x);
+      let diff = aFrom - p.aim;
+      // p.aim may be undefined — fall back to p.angle.
+      if (p.aim == null) diff = aFrom - p.angle;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      const inFrontCone = Math.abs(diff) <= Math.PI / 2;
+      if (inFrontCone) {
+        const isRanged = !!(opts && opts.ranged);
+        const dr = isRanged ? (def.frontRangeDR || 0.6) : (def.frontDR || 1.0);
+        const absorbed = amount * dr;
+        p.offhandHp = Math.max(0, (p.offhandHp || 0) - absorbed);
+        amount -= absorbed;
+        if (p.offhandHp <= 0) {
+          p.offhand = null;
+          setNotice('Shield broken', 1.5);
+          Audio.sfx.empty();
+        }
+        if (amount <= 0.01) {
+          // Fully blocked — still consume an iframe so we don't restream.
+          if (!isDot) p.iframe = 0.3;
+          return;
+        }
+      }
+    }
+  }
   p.hp -= amount;
   if (!isDot) p.iframe = 0.6 + perkSum('iframeBonus');
   // Tag "recently damaged" so the Field Medic regen perk knows when to pause.
@@ -1944,7 +2391,9 @@ function tier3PreTick(z, dt, p) {
     const dx = p.x - z.x, dy = p.y - z.y;
     const d2 = dx * dx + dy * dy;
     const r = z.range || 280;
-    if (z.fireCd <= 0 && d2 < r * r && d2 > 30 * 30) {
+    // Smoked spitters can't see well enough to spit.
+    if (z.smoked) { /* don't reset cooldown — pent-up shots fire on exit */ }
+    else if (z.fireCd <= 0 && d2 < r * r && d2 > 30 * 30) {
       const ang = Math.atan2(dy, dx);
       Game.zombieProjectiles.push({
         x: z.x, y: z.y,
@@ -2263,11 +2712,43 @@ function updateZombies(dt) {
   for (let i = 0; i < zs.length; i++) {
     const z = zs[i];
 
+    // Pin / stagger timers — both prevent movement this tick. Pin is the
+    // nail-gun root; stagger is the chain-taser / sledge / shield-bash hit.
+    if ((z.pinnedT || 0) > 0) {
+      z.pinnedT -= dt;
+      if (z.pinnedT <= 0) { z.pinned = false; z.pinnedT = 0; }
+    }
+    if ((z.staggerT || 0) > 0) {
+      z.staggerT -= dt;
+    }
+
+    // Smoke field effects (Phase 2 GL smoke mode). Inside a smoke cloud:
+    //  - aggroT is zeroed every tick (drops aggro / quiets groans)
+    //  - z.smoked is set so the ranged-fire path (spitter) can early-out
+    if (Game.smokeClouds && Game.smokeClouds.length) {
+      z.smoked = false;
+      for (const sc of Game.smokeClouds) {
+        const dx = z.x - sc.x, dy = z.y - sc.y;
+        if (dx * dx + dy * dy <= sc.r * sc.r) {
+          z.smoked = true;
+          z.aggroT = 0;
+          break;
+        }
+      }
+    } else {
+      z.smoked = false;
+    }
+
     // Tier-3 pre-tick (ranged, charger state, brood spawn, screamer aura,
     // bloater gas, mimic trigger, necro raise).
     tier3PreTick(z, dt, p);
 
     if (z.stunned > 0) { z.stunned -= dt; continue; }
+    if (z.pinned || (z.staggerT || 0) > 0) {
+      // Skip movement but still allow groans / aura / face the player.
+      z.angle = Math.atan2(p.y - z.y, p.x - z.x);
+      continue;
+    }
 
     // Stationary — runs its own spawner/caller tick, then skips movement.
     if (z.stationary) {
@@ -2519,7 +3000,7 @@ function updateZombieProjectiles(dt) {
     let consumed = false;
     // player hit
     if (!p.dead && Math.hypot(p.x - pr.x, p.y - pr.y) < p.r + 4) {
-      damagePlayer(pr.damage, pr.owner);
+      damagePlayer(pr.damage, pr.owner, { ranged: true, srcX: pr.x, srcY: pr.y });
       consumed = true;
     }
     // obstacle hit
@@ -2628,6 +3109,22 @@ function applyPickup(type) {
     case 'saw':
       if (!p.unlocked.saw) unlockWeapon('saw', Infinity, 'CHAINSAW PICKED UP');
       setNotice('Chainsaw equipped', 1.5); break;
+    // Phase 2 pickups — first pickup unlocks the weapon. Nail/taser carry a
+    // small starter pack of the feeder item so the player can shoot once.
+    case 'nail':
+      if (!p.unlocked.nail) unlockWeapon('nail', 0, 'NAIL GUN PICKED UP');
+      addItem(p.inventory, 'nail', 32);
+      setNotice('Nail gun + 32 nails', 1.5); break;
+    case 'taser':
+      if (!p.unlocked.taser) unlockWeapon('taser', 0, 'CHAIN TASER PICKED UP');
+      addItem(p.inventory, 'battery', 8);
+      setNotice('Taser + 8 batteries', 1.5); break;
+    case 'katana':
+      if (!p.unlocked.katana) unlockWeapon('katana', Infinity, 'KATANA PICKED UP');
+      setNotice('Katana equipped', 1.5); break;
+    case 'sledge':
+      if (!p.unlocked.sledge) unlockWeapon('sledge', Infinity, 'SLEDGEHAMMER PICKED UP');
+      setNotice('Sledgehammer equipped', 1.5); break;
     default:
       // F16: synthetic journal pickups bypass the inventory and write to
       // the meta-progression lore set (prefs.lore).
@@ -2801,6 +3298,8 @@ function tick(dt) {
   updateBarrels(dt);
   updatePickups(dt);
   updateExplosions(dt);
+  updateSmokeClouds(dt);
+  updateLightning(dt);
   updateParticles(dt);
   if (typeof updateMachines === 'function') updateMachines(dt);
   updateDayCycle(dt);

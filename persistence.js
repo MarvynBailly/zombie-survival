@@ -45,6 +45,8 @@ function saveGame() {
         ? { sight: a.attachments.sight || null, muzzle: a.attachments.muzzle || null,
             mag: a.attachments.mag || null, under: a.attachments.under || null }
         : { sight: null, muzzle: null, mag: null, under: null },
+      // Phase 2 GL ammo-mode toggle (HE/smoke).
+      ammoMode: a.ammoMode || null,
     };
   }
   const data = {

@@ -94,11 +94,60 @@ const WEAPONS = {
     meleeRange: 35,               // forward cone reach
     meleeCone: 0.9,               // total cone angle in radians
     cleavesArmor: true,           // bypasses Riot's frontDR
+    consumesItem: 'fuel',         // burns one fuel item per second while held
+    idleAggroR: 200,              // periodic aggro broadcast while held
+  },
+  // ---------- Phase 2 cluster A (firearms) ----------
+  nail: {
+    name: 'Nail Gun', key: '\\', fireRate: 0.18, damage: 14, spread: 0.04,
+    pellets: 1, bulletSpeed: 850, bulletRange: 700,
+    magSize: 16, reserve: 0, reloadTime: 0.6,
+    sfx: 'pistol',
+    consumesItem: 'nail',         // 1 nail item from inventory per shot
+    pinsTarget: 4.0,              // seconds the nailed zombie is rooted
+  },
+  taser: {
+    name: 'Chain Taser', key: '[', fireRate: 0.9, damage: 28, spread: 0.0,
+    pellets: 1, bulletSpeed: 900, bulletRange: 600,
+    magSize: 8, reserve: 0, reloadTime: 1.4,
+    sfx: 'pistol',
+    consumesItem: 'battery',      // 1 battery item per shot
+    chainsTo: 4,                  // # of zombies to chain hit through
+    chainRange: 80,               // px radius between links
+    chainFalloff: 0.7,            // damage * falloff^index per link
+    chainStaggerT: 1.2,           // stagger time per link
+  },
+  // ---------- Phase 2 cluster B (melee) ----------
+  katana: {
+    name: 'Katana', key: '/', fireRate: 0.5, damage: 70, spread: 0,
+    pellets: 0, bulletSpeed: 0, bulletRange: 0,
+    magSize: Infinity, reserve: Infinity, reloadTime: 0,
+    sfx: 'pistol',
+    isMelee: true,
+    meleeRange: 50,
+    meleeCone: 1.6,               // ~90 degrees
+    cleaves: 3,                   // max zombies hit per swing
+    silent: true,
+    chargedSwing: { holdT: 1.2, execHpPct: 0.40, iframes: 0.5 },
+  },
+  sledge: {
+    name: 'Sledgehammer', key: ']', fireRate: 0.95, damage: 55, spread: 0,
+    pellets: 0, bulletSpeed: 0, bulletRange: 0,
+    magSize: Infinity, reserve: Infinity, reloadTime: 0,
+    sfx: 'pistol',
+    isMelee: true,
+    meleeRange: 36,
+    meleeCone: 1.2,
+    knockback: 80,                // px pushed away from player on hit
+    breaksTerrain: true,          // also damages player walls in reach
+    breaksWallDmg: 30,
+    tankStaggerT: 0.4,            // tank ignores knockback but staggers
   },
 };
 const WEAPON_ORDER = [
   'pistol', 'shotgun', 'smg', 'rocket', 'barrel', 'wall',
   'crossbow', 'flamer', 'minigun', 'railgun', 'gl', 'saw',
+  'nail', 'taser', 'katana', 'sledge',
 ];
 
 // ---------- Factions ----------

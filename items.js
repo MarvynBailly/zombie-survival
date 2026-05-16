@@ -65,6 +65,25 @@ const ITEMS = {
     stackMax: 1, tint: '#5e6a78',
     desc: 'Workbench add-on. Print rounds from scrap + casings.',
   },
+  // Riot shield: occupies p.offhand. Right-click in inventory equips/unequips
+  // (toggles p.offhand); HP pool lives on p.offhandHp.
+  shield: {
+    id: 'shield', name: 'Riot Shield', category: 'tool',
+    stackMax: 1, tint: '#7e8a98',
+    desc: 'Offhand. Blocks frontal damage. Press B to raise/lower.',
+    use(p) {
+      // Toggle equip — the actual block math is in game.js / damagePlayer.
+      if (p.offhand === 'shield') {
+        p.offhand = null;
+        setNotice('Shield lowered', 1.2);
+      } else {
+        p.offhand = 'shield';
+        if ((p.offhandHp || 0) <= 0) p.offhandHp = (OFFHANDS.shield && OFFHANDS.shield.hp) || 300;
+        setNotice('Shield raised', 1.2);
+      }
+      return false; // don't consume the item — it's a reusable tool
+    },
+  },
 
   // ----- consumables -----
   bandage: {
@@ -407,6 +426,18 @@ function drawItemIconShape(ctx, id, size) {
     ctx.fillRect(cx - 11, cy - 9, 22, 4);
     ctx.fillStyle = '#caa760';
     ctx.fillRect(cx - 2, cy + 2, 4, 4);
+  } else if (id === 'shield') {
+    // riot shield: dark frame, tall plexi viewport, POLICE band
+    ctx.fillStyle = '#1c2630';
+    ctx.fillRect(cx - 10, cy - 14, 20, 28);
+    ctx.fillStyle = '#3a3f4a';
+    ctx.fillRect(cx - 9, cy - 13, 18, 26);
+    ctx.fillStyle = '#7e8a98';
+    ctx.fillRect(cx - 8, cy - 12, 16, 8);
+    ctx.fillStyle = '#caa760';
+    ctx.fillRect(cx - 8, cy - 1, 16, 3);
+    ctx.fillStyle = '#0b0c0e';
+    ctx.fillRect(cx - 1, cy + 4, 2, 8);
   } else if (typeof drawFoundryItemIcon === 'function' && drawFoundryItemIcon(ctx, id, size) !== false) {
     // foundry resources fall through to the foundry's shared lump renderer
   } else {
