@@ -297,6 +297,13 @@
         ctx.fillRect(8, 2.5, 7, 1.5);
         break;
       }
+      // ---- Expansion weapons (delegated to ZExpand if loaded) ----
+      case 'crossbow': if (typeof window.ZExpand !== 'undefined') return ZExpand.drawCrossbow(ctx); break;
+      case 'flamer':   if (typeof window.ZExpand !== 'undefined') return ZExpand.drawFlamethrower(ctx); break;
+      case 'minigun':  if (typeof window.ZExpand !== 'undefined') return ZExpand.drawMinigun(ctx); break;
+      case 'railgun':  if (typeof window.ZExpand !== 'undefined') return ZExpand.drawRailgun(ctx); break;
+      case 'gl':       if (typeof window.ZExpand !== 'undefined') return ZExpand.drawGrenadeLauncher(ctx); break;
+      case 'saw':      if (typeof window.ZExpand !== 'undefined') return ZExpand.drawChainsaw(ctx); break;
       default: {
         ctx.fillStyle = C.gunBody;
         ctx.fillRect(8, -2, 12, 4);
@@ -652,6 +659,20 @@
   }
 
   function drawZombie(ctx, z) {
+    // Expansion enemies: ZExpand uses capitalized fn names (drawSpitter,
+    // drawCrawler, …), ZBestiary uses a `draw` map keyed by lowercase type
+    // (cluster, hivesac, shrieker, …). Falls through to the legacy switch
+    // when no expansion sprite matches, so existing types still draw.
+    if (z.type) {
+      if (typeof window.ZExpand !== 'undefined') {
+        const fn = window.ZExpand['draw' + z.type[0].toUpperCase() + z.type.slice(1)];
+        if (typeof fn === 'function') return fn(ctx, z);
+      }
+      if (typeof window.ZBestiary !== 'undefined') {
+        const fn = window.ZBestiary.draw[z.type];
+        if (typeof fn === 'function') return fn(ctx, z);
+      }
+    }
     switch (z.type) {
       case 'runner': return drawRunner(ctx, z);
       case 'tank':   return drawTank(ctx, z);
@@ -1021,34 +1042,739 @@
     }
   }
 
-  function drawObstacle(ctx, o, levelStyle) {
-    if (levelStyle === 'graveyard') return drawTombstone(ctx, o);
-    if (levelStyle === 'warehouse') return drawWarehouseWall(ctx, o);
-    return drawCrate(ctx, o);
+  // ---------- BUILDING TILES (40x40, collidable) ----------
+  // Each tile sprite assumes a 40x40 footprint at (o.x, o.y) but tolerates
+  // any rect-sized obstacle. Detail scales with size.
+
+  function drawWoodWall(ctx, o) {
+    // base plank
+    ctx.fillStyle = '#5a4528';
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+    // top highlight
+    ctx.fillStyle = '#7a6238';
+    ctx.fillRect(o.x, o.y, o.w, Math.max(2, o.h * 0.15));
+    // bottom shadow
+    ctx.fillStyle = '#3a2c18';
+    ctx.fillRect(o.x, o.y + o.h - Math.max(2, o.h * 0.12), o.w, Math.max(2, o.h * 0.12));
+    // a couple of grain lines
+    ctx.fillStyle = '#3f311b';
+    ctx.fillRect(o.x + 2, o.y + Math.floor(o.h * 0.45), o.w - 4, 1);
+    ctx.fillRect(o.x + 2, o.y + Math.floor(o.h * 0.68), o.w - 4, 1);
+    // corner nails
+    ctx.fillStyle = '#caa760';
+    ctx.fillRect(o.x + 3, o.y + 3, 1.5, 1.5);
+    ctx.fillRect(o.x + o.w - 4.5, o.y + 3, 1.5, 1.5);
+    ctx.fillRect(o.x + 3, o.y + o.h - 4.5, 1.5, 1.5);
+    ctx.fillRect(o.x + o.w - 4.5, o.y + o.h - 4.5, 1.5, 1.5);
   }
 
-  // ---------- GROUND TILES ----------
+  function drawBrickWall(ctx, o) {
+    ctx.fillStyle = '#6a3a30';
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+    // brick lines
+    ctx.fillStyle = '#4a261e';
+    const rowH = 8;
+    for (let y = o.y + rowH; y < o.y + o.h; y += rowH) {
+      ctx.fillRect(o.x, y, o.w, 1);
+    }
+    // staggered vertical mortar
+    for (let row = 0; row < Math.floor(o.h / rowH); row++) {
+      const offset = (row % 2) * (o.w / 2);
+      const x = o.x + (offset > 0 ? Math.floor(o.w / 2) : Math.floor(o.w / 3));
+      ctx.fillRect(x, o.y + row * rowH, 1, rowH);
+      ctx.fillRect(o.x + (row % 2 ? Math.floor(o.w / 4) : Math.floor(o.w * 0.75)), o.y + row * rowH, 1, rowH);
+    }
+    // highlight on top edge
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(o.x, o.y, o.w, 2);
+    // shadow on bottom edge
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(o.x, o.y + o.h - 2, o.w, 2);
+  }
+
+  function drawStoneWall(ctx, o) {
+    ctx.fillStyle = '#5a5a60';
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+    // irregular stones via a few rounded blocks
+    ctx.fillStyle = '#6e6e74';
+    ctx.fillRect(o.x + 2, o.y + 2, Math.floor(o.w * 0.5), Math.floor(o.h * 0.4));
+    ctx.fillRect(o.x + Math.floor(o.w * 0.55), o.y + 4, Math.floor(o.w * 0.4), Math.floor(o.h * 0.35));
+    ctx.fillRect(o.x + 4, o.y + Math.floor(o.h * 0.5), Math.floor(o.w * 0.35), Math.floor(o.h * 0.4));
+    ctx.fillRect(o.x + Math.floor(o.w * 0.45), o.y + Math.floor(o.h * 0.55), Math.floor(o.w * 0.5), Math.floor(o.h * 0.35));
+    // dark cracks between
+    ctx.fillStyle = '#36363c';
+    ctx.fillRect(o.x + Math.floor(o.w * 0.5) - 1, o.y, 1, o.h);
+    ctx.fillRect(o.x, o.y + Math.floor(o.h * 0.5) - 1, o.w, 1);
+    // highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(o.x, o.y, o.w, 1);
+  }
+
+  function drawFence(ctx, o) {
+    // dark base = no fill, so ground shows through
+    // posts (vertical slats)
+    ctx.fillStyle = '#3a2c18';
+    const postW = 3, postCount = 3;
+    for (let i = 0; i < postCount; i++) {
+      const px = o.x + 4 + i * Math.floor((o.w - 8) / (postCount - 1));
+      ctx.fillRect(px, o.y + 4, postW, o.h - 8);
+    }
+    // crossbars
+    ctx.fillStyle = '#5a4528';
+    ctx.fillRect(o.x + 2, o.y + Math.floor(o.h * 0.3), o.w - 4, 2);
+    ctx.fillRect(o.x + 2, o.y + Math.floor(o.h * 0.7), o.w - 4, 2);
+  }
+
+  function drawBarrelDecor(ctx, o) {
+    // Static, non-explosive barrel (looks like a rusted drum)
+    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+    const r = Math.min(o.w, o.h) * 0.4;
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(cx + 1, cy + r * 0.4 + 2, r, r * 0.3, 0, 0, TAU);
+    ctx.fill();
+    // body
+    ctx.fillStyle = '#6a4030';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, TAU);
+    ctx.fill();
+    // rim hi
+    ctx.fillStyle = '#8a5840';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, Math.PI * 1.1, Math.PI * 1.9);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#8a5840';
+    ctx.stroke();
+    // bands
+    ctx.strokeStyle = '#3a201a';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.55, 0, TAU); ctx.stroke();
+    // rust spot
+    ctx.fillStyle = '#aa5a3a';
+    ctx.fillRect(cx - 2, cy - 1, 3, 2);
+  }
+
+  function drawVehicle(ctx, o) {
+    // A rusted abandoned car. Spans 2 tiles wide.
+    const x = o.x, y = o.y, w = o.w, h = o.h;
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(x + 3, y + h - 4, w - 4, 5);
+    // body
+    ctx.fillStyle = '#4a4248';
+    ctx.fillRect(x + 4, y + 6, w - 8, h - 12);
+    // roof
+    ctx.fillStyle = '#5a525a';
+    ctx.fillRect(x + Math.floor(w * 0.25), y + 10, Math.floor(w * 0.5), h - 20);
+    // windows
+    ctx.fillStyle = '#1a2028';
+    ctx.fillRect(x + Math.floor(w * 0.27), y + 12, Math.floor(w * 0.18), h - 24);
+    ctx.fillRect(x + Math.floor(w * 0.55), y + 12, Math.floor(w * 0.18), h - 24);
+    // wheels
+    ctx.fillStyle = '#1a1a1f';
+    ctx.beginPath(); ctx.arc(x + Math.floor(w * 0.18), y + h - 6, 4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + Math.floor(w * 0.82), y + h - 6, 4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + Math.floor(w * 0.18), y + 6, 4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + Math.floor(w * 0.82), y + 6, 4, 0, TAU); ctx.fill();
+    // rust streaks
+    ctx.fillStyle = '#8a4a2a';
+    ctx.fillRect(x + 6, y + 8, 3, h - 16);
+    ctx.fillRect(x + w - 9, y + 10, 3, h - 18);
+    // headlight bashed in
+    ctx.fillStyle = '#dad6c0';
+    ctx.fillRect(x + 4, y + Math.floor(h * 0.4), 2, 4);
+    // broken windshield crack
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.floor(w * 0.30), y + Math.floor(h * 0.35));
+    ctx.lineTo(x + Math.floor(w * 0.44), y + Math.floor(h * 0.65));
+    ctx.stroke();
+  }
+
+  // ---------- DECOR TILES (non-collidable) ----------
+  // Drawn under obstacles. Pure visual flavor.
+  function drawFloorWood(ctx, d) {
+    ctx.fillStyle = '#3a2c1a';
+    ctx.fillRect(d.x, d.y, d.w, d.h);
+    ctx.fillStyle = '#4a3a24';
+    ctx.fillRect(d.x + 1, d.y + 1, d.w - 2, d.h - 2);
+    // plank seams
+    ctx.fillStyle = '#2a1f12';
+    ctx.fillRect(d.x, d.y + Math.floor(d.h * 0.5), d.w, 1);
+  }
+
+  function drawFloorStone(ctx, d) {
+    ctx.fillStyle = '#3a3a40';
+    ctx.fillRect(d.x, d.y, d.w, d.h);
+    ctx.fillStyle = '#4a4a50';
+    ctx.fillRect(d.x + 1, d.y + 1, d.w - 2, d.h - 2);
+    // a faint grid
+    ctx.fillStyle = '#2a2a30';
+    ctx.fillRect(d.x, d.y + Math.floor(d.h * 0.5), d.w, 1);
+    ctx.fillRect(d.x + Math.floor(d.w * 0.5), d.y, 1, d.h);
+  }
+
+  function drawRoad(ctx, d) {
+    ctx.fillStyle = '#26282c';
+    ctx.fillRect(d.x, d.y, d.w, d.h);
+    // dashed yellow center
+    ctx.fillStyle = '#5a4a1a';
+    if (d.w >= d.h) {
+      ctx.fillRect(d.x + Math.floor(d.w * 0.3), d.y + Math.floor(d.h * 0.45), Math.floor(d.w * 0.4), 2);
+    } else {
+      ctx.fillRect(d.x + Math.floor(d.w * 0.45), d.y + Math.floor(d.h * 0.3), 2, Math.floor(d.h * 0.4));
+    }
+    // crack detail
+    ctx.fillStyle = '#1c1e22';
+    ctx.fillRect(d.x + 3, d.y + 6, 1, Math.floor(d.h * 0.4));
+  }
+
+  function drawCampfire(ctx, d) {
+    const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
+    // ash ring
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, d.w * 0.42, 0, TAU);
+    ctx.fill();
+    // stones
+    ctx.fillStyle = '#3a3a3a';
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU;
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(a) * d.w * 0.32, cy + Math.sin(a) * d.h * 0.32, 3, 0, TAU);
+      ctx.fill();
+    }
+    // logs
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(cx - 6, cy - 1, 12, 3);
+    ctx.fillRect(cx - 1, cy - 6, 3, 12);
+    // flickering flame (use deterministic noise from position so it doesn't strobe)
+    ctx.fillStyle = '#ff7a2a';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 1, 5, 7, 0, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = '#ffd14a';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 2, 3, 5, 0, 0, TAU);
+    ctx.fill();
+  }
+
+  function drawBlood(ctx, d) {
+    ctx.fillStyle = 'rgba(120,20,16,0.55)';
+    const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, d.w * 0.4, d.h * 0.3, 0.4, 0, TAU);
+    ctx.fill();
+    // splatter dots
+    ctx.fillStyle = 'rgba(90,10,8,0.5)';
+    ctx.beginPath(); ctx.arc(cx + 8, cy - 3, 2, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx - 7, cy + 5, 1.5, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 4, cy + 8, 1, 0, TAU); ctx.fill();
+  }
+
+  function drawRubble(ctx, d) {
+    const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
+    ctx.fillStyle = '#3a3a3e';
+    // a few jagged pebbles
+    ctx.fillRect(cx - 6, cy - 4, 5, 4);
+    ctx.fillRect(cx + 1, cy - 2, 4, 5);
+    ctx.fillRect(cx - 4, cy + 3, 3, 3);
+    ctx.fillRect(cx + 4, cy + 2, 2, 2);
+    ctx.fillStyle = '#4a4a4e';
+    ctx.fillRect(cx - 5, cy - 3, 2, 2);
+    ctx.fillRect(cx + 2, cy - 1, 2, 2);
+  }
+
+  function drawScorch(ctx, d) {
+    ctx.fillStyle = 'rgba(20,12,8,0.55)';
+    const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, d.w * 0.45, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(60,30,18,0.4)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, d.w * 0.3, 0, TAU);
+    ctx.fill();
+  }
+
+  function drawDecorTile(ctx, d) {
+    switch (d.style) {
+      case 'floor_wood':  return drawFloorWood(ctx, d);
+      case 'floor_stone': return drawFloorStone(ctx, d);
+      case 'road':        return drawRoad(ctx, d);
+      case 'campfire':    return drawCampfire(ctx, d);
+      case 'blood':       return drawBlood(ctx, d);
+      case 'rubble':      return drawRubble(ctx, d);
+      case 'scorch':      return drawScorch(ctx, d);
+      case 'pier':        return drawPier(ctx, d);
+      case 'crop_row':    return drawCropRow(ctx, d);
+      case 'rug':         return drawRug(ctx, d);
+      default: break;
+    }
+  }
+
+  function drawPier(ctx, d) {
+    // Wooden planks running across the tile
+    ctx.fillStyle = '#4a3520';
+    ctx.fillRect(d.x, d.y, d.w, d.h);
+    ctx.fillStyle = '#6a4830';
+    for (let i = 4; i < d.w; i += 8) {
+      ctx.fillRect(d.x + i, d.y + 2, 6, d.h - 4);
+    }
+    ctx.fillStyle = '#2a1808';
+    for (let i = 4; i < d.w; i += 8) {
+      ctx.fillRect(d.x + i + 5, d.y + 2, 1, d.h - 4);
+    }
+  }
+
+  function drawCropRow(ctx, d) {
+    // Plowed earth with green sprouts
+    ctx.fillStyle = '#3a2812';
+    ctx.fillRect(d.x, d.y, d.w, d.h);
+    ctx.fillStyle = '#4a3018';
+    ctx.fillRect(d.x + 2, d.y + 4, d.w - 4, 4);
+    ctx.fillRect(d.x + 2, d.y + d.h - 8, d.w - 4, 4);
+    ctx.fillStyle = '#7d8358';
+    for (let i = 4; i < d.w - 4; i += 6) {
+      ctx.fillRect(d.x + i, d.y + 14, 1, 4);
+      ctx.fillRect(d.x + i + 2, d.y + 18, 1, 3);
+    }
+  }
+
+  function drawRug(ctx, d) {
+    ctx.fillStyle = '#7a3a30';
+    ctx.fillRect(d.x + 4, d.y + 4, d.w - 8, d.h - 8);
+    ctx.fillStyle = '#a85040';
+    ctx.fillRect(d.x + 6, d.y + 6, d.w - 12, d.h - 12);
+    ctx.fillStyle = '#caa760';
+    ctx.fillRect(d.x + d.w / 2 - 4, d.y + d.h / 2 - 4, 8, 8);
+  }
+
+  // Crack overlay drawn over a damaged obstacle. Opacity scales with damage.
+  function drawObstacleDamage(ctx, o) {
+    const pct = Math.max(0, o.hp / o.maxHp);
+    ctx.save();
+    ctx.strokeStyle = `rgba(0,0,0,${0.55 * (1 - pct)})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(o.x + 4, o.y + 6);
+    ctx.lineTo(o.x + o.w * 0.6, o.y + o.h - 5);
+    ctx.stroke();
+    if (pct < 0.55) {
+      ctx.beginPath();
+      ctx.moveTo(o.x + o.w - 5, o.y + 5);
+      ctx.lineTo(o.x + o.w * 0.4, o.y + o.h - 4);
+      ctx.stroke();
+    }
+    if (pct < 0.25) {
+      ctx.beginPath();
+      ctx.moveTo(o.x + o.w * 0.5, o.y + 2);
+      ctx.lineTo(o.x + o.w * 0.5, o.y + o.h - 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawObstacle(ctx, o, levelStyle) {
+    // Terrain-blocking tiles (water, mountain) are painted by the terrain
+    // pass — skip them here so we don't overdraw.
+    if (o.terrain) return;
+    // Expansion dispatch: when an obstacle carries `o.kind`, route to the
+    // ZExpand blocks (drawJersey, drawSandbags, …) or ZProps furniture
+    // (draw.sofa, draw.fridge, …) first. Falls through to the legacy
+    // style-switch when no expansion sprite handles the kind.
+    let handled = false;
+    if (o.kind) {
+      if (typeof window.ZExpand !== 'undefined') {
+        const fn = window.ZExpand['draw' + o.kind];
+        if (typeof fn === 'function') { fn(ctx, o); handled = true; }
+      }
+      if (!handled && typeof window.ZProps !== 'undefined') {
+        const fn = window.ZProps.draw[o.kind];
+        if (typeof fn === 'function') { fn(ctx, o); handled = true; }
+      }
+    }
+    if (handled) {
+      if (o.maxHp && o.hp < o.maxHp) drawObstacleDamage(ctx, o);
+      return;
+    }
+    const s = o.style || levelStyle;
+    switch (s) {
+      case 'wood_wall':     drawWoodWall(ctx, o); break;
+      case 'brick_wall':    drawBrickWall(ctx, o); break;
+      case 'stone_wall':    drawStoneWall(ctx, o); break;
+      case 'interior_wall': drawInteriorWall(ctx, o); break;
+      case 'fence':         drawFence(ctx, o); break;
+      case 'crate':         drawCrate(ctx, o); break;
+      case 'tombstone':     drawTombstone(ctx, o); break;
+      case 'vehicle':       drawVehicle(ctx, o); break;
+      case 'barrel_decor':  drawBarrelDecor(ctx, o); break;
+      case 'tree':          drawTree(ctx, o); break;
+      case 'boulder':       drawBoulder(ctx, o); break;
+      // furniture
+      case 'bed':           drawBed(ctx, o); break;
+      case 'dresser':       drawDresser(ctx, o); break;
+      case 'counter':       drawCounter(ctx, o); break;
+      case 'stove':         drawStove(ctx, o); break;
+      case 'table':         drawTable(ctx, o); break;
+      case 'sofa':          drawSofa(ctx, o); break;
+      case 'shelf':         drawShelf(ctx, o); break;
+      case 'workbench':     drawWorkbench(ctx, o); break;
+      case 'bathtub':       drawBathtub(ctx, o); break;
+      case 'sink':          drawSink(ctx, o); break;
+      case 'log_pile':      drawLogPile(ctx, o); break;
+      case 'stump':         drawStump(ctx, o); break;
+      case 'minecart':      drawMinecart(ctx, o); break;
+      case 'scarecrow':     drawScarecrow(ctx, o); break;
+      case 'trough':        drawTrough(ctx, o); break;
+      // legacy / fallback
+      case 'graveyard':     drawTombstone(ctx, o); break;
+      case 'warehouse':     drawWarehouseWall(ctx, o); break;
+      case 'parking':       drawCrate(ctx, o); break;
+      default:              drawCrate(ctx, o); break;
+    }
+    if (o.maxHp && o.hp < o.maxHp) drawObstacleDamage(ctx, o);
+  }
+
+  // ---------- ENVIRONMENT OBSTACLES (trees, boulders, mountains) ----------
+  // Trees are smaller than a tile (20x20 within a 40x40 cell) so the canopy
+  // reads as round rather than square.
+  function drawTree(ctx, o) {
+    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+    const r = Math.min(o.w, o.h) * 0.55;
+    // trunk
+    ctx.fillStyle = '#3a2412';
+    ctx.fillRect(cx - 3, cy - 1, 6, 10);
+    // canopy shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.arc(cx + 2, cy + 2, r, 0, TAU); ctx.fill();
+    // canopy
+    ctx.fillStyle = '#244a1a';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#356a26';
+    ctx.beginPath(); ctx.arc(cx - r * 0.35, cy - r * 0.35, r * 0.6, 0, TAU); ctx.fill();
+    // tiny leaf highlights
+    ctx.fillStyle = 'rgba(160,200,90,0.45)';
+    ctx.fillRect(cx - r * 0.6, cy - r * 0.45, 2, 2);
+    ctx.fillRect(cx + r * 0.2, cy - r * 0.55, 2, 2);
+  }
+
+  function drawBoulder(ctx, o) {
+    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+    const r = Math.min(o.w, o.h) * 0.5;
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath(); ctx.ellipse(cx + 2, cy + 3, r * 0.9, r * 0.5, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#5a5b62';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#76777e';
+    ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.55, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#3c3d44';
+    ctx.fillRect(cx - 2, cy + r * 0.1, 4, 2);
+  }
+
+  // ---------- INTERIOR FURNITURE ----------
+  function drawInteriorWall(ctx, o) {
+    // Lighter than exterior walls so the inside reads as separable.
+    ctx.fillStyle = '#7a705f';
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+    ctx.fillStyle = '#5e564a';
+    ctx.fillRect(o.x, o.y + o.h - 2, o.w, 2);
+    ctx.fillStyle = '#9a907d';
+    ctx.fillRect(o.x, o.y, o.w, 2);
+  }
+
+  function drawBed(ctx, o) {
+    ctx.fillStyle = '#6a4830';
+    ctx.fillRect(o.x + 2, o.y + 4, o.w - 4, o.h - 6);
+    ctx.fillStyle = '#cfd0d3'; // sheet
+    ctx.fillRect(o.x + 4, o.y + 6, o.w - 8, o.h - 14);
+    ctx.fillStyle = '#b88a4e'; // pillow
+    ctx.fillRect(o.x + 6, o.y + 4, o.w - 12, 6);
+    ctx.fillStyle = '#3a2820';
+    ctx.fillRect(o.x + 2, o.y + 4, 2, o.h - 6);
+    ctx.fillRect(o.x + o.w - 4, o.y + 4, 2, o.h - 6);
+  }
+
+  function drawDresser(ctx, o) {
+    ctx.fillStyle = '#5a3a22';
+    ctx.fillRect(o.x + 3, o.y + 6, o.w - 6, o.h - 10);
+    ctx.fillStyle = '#7a5430';
+    ctx.fillRect(o.x + 4, o.y + 7, o.w - 8, (o.h - 12) / 2);
+    ctx.fillRect(o.x + 4, o.y + 7 + (o.h - 12) / 2 + 1, o.w - 8, (o.h - 12) / 2);
+    ctx.fillStyle = '#caa760';
+    ctx.fillRect(o.x + o.w / 2 - 1, o.y + 10, 2, 1);
+    ctx.fillRect(o.x + o.w / 2 - 1, o.y + o.h - 8, 2, 1);
+  }
+
+  function drawCounter(ctx, o) {
+    ctx.fillStyle = '#6a655a';
+    ctx.fillRect(o.x + 1, o.y + 4, o.w - 2, o.h - 8);
+    ctx.fillStyle = '#8a8576';
+    ctx.fillRect(o.x + 1, o.y + 4, o.w - 2, 2);
+    ctx.fillStyle = '#4a4538';
+    ctx.fillRect(o.x + 1, o.y + o.h - 6, o.w - 2, 2);
+  }
+
+  function drawStove(ctx, o) {
+    ctx.fillStyle = '#3a3a40';
+    ctx.fillRect(o.x + 4, o.y + 4, o.w - 8, o.h - 8);
+    ctx.fillStyle = '#1a1a20';
+    ctx.fillRect(o.x + 6, o.y + 6, o.w - 12, o.h - 16);
+    // burners
+    ctx.fillStyle = '#5a5a64';
+    ctx.beginPath(); ctx.arc(o.x + o.w / 2 - 4, o.y + o.h - 8, 2, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(o.x + o.w / 2 + 4, o.y + o.h - 8, 2, 0, TAU); ctx.fill();
+  }
+
+  function drawTable(ctx, o) {
+    ctx.fillStyle = '#3a2418';
+    ctx.fillRect(o.x + 4, o.y + 6, o.w - 8, o.h - 12);
+    ctx.fillStyle = '#5a3a22';
+    ctx.fillRect(o.x + 6, o.y + 8, o.w - 12, o.h - 16);
+    // legs implied at corners
+    ctx.fillStyle = '#1a1008';
+    ctx.fillRect(o.x + 4, o.y + 6, 2, 2);
+    ctx.fillRect(o.x + o.w - 6, o.y + 6, 2, 2);
+    ctx.fillRect(o.x + 4, o.y + o.h - 8, 2, 2);
+    ctx.fillRect(o.x + o.w - 6, o.y + o.h - 8, 2, 2);
+  }
+
+  function drawSofa(ctx, o) {
+    ctx.fillStyle = '#5e4a3a';
+    ctx.fillRect(o.x + 2, o.y + 6, o.w - 4, o.h - 10);
+    ctx.fillStyle = '#7a624a';
+    ctx.fillRect(o.x + 4, o.y + 10, o.w - 8, o.h - 16);
+    // armrests
+    ctx.fillStyle = '#3a2a1f';
+    ctx.fillRect(o.x + 2, o.y + 6, 4, o.h - 10);
+    ctx.fillRect(o.x + o.w - 6, o.y + 6, 4, o.h - 10);
+  }
+
+  function drawShelf(ctx, o) {
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(o.x + 2, o.y + 4, o.w - 4, o.h - 6);
+    ctx.fillStyle = '#5a3e22';
+    for (let r = 0; r < 3; r++) {
+      const yy = o.y + 6 + r * Math.floor((o.h - 12) / 3);
+      ctx.fillRect(o.x + 3, yy, o.w - 6, 2);
+    }
+    // a couple of items
+    ctx.fillStyle = '#caa760';
+    ctx.fillRect(o.x + 5, o.y + 8, 4, 4);
+    ctx.fillStyle = '#7d8358';
+    ctx.fillRect(o.x + o.w - 12, o.y + 18, 4, 5);
+  }
+
+  function drawWorkbench(ctx, o) {
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(o.x + 2, o.y + 6, o.w - 4, o.h - 10);
+    ctx.fillStyle = '#7a5a30';
+    ctx.fillRect(o.x + 4, o.y + 8, o.w - 8, o.h - 16);
+    // a vise on the corner
+    ctx.fillStyle = '#3a3a44';
+    ctx.fillRect(o.x + o.w - 10, o.y + 10, 6, 4);
+    // hammer
+    ctx.fillStyle = '#2a2a2e';
+    ctx.fillRect(o.x + 6, o.y + 14, 6, 2);
+    ctx.fillStyle = '#8a6238';
+    ctx.fillRect(o.x + 12, o.y + 14, 2, 10);
+  }
+
+  function drawBathtub(ctx, o) {
+    ctx.fillStyle = '#cfd0d3';
+    ctx.fillRect(o.x + 4, o.y + 4, o.w - 8, o.h - 8);
+    ctx.fillStyle = '#9aa6b0';
+    ctx.fillRect(o.x + 5, o.y + 5, o.w - 10, o.h - 10);
+    ctx.fillStyle = '#446a78';
+    ctx.fillRect(o.x + 7, o.y + 7, o.w - 14, o.h - 14);
+    // faucet
+    ctx.fillStyle = '#3a3a40';
+    ctx.fillRect(o.x + o.w / 2 - 1, o.y + 5, 2, 4);
+  }
+
+  function drawSink(ctx, o) {
+    ctx.fillStyle = '#7a8090';
+    ctx.fillRect(o.x + 4, o.y + 6, o.w - 8, o.h - 12);
+    ctx.fillStyle = '#3a4050';
+    ctx.fillRect(o.x + 6, o.y + 8, o.w - 12, o.h - 16);
+    ctx.fillStyle = '#cfd0d3';
+    ctx.fillRect(o.x + o.w / 2 - 1, o.y + 4, 2, 3);
+  }
+
+  function drawLogPile(ctx, o) {
+    // a stack of logs on their sides
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(o.x + 2, o.y + o.h - 6, o.w - 4, 4);
+    ctx.fillStyle = '#5a3a22';
+    ctx.fillRect(o.x + 2, o.y + 10, o.w - 4, 8);
+    ctx.fillStyle = '#7a5430';
+    ctx.fillRect(o.x + 2, o.y + 18, o.w - 4, 8);
+    // rings on log ends
+    ctx.fillStyle = '#caa760';
+    ctx.beginPath(); ctx.arc(o.x + 3, o.y + 14, 2, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(o.x + o.w - 3, o.y + 14, 2, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(o.x + 3, o.y + 22, 2, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(o.x + o.w - 3, o.y + 22, 2, 0, TAU); ctx.fill();
+  }
+
+  function drawStump(ctx, o) {
+    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+    const r = Math.min(o.w, o.h) * 0.35;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.ellipse(cx + 2, cy + 3, r, r * 0.5, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#5a3a22';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#caa760';
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.6, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#5a3a22'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.3, 0, TAU); ctx.stroke();
+  }
+
+  function drawMinecart(ctx, o) {
+    ctx.fillStyle = '#3a3a44';
+    ctx.fillRect(o.x + 3, o.y + 8, o.w - 6, o.h - 14);
+    ctx.fillStyle = '#5a5a64';
+    ctx.fillRect(o.x + 5, o.y + 10, o.w - 10, o.h - 18);
+    ctx.fillStyle = '#8a4a2a';
+    ctx.fillRect(o.x + 7, o.y + 12, o.w - 14, 4); // ore
+    ctx.fillStyle = '#1a1a20';
+    ctx.beginPath(); ctx.arc(o.x + 8, o.y + o.h - 5, 3, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(o.x + o.w - 8, o.y + o.h - 5, 3, 0, TAU); ctx.fill();
+  }
+
+  function drawScarecrow(ctx, o) {
+    const cx = o.x + o.w / 2;
+    ctx.fillStyle = '#5a3a22';
+    ctx.fillRect(cx - 1, o.y + 8, 2, o.h - 12);
+    ctx.fillRect(cx - 8, o.y + 16, 16, 2);
+    ctx.fillStyle = '#c9a04f';
+    ctx.beginPath(); ctx.arc(cx, o.y + 10, 5, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#1a1008';
+    ctx.fillRect(cx - 2, o.y + 9, 1, 1);
+    ctx.fillRect(cx + 1, o.y + 9, 1, 1);
+    ctx.fillStyle = '#3a2418';
+    ctx.fillRect(cx - 5, o.y + 6, 10, 2);
+  }
+
+  function drawTrough(ctx, o) {
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(o.x + 2, o.y + 8, o.w - 4, o.h - 12);
+    ctx.fillStyle = '#446a78';
+    ctx.fillRect(o.x + 4, o.y + 10, o.w - 8, o.h - 16);
+    ctx.fillStyle = 'rgba(140,200,220,0.25)';
+    ctx.fillRect(o.x + 5, o.y + 11, o.w - 10, 2);
+  }
+
+  // ---------- GROUND / TERRAIN TILES ----------
+  // Per-terrain-type ground colors. Renderer iterates the chunk.terrain grid
+  // for chunks intersecting the camera and paints each tile here, skipping
+  // tiles outside the viewport. The result is one paint per visible tile
+  // (~ 26 * 20 = 520 fills per frame) which is well within Canvas2D budget.
+  const TERRAIN_COLORS = [
+    /* GRASS         */ ['#1e2a16', '#243218'],
+    /* FOREST        */ ['#152012', '#1c2818'],
+    /* SAND          */ ['#a89767', '#b8a978'],
+    /* SHALLOW_WATER */ ['#1f4b66', '#2a5a78'],
+    /* DEEP_WATER    */ ['#0e2a44', '#143352'],
+    /* HILL          */ ['#3a3024', '#463a2c'],
+    /* MOUNTAIN      */ ['#3a3a40', '#4a4a52'],
+    /* PATH          */ ['#3a3024', '#463a2c'],
+  ];
+
+  function drawTerrainTile(ctx, x, y, size, type, parity) {
+    const pair = TERRAIN_COLORS[type] || TERRAIN_COLORS[0];
+    ctx.fillStyle = parity ? pair[0] : pair[1];
+    ctx.fillRect(x, y, size, size);
+
+    // Per-type embellishment
+    if (type === 3 /* SHALLOW */ || type === 4 /* DEEP */) {
+      // simple ripple highlights derived from tile position
+      const phase = ((x + y) * 0.013) | 0;
+      ctx.fillStyle = type === 4 ? 'rgba(120,170,210,0.06)' : 'rgba(160,200,230,0.10)';
+      ctx.fillRect(x + 4 + (phase % 4), y + 8, 16, 1);
+      ctx.fillRect(x + 10 + (phase % 7), y + 22, 12, 1);
+    } else if (type === 1 /* FOREST */) {
+      // dappled lighter spots
+      ctx.fillStyle = 'rgba(120,160,90,0.10)';
+      ctx.fillRect(x + 6, y + 8, 5, 4);
+      ctx.fillRect(x + 22, y + 24, 4, 3);
+    } else if (type === 2 /* SAND */) {
+      // a few darker grains
+      ctx.fillStyle = 'rgba(80,60,30,0.18)';
+      ctx.fillRect(x + 6, y + 10, 2, 2);
+      ctx.fillRect(x + 22, y + 26, 2, 2);
+      ctx.fillRect(x + 14, y + 18, 2, 2);
+    } else if (type === 5 /* HILL */) {
+      ctx.fillStyle = 'rgba(255,230,180,0.05)';
+      ctx.fillRect(x, y, size, 2);
+    } else if (type === 6 /* MOUNTAIN */) {
+      // jagged top highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(x, y, size, 3);
+      ctx.fillRect(x + 4, y + 6, size - 8, 1);
+    } else if (type === 0 /* GRASS */) {
+      // sparse grass tufts
+      ctx.fillStyle = 'rgba(120,160,80,0.08)';
+      ctx.fillRect(x + 7, y + 6, 1, 3);
+      ctx.fillRect(x + 18, y + 22, 1, 3);
+      ctx.fillRect(x + 26, y + 12, 1, 3);
+    }
+  }
+
+  // Paint the camera-visible terrain by iterating each loaded chunk's
+  // terrain grid. `world` is the World object; `tileSize` is the world's
+  // TILE_SIZE constant. CHUNK_SIZE is a global from constants.js (sprites.js
+  // is loaded first but the body of this function executes at call time,
+  // after constants are in scope).
+  function drawTerrain(ctx, cam, viewW, viewH, world, tileSize) {
+    const vL = cam.x, vR = cam.x + viewW;
+    const vT = cam.y, vB = cam.y + viewH;
+    const chunkSize = CHUNK_SIZE;
+    const tilesPerChunk = chunkSize / tileSize;
+    const cx0 = Math.floor(vL / chunkSize);
+    const cy0 = Math.floor(vT / chunkSize);
+    const cx1 = Math.floor(vR / chunkSize);
+    const cy1 = Math.floor(vB / chunkSize);
+    for (let cy = cy0; cy <= cy1; cy++) {
+      for (let cx = cx0; cx <= cx1; cx++) {
+        const chunk = world.chunks.get(cx + ',' + cy);
+        if (!chunk || !chunk.terrain) continue;
+        const baseX = cx * chunkSize, baseY = cy * chunkSize;
+        const tx0 = Math.max(0, Math.floor((vL - baseX) / tileSize));
+        const ty0 = Math.max(0, Math.floor((vT - baseY) / tileSize));
+        const tx1 = Math.min(tilesPerChunk - 1, Math.floor((vR - baseX) / tileSize));
+        const ty1 = Math.min(tilesPerChunk - 1, Math.floor((vB - baseY) / tileSize));
+        for (let ly = ty0; ly <= ty1; ly++) {
+          for (let lx = tx0; lx <= tx1; lx++) {
+            const t = chunk.terrain[ly * tilesPerChunk + lx];
+            const wx = baseX + lx * tileSize;
+            const wy = baseY + ly * tileSize;
+            const parity = ((lx + ly) & 1) === 0;
+            drawTerrainTile(ctx, wx, wy, tileSize, t, parity);
+          }
+        }
+      }
+    }
+  }
+
+  // Backwards-compat: still called by level-select preview canvases that
+  // don't have a World instance. Paints a checker mat of the closest hint.
   function drawGround(ctx, cam, viewW, viewH, worldW, worldH, levelStyle) {
     const tile = 80;
     const x0 = Math.floor(cam.x / tile) * tile;
     const y0 = Math.floor(cam.y / tile) * tile;
+    const pair = levelStyle === 'coast'    ? ['#152028', '#1d2c34']
+              : levelStyle === 'highland' ? ['#1e1c20', '#26242a']
+              :                              ['#1a2418', '#22301c'];
     for (let x = x0; x < cam.x + viewW + tile; x += tile) {
       for (let y = y0; y < cam.y + viewH + tile; y += tile) {
         const checker = ((x / tile) + (y / tile)) % 2 === 0;
-        let base;
-        if (levelStyle === 'graveyard') base = checker ? '#1a221a' : '#202820';
-        else if (levelStyle === 'warehouse') base = checker ? '#2a2218' : '#312719';
-        else base = checker ? C.ground1 : C.ground2;
-        ctx.fillStyle = base;
+        ctx.fillStyle = checker ? pair[0] : pair[1];
         ctx.fillRect(x, y, tile, tile);
-        // subtle noise dots
-        ctx.fillStyle = 'rgba(255,255,255,0.015)';
-        ctx.fillRect(x + 8, y + 12, 2, 2);
-        ctx.fillRect(x + 40, y + 60, 2, 2);
-        ctx.fillRect(x + 64, y + 20, 2, 2);
       }
     }
-    // world border with vignette
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 4;
     ctx.strokeRect(0, 0, worldW, worldH);
@@ -1065,6 +1791,14 @@
     drawPlayer, drawZombie, drawWalker, drawRunner, drawTank, drawFireZombie,
     drawBarrel, drawWall, drawWallGhost, drawPickup, drawBullet, drawRocket, drawExplosion,
     drawCrate, drawTombstone, drawWarehouseWall, drawObstacle, drawGround,
+    drawTerrain, drawTerrainTile,
+    drawWoodWall, drawBrickWall, drawStoneWall, drawInteriorWall,
+    drawFence, drawVehicle, drawBarrelDecor,
+    drawTree, drawBoulder,
+    drawBed, drawDresser, drawCounter, drawStove, drawTable, drawSofa, drawShelf,
+    drawWorkbench, drawBathtub, drawSink, drawLogPile, drawStump, drawMinecart,
+    drawScarecrow, drawTrough,
+    drawDecorTile, drawPier, drawCropRow, drawRug,
     drawHeldWeapon, drawMuzzleFlash,
   };
 })(window);

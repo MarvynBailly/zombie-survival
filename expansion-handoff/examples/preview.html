@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Outbreak Expansion · Sprite Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0b0c0e;
+    --panel: #14161a;
+    --panel2: #1c1f25;
+    --border: #2a2e36;
+    --fg: #e8e6df;
+    --muted: #7a7e88;
+    --blood: #d24b35;
+    --warn: #e3a83a;
+    --toxic: #8ec547;
+    --elec: #7fc8ff;
+    --purple: #a05ab0;
+    --frost: #a8d8e8;
+    --display: "Bebas Neue", Impact, sans-serif;
+    --body: "Manrope", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--ink); color: var(--fg);
+    font-family: var(--body);
+    min-height: 100%;
+  }
+  header {
+    padding: 28px 32px 18px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: linear-gradient(180deg, var(--ink) 60%, rgba(11,12,14,0.85));
+    z-index: 10;
+    backdrop-filter: blur(8px);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px; letter-spacing: 4px; color: var(--blood);
+  }
+  h1 {
+    margin: 4px 0 8px;
+    font-family: var(--display);
+    font-size: 52px; letter-spacing: 4px; line-height: 0.95;
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 13px; max-width: 720px;
+    line-height: 1.5;
+  }
+  .legend {
+    display: flex; gap: 18px; margin-top: 12px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px;
+    color: var(--muted); flex-wrap: wrap;
+  }
+  .legend b { color: var(--fg); }
+  main { padding: 0 32px 80px; }
+  section { margin-top: 36px; }
+  .section-head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin: 0 0 14px;
+  }
+  .section-head .eb {
+    font-family: var(--mono);
+    font-size: 11px; letter-spacing: 4px; color: var(--muted);
+  }
+  .section-head h2 {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 28px; letter-spacing: 4px;
+  }
+  .section-head .rule {
+    flex: 1; height: 1px; background: var(--border);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 10px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .card.weapon  { border-top: 2px solid var(--blood); }
+  .card.enemy   { border-top: 2px solid var(--toxic); }
+  .card.spawn   { border-top: 2px solid var(--purple); }
+  .card.boss    { border-top: 2px solid var(--blood); }
+  .card.block   { border-top: 2px solid var(--warn); }
+  .card.prop    { border-top: 2px solid var(--warn); }
+  .card canvas {
+    width: 100%; height: 150px;
+    background: #0e1014;
+    display: block;
+    image-rendering: pixelated;
+  }
+  .card .row1 {
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .card .name {
+    font-family: var(--display);
+    font-size: 16px; letter-spacing: 2px;
+  }
+  .card .tag {
+    margin-left: auto;
+    font-family: var(--mono); font-size: 8px; letter-spacing: 1.5px;
+    padding: 1px 5px;
+    border: 1px solid currentColor;
+    color: var(--warn);
+  }
+  .card.enemy .tag, .card.spawn .tag { color: var(--toxic); }
+  .card.weapon .tag, .card.boss .tag { color: var(--blood); }
+  .card .copy {
+    font-family: var(--mono);
+    font-size: 10px; color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+  .card .signature {
+    font-family: var(--mono);
+    font-size: 9px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    padding: 4px 6px;
+    color: var(--fg);
+    word-break: break-all;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">// EXPANSION-PACK :: PREVIEW ::</div>
+  <h1>OUTBREAK · SPRITE PREVIEW</h1>
+  <div class="sub">
+    Standalone preview of every new sprite in this pack. Three IIFE files
+    (<code>expansion.js</code>, <code>props.js</code>, <code>bestiary.js</code>) load and attach to
+    <code>window</code> — no React, no build step. Refresh to re-render with new
+    animation phases. Each card shows the signature you'd call in code.
+  </div>
+  <div class="legend">
+    <span><b style="color:var(--blood)">■</b> WEAPON</span>
+    <span><b style="color:var(--toxic)">■</b> ENEMY</span>
+    <span><b style="color:var(--purple)">■</b> STATIONARY SPAWNER</span>
+    <span><b style="color:var(--blood)">■</b> BOSS</span>
+    <span><b style="color:var(--warn)">■</b> BLOCK / PROP</span>
+  </div>
+</header>
+
+<main id="main"></main>
+
+<script src="../sprites/expansion.js"></script>
+<script src="../sprites/props.js"></script>
+<script src="../sprites/bestiary.js"></script>
+
+<script>
+(() => {
+  'use strict';
+  const main = document.getElementById('main');
+  const TAU = Math.PI * 2;
+
+  function section(eb, title) {
+    const sec = document.createElement('section');
+    sec.innerHTML = `
+      <div class="section-head">
+        <span class="eb">${eb}</span>
+        <h2>${title}</h2>
+        <span class="rule"></span>
+      </div>`;
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    sec.appendChild(grid);
+    main.appendChild(sec);
+    return grid;
+  }
+
+  function card(cls, name, tag, sig, copy) {
+    const c = document.createElement('div');
+    c.className = 'card ' + cls;
+    c.innerHTML = `
+      <canvas width="480" height="300"></canvas>
+      <div class="row1">
+        <div class="name">${name}</div>
+        <div class="tag">${tag}</div>
+      </div>
+      <div class="signature">${sig}</div>
+      <div class="copy">${copy || ''}</div>`;
+    return c;
+  }
+
+  function paintCheckers(ctx, w, h) {
+    ctx.fillStyle = '#15181d';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#0e1014';
+    for (let x = 0; x < w; x += 24) {
+      for (let y = 0; y < h; y += 24) {
+        if (((x / 24) + (y / 24)) % 2) ctx.fillRect(x, y, 24, 24);
+      }
+    }
+  }
+
+  // helper: render a weapon centered with a faint hand stub
+  function renderWeapon(canvas, drawFn) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.scale(2, 2);                         // canvas was 2x for crispness
+    paintCheckers(ctx, w / 2, h / 2);
+    ctx.save();
+    ctx.translate(w / 2 / 2 - 24, h / 2 / 2);
+    ctx.scale(3.4, 3.4);
+    ctx.fillStyle = '#3a3024';
+    ctx.fillRect(0, -3, 8, 6);
+    ctx.fillStyle = '#c79872';
+    ctx.beginPath(); ctx.arc(7, -2, 1.4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, 2, 1.4, 0, TAU); ctx.fill();
+    drawFn(ctx);
+    ctx.restore();
+  }
+
+  function renderEnemy(canvas, drawFn, model, scale) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width / 2, h = canvas.height / 2;
+    ctx.scale(2, 2);
+    paintCheckers(ctx, w, h);
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(scale || 2.4, scale || 2.4);
+    ctx.translate(-w / 2, -h / 2);
+    drawFn(ctx, Object.assign({
+      x: w / 2, y: h / 2, r: 14, hp: 50, maxHp: 60,
+      angle: 0.2, walkPhase: 0.35,
+    }, model));
+    ctx.restore();
+  }
+
+  function renderBlock(canvas, drawFn, ow, oh) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width / 2, h = canvas.height / 2;
+    ctx.scale(2, 2);
+    paintCheckers(ctx, w, h);
+    const scale = Math.min((w - 24) / ow, (h - 24) / oh, 2.0);
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(scale, scale);
+    ctx.translate(-ow / 2, -oh / 2);
+    drawFn(ctx, { x: 0, y: 0, w: ow, h: oh });
+    ctx.restore();
+  }
+
+  // ----- WEAPONS -----
+  const wGrid = section('×6', 'WEAPONS');
+  for (const w of window.ZExpand.WEAPONS) {
+    const c = card('weapon', w.name, w.tag,
+      `ZExpand.draw${capitalize(w.id === 'gl' ? 'GrenadeLauncher' : w.id === 'flamer' ? 'Flamethrower' : w.id === 'saw' ? 'Chainsaw' : w.id)}(ctx)`,
+      w.copy);
+    wGrid.appendChild(c);
+    renderWeapon(c.querySelector('canvas'), w.draw);
+  }
+
+  // ----- ENEMIES (set A) -----
+  const aGrid = section('×6 · set A', 'ENEMIES · animal-class');
+  for (const e of window.ZExpand.ENEMIES) {
+    const c = card('enemy', e.name, e.tag,
+      `ZExpand.draw${capitalize(e.id === 'gl' ? 'GrenadeLauncher' : e.id === 'crawler' ? 'Crawler' : e.id)}(ctx, z)`,
+      e.copy);
+    aGrid.appendChild(c);
+    renderEnemy(c.querySelector('canvas'), e.draw, { r: e.r });
+  }
+
+  // ----- ENEMIES (set B) -----
+  const bGrid = section('×14 · set B', 'BESTIARY · spawners, specialists, bosses');
+  for (const e of window.ZBestiary.ENEMIES) {
+    const isStationary = e.role === 'stationary';
+    const isBoss = e.threat === 'BOSS';
+    const cls = isBoss ? 'boss' : isStationary ? 'spawn' : 'enemy';
+    let scale = 2.0;
+    if (e.id === 'cent') scale = 1.3;
+    if (e.id === 'cluster') scale = 1.4;
+    if (e.id === 'brood') scale = 1.6;
+    if (e.id === 'reaper') scale = 1.5;
+    if (e.id === 'hatch') scale = 3.2;
+    const c = card(cls, e.name, e.tag,
+      `ZBestiary.draw.${e.id}(ctx, z)`,
+      e.copy);
+    bGrid.appendChild(c);
+    renderEnemy(c.querySelector('canvas'), e.draw, {
+      r: e.r,
+      segments: e.segments,
+      angle: e.id === 'mimic' ? 0.85 : 0.3,
+    }, scale);
+  }
+
+  // ----- BLOCKS -----
+  const blockGrid = section('×9', 'BLOCKS · environmental obstacles');
+  for (const b of window.ZExpand.BLOCKS) {
+    const c = card('block', b.name, b.tag,
+      `ZExpand.draw${capitalize(b.id === 'gl' ? 'GrenadeLauncher' :
+                              b.id === 'jersey' ? 'Jersey' :
+                              b.id === 'sandbags' ? 'Sandbags' :
+                              b.id === 'car' ? 'CarWreck' :
+                              b.id === 'container' ? 'Container' :
+                              b.id === 'dumpster' ? 'Dumpster' :
+                              b.id === 'fence' ? 'Fence' :
+                              b.id === 'pump' ? 'FuelPump' :
+                              b.id === 'pallet' ? 'Pallet' : b.id)}(ctx, o)`,
+      b.copy);
+    blockGrid.appendChild(c);
+    renderBlock(c.querySelector('canvas'), b.draw, 140, 110);
+  }
+  // toxic drum (extra)
+  const tdCard = card('block', 'TOXIC DRUM', 'BARREL VAR.',
+    `ZExpand.drawToxicDrum(ctx, o)`,
+    'Green-skin barrel — explodes + leaves a 4s slime puddle that DOTs zombies.');
+  blockGrid.appendChild(tdCard);
+  renderBlock(tdCard.querySelector('canvas'),
+    (ctx, o) => window.ZExpand.drawToxicDrum(ctx, o), 36, 36);
+
+  // ----- PROPS -----
+  for (const [catKey, cat] of Object.entries(window.ZProps.CATALOG)) {
+    const g = section('×' + cat.items.length, cat.title);
+    for (const item of cat.items) {
+      const c = card('prop', item.name, item.tag,
+        `ZProps.draw.${item.id}(ctx, o)`,
+        item.copy);
+      g.appendChild(c);
+      renderBlock(c.querySelector('canvas'), item.draw, item.w, item.h);
+    }
+  }
+
+  function capitalize(s) { return s[0].toUpperCase() + s.slice(1); }
+})();
+</script>
+
+</body>
+</html>
