@@ -74,6 +74,13 @@ const Game = {
   walls: [],
   rockets: [],
   explosions: [],
+  // Tier-3: short-lived lingering hazards spawned by ToxicDrum destruction,
+  // bloater deaths, and spitter splatters. See spawnPuddle / updatePuddles.
+  puddles: [],
+  // Spitter arcing projectiles + similar zombie-fired ammo.
+  zombieProjectiles: [],
+  // Necromancer corpse log (positions to be raised). Trimmed each second.
+  corpseLog: [],
   // Day/night state. day counts up, t is seconds elapsed in current day,
   // phase is one of DAY_PHASES.name. spawnTimer paces zombie spawns.
   time: { day: 1, t: 0, phase: 'day' },
@@ -110,6 +117,9 @@ function resetRun(levelIndex) {
   Game.walls = [];
   Game.rockets = [];
   Game.explosions = [];
+  Game.puddles = [];
+  Game.zombieProjectiles = [];
+  Game.corpseLog = [];
   Game.time = { day: 1, t: 0, phase: 'day' };
   Game.spawnTimer = 0;
   Game.kills = 0;
@@ -136,7 +146,7 @@ function resetRun(levelIndex) {
       railgun: false, gl: false, saw: false,
     },
     ammo: {
-      pistol: { mag: Infinity, reserve: Infinity },
+      pistol: { mag: 12, reserve: 60 },
       shotgun: { mag: 0, reserve: 0 },
       smg: { mag: 0, reserve: 0 },
       rocket: { mag: 0, reserve: 0 },
@@ -199,6 +209,10 @@ function restoreFromSave(d) {
     p.ammo[k].mag = a.mag === -1 ? Infinity : a.mag;
     p.ammo[k].reserve = a.reserve === -1 ? Infinity : a.reserve;
   }
+  // Legacy saves from when the pistol was infinite — clamp back to the
+  // finite defaults so the player still has to scavenge after resuming.
+  if (p.ammo.pistol.mag === Infinity) p.ammo.pistol.mag = WEAPONS.pistol.magSize;
+  if (p.ammo.pistol.reserve === Infinity) p.ammo.pistol.reserve = WEAPONS.pistol.reserve;
 
   // World contents
   Game.walls = (d.walls || []).map(w => ({ ...w }));
@@ -474,7 +488,22 @@ function updatePlayer(dt) {
   if (input.keys.has('d')) mx += 1;
   if (mx || my) { const [nx, ny] = norm(mx, my); mx = nx; my = ny; }
 
-  const speed = 220;
+  // Movement speed modifiers:
+  //  - Frost chill (from Frost Walker / Charger stun): multiplies until expiry.
+  //  - Minigun: slow while firing (slowsWhileFiring).
+  let speed = 220;
+  const nowSec = now();
+  if (p.chilledUntil && p.chilledUntil > nowSec) {
+    speed *= (p.chillMult ?? 1);
+  } else if (p.chilledUntil) {
+    p.chilledUntil = 0;
+    p.chillMult = 1;
+  }
+  const weapDef = WEAPONS[p.weapon];
+  if (weapDef && weapDef.slowsWhileFiring && input.mouseDown
+      && (p.minigunSpin || 0) >= (weapDef.spinUp || 0)) {
+    speed *= weapDef.slowsWhileFiring;
+  }
   p.vx = mx * speed; p.vy = my * speed;
   p.x += p.vx * dt;
   p.y += p.vy * dt;
@@ -581,16 +610,50 @@ function updatePlayer(dt) {
       }
     }
   } else {
-    if (input.mouseDown && p.fireCd <= 0 && p.reloading <= 0) {
+    // Minigun spin-up tracking — independent of fireCd. Spin up while LMB is
+    // held + ammo available; decay when released or weapon switched.
+    if (weap.spinUp) {
+      if (input.mouseDown && p.ammo[p.weapon].mag > 0) {
+        p.minigunSpin = Math.min(weap.spinUp + 0.05, (p.minigunSpin || 0) + dt);
+      } else {
+        p.minigunSpin = Math.max(0, (p.minigunSpin || 0) - dt * 2);
+      }
+    } else {
+      p.minigunSpin = 0;
+    }
+
+    // Railgun: hold-to-charge, release-to-fire. Doesn't share the standard
+    // mag-click flow — handled here entirely.
+    if (weap.chargeTime) {
+      if (input.mouseDown && p.ammo[p.weapon].mag > 0 && p.reloading <= 0) {
+        p.railCharge = Math.min(weap.chargeTime, (p.railCharge || 0) + dt);
+      } else if ((p.railCharge || 0) > 0) {
+        if (p.railCharge >= weap.chargeTime && p.ammo[p.weapon].mag > 0) {
+          fireRailgunBeam(p, weap);
+          p.ammo[p.weapon].mag = Math.max(0, p.ammo[p.weapon].mag - 1);
+          if (p.ammo[p.weapon].mag === 0 && p.ammo[p.weapon].reserve > 0) {
+            p.reloading = weap.reloadTime;
+            Audio.sfx.reload();
+          }
+        }
+        p.railCharge = 0;
+      }
+    } else if (input.mouseDown && p.fireCd <= 0 && p.reloading <= 0) {
       const a = p.ammo[p.weapon];
       if (a.mag > 0) {
-        fireWeapon(p, weap);
-        p.fireCd = weap.fireRate;
-        if (weap.magSize !== Infinity) a.mag--;
-        // auto-reload if empty and reserve available
-        if (weap.magSize !== Infinity && a.mag === 0 && a.reserve > 0) {
-          p.reloading = weap.reloadTime;
-          Audio.sfx.reload();
+        // Minigun: don't actually fire until spun up. Show muzzle flare so
+        // the player has feedback that the trigger is registering.
+        if (weap.spinUp && p.minigunSpin < weap.spinUp) {
+          p.fireCd = 0.05;
+          p.muzzleFlash = 0.3;
+        } else {
+          fireWeapon(p, weap);
+          p.fireCd = weap.fireRate;
+          if (weap.magSize !== Infinity) a.mag--;
+          if (weap.magSize !== Infinity && a.mag === 0 && a.reserve > 0) {
+            p.reloading = weap.reloadTime;
+            Audio.sfx.reload();
+          }
         }
       } else if (a.reserve > 0 && p.reloading <= 0) {
         p.reloading = weap.reloadTime;
@@ -726,12 +789,67 @@ function obstacleParticleColors(style) {
 // Apply damage to a breakable world obstacle. Returns true if it was destroyed.
 function damageObstacle(o, dmg, source) {
   if (!o.maxHp || o.dead) return false;
+  if (o.indestructible) return false;
   o.hp -= dmg;
   if (o.hp <= 0) {
     destroyObstacle(o, source);
+    // Tier-3: explosive blocks chain like barrels. Fuel pumps, toxic drums,
+    // generators, car wrecks all flag `explodes` and provide `explodeR`.
+    if (o.explodes) {
+      explodeAt(o.x + o.w / 2, o.y + o.h / 2,
+                o.explodeR || 120,
+                o.explodeDamage || 90,
+                source || 'block');
+    }
+    if (o.leavesPuddle) {
+      spawnPuddle(o.x + o.w / 2, o.y + o.h / 2, 60, 5, 'toxic');
+    }
     return true;
   }
   return false;
+}
+
+// ---------- Lingering puddles ----------
+// Created by toxic drums, bloater deaths, spitter splatters. Tick damage to
+// any zombie or the player standing inside. Decays after `life` seconds.
+function spawnPuddle(x, y, radius, life, kind) {
+  if (!Game.puddles) Game.puddles = [];
+  Game.puddles.push({
+    x, y, r: radius, life, maxLife: life, dps: 5, kind: kind || 'toxic',
+  });
+}
+function updatePuddles(dt) {
+  if (!Game.puddles) return;
+  const p = Game.player;
+  for (let i = Game.puddles.length - 1; i >= 0; i--) {
+    const pu = Game.puddles[i];
+    pu.life -= dt;
+    if (pu.life <= 0) { Game.puddles.splice(i, 1); continue; }
+    // Sparse particles to sell the hazard.
+    if (Math.random() < 0.4) {
+      Game.particles.push({
+        x: pu.x + rand(-pu.r * 0.7, pu.r * 0.7),
+        y: pu.y + rand(-pu.r * 0.5, pu.r * 0.5),
+        vx: rand(-10, 10), vy: rand(-20, -5),
+        life: 0.4, color: pu.kind === 'fire' ? '#ff7a33' : '#8ec547',
+        r: rand(1.5, 2.5),
+      });
+    }
+    // Damage player.
+    if (p && !p.dead) {
+      const dx = p.x - pu.x, dy = p.y - pu.y;
+      if (dx * dx + dy * dy < pu.r * pu.r) damagePlayer(pu.dps * dt, null, { dot: true });
+    }
+    // Damage zombies that wade through.
+    const near = Spatial.query(pu.x, pu.y, pu.r + 20, []);
+    for (const z of near) {
+      const dx = z.x - pu.x, dy = z.y - pu.y;
+      if (dx * dx + dy * dy < pu.r * pu.r) {
+        damageZombie(z, pu.dps * dt, pu.kind === 'fire' ? 'fire' : 'puddle', pu.x, pu.y);
+        if (pu.kind === 'fire') z.onFire = Math.max(z.onFire || 0, 1.0);
+      }
+    }
+  }
 }
 
 function destroyObstacle(o, source) {
@@ -780,22 +898,28 @@ function fireWeapon(p, weap) {
     });
   }
 
-  if (weap.isRocket) {
+  // Rockets + grenade launcher both ride the rocket projectile system.
+  // The GL adds `bounces` so it ricochets off obstacles once before
+  // detonating (see updateRockets).
+  if (weap.isRocket || weap.isProjectile) {
     Game.rockets.push({
       x: muzzleX, y: muzzleY,
       vx: Math.cos(p.angle) * weap.bulletSpeed,
       vy: Math.sin(p.angle) * weap.bulletSpeed,
       life: weap.bulletRange / weap.bulletSpeed,
       owner: 'player',
-      explodeRadius: weap.explodeRadius,
+      explodeRadius: weap.explodeRadius || 100,
       damage: weap.damage,
+      bounces: weap.bounces || 0,
     });
     return;
   }
+  // Chainsaw: melee — no bullets fired. Cone damage is applied directly.
+  if (weap.isMelee) { applyMeleeCone(p, weap); return; }
 
   for (let k = 0; k < weap.pellets; k++) {
     const ang = p.angle + (Math.random() - 0.5) * weap.spread * 2 * (weap.pellets > 1 ? 1 : 1);
-    Game.bullets.push({
+    const b = {
       x: muzzleX, y: muzzleY,
       vx: Math.cos(ang) * weap.bulletSpeed,
       vy: Math.sin(ang) * weap.bulletSpeed,
@@ -803,6 +927,102 @@ function fireWeapon(p, weap) {
       damage: weap.damage,
       owner: 'player',
       weapon: p.weapon,
+    };
+    // Crossbow: bolt passes through up to `pierce` zombies. The pierced
+    // set tracks who's already been damaged so a single bolt can't double-
+    // dip on the same zombie when its hitbox lingers a frame.
+    if (weap.pierce) { b.pierce = weap.pierce; b._pierced = new Set(); }
+    // Flamethrower: short-range bullet that ignites whatever it hits.
+    if (weap.ignites) { b.ignites = true; b.color = '#ff7a33'; }
+    Game.bullets.push(b);
+  }
+}
+
+// Chainsaw cone — damage every zombie inside meleeRange/meleeCone in front
+// of the player. Called per fire tick (saw has fireRate 0.1, so 10 ticks/sec).
+function applyMeleeCone(p, weap) {
+  Audio.sfx[weap.sfx]();
+  p.muzzleFlash = 0.6;
+  const reach = weap.meleeRange || 35;
+  const cone = weap.meleeCone || 0.9;
+  const halfCone = cone / 2;
+  const near = Spatial.query(p.x, p.y, reach + 30, []);
+  for (let i = 0; i < near.length; i++) {
+    const z = near[i];
+    const dx = z.x - p.x, dy = z.y - p.y;
+    const d = Math.hypot(dx, dy);
+    if (d > reach + z.r) continue;
+    let ang = Math.atan2(dy, dx) - p.angle;
+    while (ang > Math.PI) ang -= Math.PI * 2;
+    while (ang < -Math.PI) ang += Math.PI * 2;
+    if (Math.abs(ang) > halfCone) continue;
+    // Saw bypasses Riot frontDR (cleavesArmor: true) — damageZombie checks
+    // the weapon name and skips the DR mul.
+    damageZombie(z, weap.damage, 'saw', p.x, p.y);
+    // Splash a little blood toward the hit point for feedback.
+    spawnBlood(z.x, z.y, Math.atan2(dy, dx));
+  }
+  // A few sparks for chainsaw oomph.
+  for (let i = 0; i < 2; i++) {
+    Game.particles.push({
+      x: p.x + Math.cos(p.angle) * (reach * 0.6 + rand(-6, 6)),
+      y: p.y + Math.sin(p.angle) * (reach * 0.6 + rand(-6, 6)),
+      vx: rand(-80, 80), vy: rand(-120, -20),
+      life: 0.18, color: '#ffe066', r: rand(1.5, 2.5),
+    });
+  }
+}
+
+// Railgun beam — hitscan from the player along p.angle. Damages every zombie
+// it crosses (piercesAll); blocked by static obstacles + player walls.
+function fireRailgunBeam(p, weap) {
+  Audio.sfx[weap.sfx]();
+  p.muzzleFlash = 1.4;
+  screenShake(8, 0.3);
+  const range = weap.bulletRange || 2000;
+  const ux = Math.cos(p.angle), uy = Math.sin(p.angle);
+  // Find the closest blocking obstacle along the ray (limits beam length).
+  let maxT = range;
+  const x2 = p.x + ux * range, y2 = p.y + uy * range;
+  World.forEachObstacleNear((p.x + x2) / 2, (p.y + y2) / 2, range / 2 + TILE_SIZE, (o) => {
+    if (o.shootThrough) return;
+    const hit = segmentRectHit(p.x, p.y, x2, y2, o);
+    if (hit) {
+      const t = hit.t * range;
+      if (t < maxT) maxT = t;
+    }
+  });
+  for (const w of Game.walls) {
+    const hit = segmentRectHit(p.x, p.y, x2, y2, w);
+    if (hit) {
+      const t = hit.t * range;
+      if (t < maxT) maxT = t;
+    }
+  }
+  const endX = p.x + ux * maxT, endY = p.y + uy * maxT;
+  // Damage every zombie whose center sits within ~r of the segment.
+  const midX = (p.x + endX) / 2, midY = (p.y + endY) / 2;
+  const near = Spatial.query(midX, midY, maxT / 2 + 40, []);
+  for (const z of near) {
+    // Foot of perpendicular from z onto the segment
+    const dx = endX - p.x, dy = endY - p.y;
+    const tProj = ((z.x - p.x) * dx + (z.y - p.y) * dy) / (dx * dx + dy * dy);
+    if (tProj < 0 || tProj > 1) continue;
+    const fx = p.x + dx * tProj, fy = p.y + dy * tProj;
+    const perp = Math.hypot(z.x - fx, z.y - fy);
+    if (perp < z.r + 3) {
+      damageZombie(z, weap.damage, 'railgun', p.x, p.y);
+      spawnBlood(z.x, z.y, p.angle);
+    }
+  }
+  // Visual: lingering beam particle along the path
+  const steps = Math.max(8, Math.floor(maxT / 24));
+  for (let i = 0; i < steps; i++) {
+    const t = i / steps;
+    Game.particles.push({
+      x: p.x + ux * maxT * t, y: p.y + uy * maxT * t,
+      vx: rand(-6, 6), vy: rand(-6, 6),
+      life: rand(0.18, 0.32), color: '#9fc4ff', r: rand(2, 3.5),
     });
   }
 }
@@ -818,13 +1038,19 @@ function updateBullets(dt) {
     // obstacle hit — narrow query around the bullet. Breakable obstacles take damage.
     let obstacleHit = null;
     World.forEachObstacleNear(b.x, b.y, TILE_SIZE, (o) => {
-      if (!obstacleHit && circleRectCollide(b.x, b.y, 1, o.x, o.y, o.w, o.h)) obstacleHit = o;
+      if (obstacleHit) return;
+      if (o.walkable) return; // manhole / rug — bullets pass over
+      if (circleRectCollide(b.x, b.y, 1, o.x, o.y, o.w, o.h)) obstacleHit = o;
     });
     if (obstacleHit) {
       if (obstacleHit.maxHp) damageObstacle(obstacleHit, b.damage, 'bullet');
-      spawnSpark(b.x, b.y);
-      Game.bullets.splice(i, 1);
-      continue outer;
+      // shootThrough (chainlink fence, whiteboard, bush) — bullet keeps
+      // going, having paid the obstacle a bit of damage on the way through.
+      if (!obstacleHit.shootThrough) {
+        spawnSpark(b.x, b.y);
+        Game.bullets.splice(i, 1);
+        continue outer;
+      }
     }
     // wall hit (player-placed)
     for (let j = Game.walls.length - 1; j >= 0; j--) {
@@ -851,16 +1077,29 @@ function updateBullets(dt) {
     }
     // zombie hit (spatial hash query around the bullet)
     const nearZ = Spatial.query(b.x, b.y, 24, []);
-    for (let j = 0; j < nearZ.length; j++) {
+    let consumed = false;
+    for (let j = 0; j < nearZ.length && !consumed; j++) {
       const z = nearZ[j];
       const dx = b.x - z.x, dy = b.y - z.y;
       if (dx*dx + dy*dy < z.r * z.r) {
-        damageZombie(z, b.damage, b.weapon);
+        // Crossbow pierce — don't double-hit the same zombie if its hitbox
+        // overlaps the bullet two frames in a row.
+        if (b._pierced && b._pierced.has(z)) continue;
+        damageZombie(z, b.damage, b.weapon, b.x - b.vx * 0.05, b.y - b.vy * 0.05);
         spawnBlood(b.x, b.y, Math.atan2(b.vy, b.vx));
-        Game.bullets.splice(i, 1);
-        continue outer;
+        // Flamethrower ignites on contact.
+        if (b.ignites) { z.onFire = Math.max(z.onFire || 0, 2.0); }
+        if (b._pierced) {
+          b._pierced.add(z);
+          if (b.pierce > 0) { b.pierce--; b.damage *= 0.75; }
+          else { Game.bullets.splice(i, 1); consumed = true; }
+        } else {
+          Game.bullets.splice(i, 1);
+          consumed = true;
+        }
       }
     }
+    if (consumed) continue outer;
     // barrel hit
     for (let j = Game.barrels.length - 1; j >= 0; j--) {
       const br = Game.barrels[j];
@@ -892,17 +1131,39 @@ function updateRockets(dt) {
       life: rand(0.3, 0.6), color: '#888', r: rand(3, 6),
     });
     if (r.life <= 0) { explodeAt(r.x, r.y, r.explodeRadius, r.damage, 'rocket'); Game.rockets.splice(i, 1); continue; }
-    let obstacleHit = false;
+    let obstacleHit = null;
     World.forEachObstacleNear(r.x, r.y, TILE_SIZE, (o) => {
-      if (!obstacleHit && circleRectCollide(r.x, r.y, 3, o.x, o.y, o.w, o.h)) obstacleHit = true;
+      if (obstacleHit) return;
+      if (o.walkable) return;
+      if (circleRectCollide(r.x, r.y, 3, o.x, o.y, o.w, o.h)) obstacleHit = o;
     });
     if (obstacleHit) {
-      explodeAt(r.x, r.y, r.explodeRadius, r.damage, 'rocket');
-      Game.rockets.splice(i, 1);
-      continue outer;
+      // Grenade launcher: bounce off and keep going. Each bounce decrements
+      // r.bounces; when it reaches 0 the next hit detonates.
+      if (r.bounces > 0) {
+        const prevX = r.x - r.vx * dt, prevY = r.y - r.vy * dt;
+        const inX = prevX > obstacleHit.x && prevX < obstacleHit.x + obstacleHit.w;
+        if (inX) r.vy = -r.vy; else r.vx = -r.vx;
+        r.x = prevX; r.y = prevY;
+        r.bounces--;
+      } else {
+        explodeAt(r.x, r.y, r.explodeRadius, r.damage, 'rocket');
+        Game.rockets.splice(i, 1);
+        continue outer;
+      }
     }
+    let wallHit = null;
     for (const w of Game.walls) {
-      if (circleRectCollide(r.x, r.y, 3, w.x, w.y, w.w, w.h)) {
+      if (circleRectCollide(r.x, r.y, 3, w.x, w.y, w.w, w.h)) { wallHit = w; break; }
+    }
+    if (wallHit) {
+      if (r.bounces > 0) {
+        const prevX = r.x - r.vx * dt, prevY = r.y - r.vy * dt;
+        const inX = prevX > wallHit.x && prevX < wallHit.x + wallHit.w;
+        if (inX) r.vy = -r.vy; else r.vx = -r.vx;
+        r.x = prevX; r.y = prevY;
+        r.bounces--;
+      } else {
         explodeAt(r.x, r.y, r.explodeRadius, r.damage, 'rocket');
         Game.rockets.splice(i, 1);
         continue outer;
@@ -942,7 +1203,7 @@ function explodeAt(x, y, radius, damage, source) {
     const d = Math.hypot(z.x - x, z.y - y);
     if (d < radius) {
       const falloff = 1 - d / radius;
-      damageZombie(z, damage * falloff, source);
+      damageZombie(z, damage * falloff, source, x, y);
     }
   }
   // chain barrels
@@ -1065,6 +1326,45 @@ function killZombie(z, weapon) {
       if (Math.hypot(other.x - z.x, other.y - z.y) < 120) other.onFire = Math.max(other.onFire, 2);
     }
   }
+  // ---------- Tier-3 death effects ----------
+  // Bomber: blast + small toxic puff on death.
+  if (z.onDeathExplode) {
+    explodeAt(z.x, z.y, z.onDeathExplode.r || 80, z.onDeathExplode.dmg || 50, 'bomber');
+    spawnPuddle(z.x, z.y, 60, 3, 'toxic');
+  }
+  // Hive Sac: scatter a starburst of hatchlings.
+  if (z.burstOnDeath) {
+    const b = z.burstOnDeath;
+    for (let i = 0; i < (b.count || 5); i++) {
+      const a = (i / (b.count || 5)) * Math.PI * 2;
+      const r = b.spreadR || 60;
+      spawnZombieAt(b.type || 'hatch', z.x + Math.cos(a) * r, z.y + Math.sin(a) * r);
+    }
+  }
+  // Conjoined Twins: split into N smaller zombies on death.
+  if (z.onDeathSplit) {
+    const s = z.onDeathSplit;
+    for (let i = 0; i < (s.count || 2); i++) {
+      const a = (i / (s.count || 2)) * Math.PI * 2;
+      const child = spawnZombieAt(s.type || 'walker', z.x + Math.cos(a) * 22, z.y + Math.sin(a) * 22);
+      if (child) {
+        child.hp = child.maxHp * (s.hpPct || 0.5);
+      }
+    }
+  }
+  // Bloater: leaves a lingering toxic cloud.
+  if (z.deathCloud) {
+    spawnPuddle(z.x, z.y, z.deathCloud.r || 100, z.deathCloud.life || 4, 'toxic');
+    Game.puddles[Game.puddles.length - 1].dps = z.deathCloud.dps || 5;
+  }
+  // Cluster: when this anchor dies, its remaining hatchling defenders are
+  // visibly orphaned. No special cleanup — the def's score handles the
+  // wave-clearing reward.
+
+  // Necromancer / corpse log: any kill registers a corpse so a nearby necro
+  // can raise it on the next cycle. Trim happens in tick.
+  Game.corpseLog.push({ x: z.x, y: z.y, type: z.type, until: now() + 6 });
+
   Game.kills++;
   if (weapon && Game.weaponKills[weapon] != null) Game.weaponKills[weapon]++;
   Game.score += z.score * (1 + (Game.time.day - 1) * 0.15);
@@ -1087,8 +1387,8 @@ function killZombie(z, weapon) {
 
 // Tanks bias toward big, useful loot.
 function spawnTankDrop(x, y) {
-  const opts = ['ammo_smg', 'ammo_rocket', 'wall', 'barrel', 'health'];
-  const weights = [3, 2.5, 3, 2, 1.5];
+  const opts = ['ammo_smg', 'ammo_rocket', 'wall', 'barrel', 'health', 'ammo_pistol'];
+  const weights = [3, 2.5, 3, 2, 1.5, 2];
   let total = 0; for (const w of weights) total += w;
   let r = Math.random() * total, pick = 'ammo_smg';
   for (let i = 0; i < opts.length; i++) { r -= weights[i]; if (r <= 0) { pick = opts[i]; break; } }
@@ -1110,13 +1410,16 @@ function spawnPickup(x, y, forceType) {
   }
   const p = Game.player;
   const opts = [
-    'health', 'ammo_shotgun', 'ammo_smg', 'ammo_rocket', 'barrel', 'wall',
+    'health', 'ammo_pistol', 'ammo_shotgun', 'ammo_smg', 'ammo_rocket', 'barrel', 'wall',
     // Expansion ammo. Locked weapons can still drop ammo — picking it up
     // unlocks the weapon (same UX as shotgun/smg/rocket).
     'ammo_crossbow', 'ammo_flamer', 'ammo_minigun', 'ammo_railgun', 'ammo_gl', 'saw',
   ];
   const weights = [
     3,
+    // Pistol rounds: high weight always so the player's fallback weapon
+    // doesn't dry up. Falls off slightly when reserves are already full.
+    p.ammo.pistol.reserve < 80 ? 4 : 1,
     p.unlocked.shotgun ? 3 : 2,
     p.unlocked.smg ? 3 : 1.5,
     p.unlocked.rocket ? 1.5 : 1,
@@ -1137,13 +1440,24 @@ function spawnPickup(x, y, forceType) {
   Game.pickups.push({ x, y, r: 12, type: pick, life: 20 });
 }
 
-function damagePlayer(amount) {
+function damagePlayer(amount, attacker, opts) {
   const p = Game.player;
-  if (p.iframe > 0 || p.dead) return;
+  if (p.dead) return;
+  const isDot = opts && opts.dot;
+  // DOT (puddle / bloater gas) bypasses iframes — otherwise standing in a
+  // pool would only tick once per 0.6s and feel like nothing.
+  if (!isDot && p.iframe > 0) return;
   p.hp -= amount;
-  p.iframe = 0.6;
-  Audio.sfx.hurt();
-  screenShake(6, 0.2);
+  if (!isDot) p.iframe = 0.6;
+  if (!isDot) Audio.sfx.hurt();
+  if (!isDot) screenShake(6, 0.2);
+  // Frost walker: each hit chills the player. Multipliers don't stack —
+  // we just refresh the timer with the highest chill the attacker has.
+  if (attacker && attacker.chillOnHit) {
+    const ch = attacker.chillOnHit;
+    p.chilledUntil = now() + (ch.ms / 1000);
+    p.chillMult = 1 - (ch.pct || 0.4);
+  }
   if (p.hp <= 0) {
     p.hp = 0;
     p.dead = true;
@@ -1190,13 +1504,253 @@ function findBashWall(z, p) {
   return bestWall;
 }
 
+// ---------- Tier-3 zombie behaviors ----------
+// Per-type ticks that run BEFORE the regular steering. They handle ranged
+// attacks (spitter), state machines (charger), spawn-on-walk (brood), aura
+// effects (screamer, bloater), mimic ambush trigger, and necro raise.
+function tier3PreTick(z, dt, p) {
+  // Spitter — periodic ranged spit. Arc projectile, leaves a small toxic
+  // puddle on impact.
+  if (z.ranged && p && !p.dead) {
+    z.fireCd -= dt;
+    const dx = p.x - z.x, dy = p.y - z.y;
+    const d2 = dx * dx + dy * dy;
+    const r = z.range || 280;
+    if (z.fireCd <= 0 && d2 < r * r && d2 > 30 * 30) {
+      const ang = Math.atan2(dy, dx);
+      Game.zombieProjectiles.push({
+        x: z.x, y: z.y,
+        vx: Math.cos(ang) * 380, vy: Math.sin(ang) * 380,
+        life: 1.4,
+        damage: z.projectileDamage || z.damage,
+        owner: z, kind: 'spit',
+      });
+      z.fireCd = z.fireCooldown || 2.5;
+    }
+  }
+
+  // Brood Mother — drops a crawler periodically while walking.
+  if (z.spawnsOnWalk) {
+    z.walkSpawnT -= dt;
+    if (z.walkSpawnT <= 0) {
+      spawnZombieAt(z.spawnsOnWalk, z.x, z.y);
+      z.walkSpawnT = z.spawnEvery || 3.5;
+    }
+  }
+
+  // Necromancer — every `raiseInterval` revive the nearest tracked corpse.
+  if (z.raisesNearby) {
+    z.raiseT -= dt;
+    if (z.raiseT <= 0 && Game.corpseLog.length > 0) {
+      // Find nearest tracked corpse within 280px.
+      let bestIdx = -1, bestD = 280 * 280;
+      for (let i = 0; i < Game.corpseLog.length; i++) {
+        const c = Game.corpseLog[i];
+        const dx = c.x - z.x, dy = c.y - z.y;
+        const d = dx * dx + dy * dy;
+        if (d < bestD) { bestD = d; bestIdx = i; }
+      }
+      if (bestIdx >= 0) {
+        const c = Game.corpseLog[bestIdx];
+        Game.corpseLog.splice(bestIdx, 1);
+        const raised = spawnZombieAt('walker', c.x, c.y);
+        if (raised) raised.hp = raised.maxHp * (z.raiseHpPct || 0.5);
+        // Sparkle
+        for (let k = 0; k < 6; k++) {
+          Game.particles.push({
+            x: c.x, y: c.y,
+            vx: rand(-60, 60), vy: rand(-100, -10),
+            life: 0.6, color: '#a06fff', r: rand(2, 3),
+          });
+        }
+      }
+      z.raiseT = z.raiseInterval || 6;
+    }
+  }
+
+  // Charger — three-state AI. idle → telegraph → charging → recover.
+  if (z.charge && p && !p.dead) {
+    const c = z.charge;
+    z.chargeCd -= dt;
+    if (z.chargeState === 'idle') {
+      const dx = p.x - z.x, dy = p.y - z.y;
+      const d2 = dx * dx + dy * dy;
+      const r = c.range || 380;
+      if (z.chargeCd <= 0 && d2 < r * r && d2 > 90 * 90) {
+        z.chargeState = 'telegraph';
+        z.chargeT = c.telegraph || 0.8;
+      }
+    } else if (z.chargeState === 'telegraph') {
+      z.chargeT -= dt;
+      // Visual stomp particles during the telegraph windup.
+      if (Math.random() < 6 * dt) {
+        Game.particles.push({
+          x: z.x + rand(-z.r, z.r), y: z.y + z.r,
+          vx: rand(-20, 20), vy: rand(-40, -10),
+          life: 0.3, color: '#cad0d8', r: rand(2, 3),
+        });
+      }
+      if (z.chargeT <= 0) {
+        // Lock direction based on player position at end of telegraph.
+        const dx = p.x - z.x, dy = p.y - z.y;
+        const dn = Math.hypot(dx, dy) || 1;
+        z.chargeDx = dx / dn; z.chargeDy = dy / dn;
+        z.chargeState = 'charging';
+        z.chargeT = 1.2;
+      }
+    } else if (z.chargeState === 'charging') {
+      z.chargeT -= dt;
+      if (z.chargeT <= 0) {
+        z.chargeState = 'recover';
+        z.chargeT = 0.8;
+      }
+    } else if (z.chargeState === 'recover') {
+      z.chargeT -= dt;
+      if (z.chargeT <= 0) {
+        z.chargeState = 'idle';
+        z.chargeCd = c.cooldown || 4;
+      }
+    }
+  }
+
+  // Screamer aura — boost the speed of zombies inside auraR for this frame.
+  // Done by SETTING a derived "speedBoost" on neighbors that updateZombies'
+  // movement code reads. We reset it each frame by writing 1 in pre-tick.
+  if (z.auraBuff) {
+    const near = Spatial.query(z.x, z.y, z.auraR || 120, []);
+    for (const o of near) {
+      if (o === z) continue;
+      o.speedBoost = Math.max(o.speedBoost || 1, z.auraSpeedMult || 1.5);
+    }
+  }
+
+  // Bloater aura — damage the player when in radius (DOT-style, ignores iframes).
+  if (z.gasAura && p && !p.dead) {
+    const dx = p.x - z.x, dy = p.y - z.y;
+    if (dx * dx + dy * dy < (z.gasAura.r || 60) ** 2) {
+      damagePlayer((z.gasAura.dps || 3) * dt, z, { dot: true });
+    }
+  }
+
+  // Mimic — opens when the player gets close, then bites on contact.
+  if (z.disguised) {
+    const dx = p.x - z.x, dy = p.y - z.y;
+    const trig = (z.triggerR || 22);
+    if (dx * dx + dy * dy < trig * trig) {
+      z.mimicOpen = Math.min(1, (z.mimicOpen || 0) + dt * 5);
+      z.disguised = z.mimicOpen >= 1 ? false : z.disguised;
+    } else {
+      z.mimicOpen = Math.max(0, (z.mimicOpen || 0) - dt * 2);
+    }
+    z.angle = z.mimicOpen; // sprite reads angle as open-factor 0..1
+  }
+}
+
+// Stationary spawner tick (cluster, shrieker, hivesac, mimic). Called from
+// updateZombies for any zombie flagged `stationary`. Returns true to signal
+// "skip movement / nav for this zombie".
+function updateStationarySpawner(z, dt, p) {
+  // Infection cluster — spawns hatchling defenders, regenerates per defender.
+  if (z.spawns) {
+    // count live children (cheap O(N) — we only have a handful of clusters)
+    let alive = 0;
+    for (const o of Game.zombies) {
+      if (o._spawnedBy === z && o.hp > 0) alive++;
+    }
+    z.childrenAlive = alive;
+    if (alive > 0 && z.tendrilHeal) {
+      z.hp = Math.min(z.maxHp, z.hp + z.tendrilHeal * alive * dt);
+    }
+    z.spawnT -= dt;
+    if (z.spawnT <= 0 && alive < (z.spawnCap || 6)) {
+      const a = Math.random() * Math.PI * 2;
+      const child = spawnZombieAt(z.spawns,
+        z.x + Math.cos(a) * (z.r + 16),
+        z.y + Math.sin(a) * (z.r + 16));
+      if (child) child._spawnedBy = z;
+      z.spawnT = z.spawnInterval || 4;
+    }
+  }
+  // Shrieker — calls the horde. Spawns walkers at the world edge near player.
+  if (z.callsHorde) {
+    z.callT -= dt;
+    if (z.callT <= 0) {
+      for (let i = 0; i < (z.callCount || 2); i++) {
+        spawnZombieAtEdge(z.callType || 'walker');
+      }
+      z.callT = z.callInterval || 2;
+    }
+  }
+}
+
 // ---------- Zombies ----------
 function updateZombies(dt) {
   const p = Game.player;
   const zs = Game.zombies;
+  // Reset per-frame derived stats (screamer aura writes into o.speedBoost,
+  // so we zero it at the start of each tick).
+  for (let i = 0; i < zs.length; i++) zs[i].speedBoost = 1;
+
+  // Trim corpse log: drop entries older than `until`.
+  if (Game.corpseLog && Game.corpseLog.length) {
+    const t = now();
+    Game.corpseLog = Game.corpseLog.filter(c => c.until > t);
+  }
+
   for (let i = 0; i < zs.length; i++) {
     const z = zs[i];
+
+    // Tier-3 pre-tick (ranged, charger state, brood spawn, screamer aura,
+    // bloater gas, mimic trigger, necro raise).
+    tier3PreTick(z, dt, p);
+
     if (z.stunned > 0) { z.stunned -= dt; continue; }
+
+    // Stationary — runs its own spawner/caller tick, then skips movement.
+    if (z.stationary) {
+      updateStationarySpawner(z, dt, p);
+      // Mimic: damages on contact once open.
+      if (z.disguised === false && z.mimicOpen >= 1) {
+        const minD = z.r + p.r + 2;
+        if (Math.hypot(p.x - z.x, p.y - z.y) <= minD) {
+          z.hitCd = (z.hitCd || 0) - dt;
+          if (z.hitCd <= 0) {
+            damagePlayer(z.ambushBite || z.damage, z);
+            z.hitCd = 0.6;
+          }
+        }
+      }
+      continue;
+    }
+
+    // Charger override: while charging, move along the locked vector and
+    // skip the normal flow-field steering.
+    if (z.charge && z.chargeState === 'charging') {
+      z.x += z.chargeDx * z.charge.speed * dt;
+      z.y += z.chargeDy * z.charge.speed * dt;
+      z.angle = Math.atan2(z.chargeDy, z.chargeDx);
+      if (!z.ignoresWalls) {
+        World.forEachObstacleNear(z.x, z.y, z.r + TILE_SIZE, (o) => {
+          if (!o.walkable) resolveCircleRect(z, o);
+        });
+        for (const w of Game.walls) resolveCircleRect(z, w);
+      }
+      // Contact damage (with stun) — same player-damage path but boosted.
+      if (Math.hypot(p.x - z.x, p.y - z.y) <= p.r + z.r) {
+        if ((z.hitCd || 0) <= 0) {
+          damagePlayer(z.damage * 1.4, z);
+          // Brief immobilize via chill mult — easier than a separate stun system.
+          if (!p.dead) {
+            p.chilledUntil = now() + (z.charge.stunMs || 800) / 1000;
+            p.chillMult = 0.15;
+          }
+          z.hitCd = 0.6;
+          z.chargeState = 'recover';
+          z.chargeT = 0.8;
+        }
+      }
+      continue;
+    }
     // Steering. Three modes:
     //   1) clear LOS to player -> chase directly
     //   2) flow path exists -> follow flow field around obstacles (always preferred when available)
@@ -1248,15 +1802,22 @@ function updateZombies(dt) {
     let vy = dy + sy * 1.5;
     const vl = Math.hypot(vx, vy) || 1;
     vx /= vl; vy /= vl;
-    z.x += vx * z.speed * dt;
-    z.y += vy * z.speed * dt;
+    // Screamer aura applies as a per-frame speed boost (set in tier3PreTick).
+    const speedMul = z.speedBoost || 1;
+    z.x += vx * z.speed * speedMul * dt;
+    z.y += vy * z.speed * speedMul * dt;
     // facing + walk cycle
     z.angle = Math.atan2(dy, dx);
     z.walkPhase = (z.walkPhase + dt * (z.speed / 35)) % 1;
-    // nearby obstacles + walls + chests (tight query — much cheaper with many tiles)
-    World.forEachObstacleNear(z.x, z.y, z.r + TILE_SIZE, (o) => resolveCircleRect(z, o));
-    for (const w of Game.walls) resolveCircleRect(z, w);
-    World.forEachActiveChest(z.x, z.y, (c) => { if (!c.opened) resolveCircleRect(z, c); });
+    // Wraith: ignoresWalls — phase through obstacles and player walls. Still
+    // clamp to the world bounds so it doesn't escape the arena.
+    if (!z.ignoresWalls) {
+      World.forEachObstacleNear(z.x, z.y, z.r + TILE_SIZE, (o) => {
+        if (!o.walkable) resolveCircleRect(z, o);
+      });
+      for (const w of Game.walls) resolveCircleRect(z, w);
+      World.forEachActiveChest(z.x, z.y, (c) => { if (!c.opened) resolveCircleRect(z, c); });
+    }
     z.x = clamp(z.x, z.r, WORLD_W - z.r);
     z.y = clamp(z.y, z.r, WORLD_H - z.r);
 
@@ -1342,19 +1903,60 @@ function updateZombies(dt) {
       }
     }
 
-    // damage player on contact (small tolerance so the half-resolve doesn't
-    // gap the damage check on tightly touching frames)
+    // damage player on contact. Reaper has meleeReach so a scythe-arm hits
+    // over crates / from outside the regular contact ring. Spitter is
+    // ranged and shouldn't melee; gate by checking z.damage.
     z.hitCd -= dt;
     if (z.hitCd < 0) z.hitCd = 0;
-    if (Math.hypot(p.x - z.x, p.y - z.y) <= p.r + z.r + 1.5) {
-      if (z.hitCd <= 0) {
-        damagePlayer(z.damage);
-        z.hitCd = 0.6;
+    if (z.damage > 0) {
+      const reach = z.meleeReach ? z.meleeReach + p.r : p.r + z.r + 1.5;
+      if (Math.hypot(p.x - z.x, p.y - z.y) <= reach) {
+        if (z.hitCd <= 0) {
+          damagePlayer(z.damage, z);
+          z.hitCd = 0.6;
+        }
       }
     }
 
     // groan occasionally
     if (Math.random() < 0.002) Audio.sfx.groan();
+  }
+}
+
+// ---------- Zombie projectiles (spitter goo) ----------
+function updateZombieProjectiles(dt) {
+  if (!Game.zombieProjectiles) return;
+  const p = Game.player;
+  for (let i = Game.zombieProjectiles.length - 1; i >= 0; i--) {
+    const pr = Game.zombieProjectiles[i];
+    pr.x += pr.vx * dt; pr.y += pr.vy * dt;
+    pr.life -= dt;
+    // trail
+    if (Math.random() < 0.6) {
+      Game.particles.push({
+        x: pr.x, y: pr.y,
+        vx: rand(-30, 30), vy: rand(-30, 30),
+        life: 0.3, color: '#a4c45a', r: rand(1.5, 3),
+      });
+    }
+    let consumed = false;
+    // player hit
+    if (!p.dead && Math.hypot(p.x - pr.x, p.y - pr.y) < p.r + 4) {
+      damagePlayer(pr.damage, pr.owner);
+      consumed = true;
+    }
+    // obstacle hit
+    if (!consumed) {
+      World.forEachObstacleNear(pr.x, pr.y, TILE_SIZE, (o) => {
+        if (consumed || o.walkable) return;
+        if (circleRectCollide(pr.x, pr.y, 3, o.x, o.y, o.w, o.h)) consumed = true;
+      });
+    }
+    if (consumed || pr.life <= 0) {
+      // splash a small toxic puddle wherever the projectile died.
+      spawnPuddle(pr.x, pr.y, 36, 2.2, 'toxic');
+      Game.zombieProjectiles.splice(i, 1);
+    }
   }
 }
 
@@ -1392,6 +1994,8 @@ function applyPickup(type) {
   const p = Game.player;
   switch (type) {
     case 'health': p.hp = Math.min(p.maxHp, p.hp + 35); setNotice('+35 HP', 1.5); break;
+    case 'ammo_pistol':
+      p.ammo.pistol.reserve += 24; setNotice('+24 pistol rounds', 1.5); break;
     case 'ammo_shotgun':
       if (!p.unlocked.shotgun) unlockWeapon('shotgun', 12, 'SHOTGUN PICKED UP');
       p.ammo.shotgun.reserve += 12; setNotice('+12 shells', 1.5); break;
@@ -1553,8 +2157,10 @@ function tick(dt) {
   for (let i = 0; i < Game.zombies.length; i++) Spatial.insert(Game.zombies[i]);
   NAV.update(dt);
   updateZombies(dt);
+  updateZombieProjectiles(dt);
   updateBullets(dt);
   updateRockets(dt);
+  updatePuddles(dt);
   updateBarrels(dt);
   updatePickups(dt);
   updateExplosions(dt);

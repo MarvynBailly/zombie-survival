@@ -1,45 +1,109 @@
 'use strict';
 
-// Auto-pilot bot. Phase 1: read-only perception + debug overlay.
-// Toggle with B. Console hook: window.bot.
+// Auto-pilot bot. State-machine architecture: one mode per frame, one
+// movement intent. No force blending. Toggle with B. Console hook: window.bot.
 //
-// Loaded as a classic <script> after ui.js, so it shares the global lexical
-// scope with the rest of the game (Game, World, NAV, Spatial, ctx, dist2,
-// WEAPONS, ZOMBIES, DAY_PHASES, input, ...). render() is a function
-// declaration, so it lives on window and can be monkey-patched.
+// Loaded as a classic <script> after ui.js so it shares global lexical scope
+// with the rest of the game (Game, World, NAV, Spatial, ctx, dist2, WEAPONS,
+// ZOMBIES, DAY_PHASES, TICK_DT, input, findChestNear, findNearestUndiscoveredPOI,
+// CHEST_PROMPT_RADIUS, ...). render() is a top-level function declaration, so
+// it lives on window and we monkey-patch it to draw the debug overlay.
+
+// ----------------------------------------------------------------------------
+// Tunables
+// ----------------------------------------------------------------------------
+
+// Vision: bot can only "see" what's inside the camera viewport. Zombies also
+// require an unobstructed line of sight from the player. Chests and pickups
+// are visible if on-screen (no LOS gate — you can spot loot through a slim
+// gap).
+const BOT_VIEW_MARGIN  = 8;
+const BOT_QUERY_RADIUS = 720;   // spatial-hash prefilter (px)
+
+// Mode triggers
+const EVADE_RADIUS    = 70;     // any zombie this close -> drop everything and flee
+const ENGAGE_RADIUS   = 360;    // visible zombie closer than this -> ATTACK
+const STUCK_WINDOW    = 1.5;    // seconds of position history we keep
+const STUCK_MIN_MOVE  = 35;     // px displacement under this in window -> stuck++
+const STUCK_TRIGGER   = 0.7;    // seconds stuck before we react (unstuck or sidestep)
+const SIDESTEP_DUR    = 0.5;    // seconds we hold a sidestep direction
+
+// Goal-rooted BFS: rebuild every 0.5s or when NAV recenters.
+const BOT_GF_REBUILD  = 0.5;
+
+// Mode priority (higher wins if both modes ask to be active).
+const MODE_PRI = {
+  evade: 5, unstuck: 4, attack: 3, sidestep: 2, travel: 1, idle: 0,
+};
+// Minimum time a mode stays active before a lower-or-equal priority mode can
+// preempt it. Prevents single-frame flicker.
+const MODE_MIN_DUR = {
+  evade: 0.30, unstuck: 0.30, attack: 0.35, sidestep: SIDESTEP_DUR, travel: 0.20, idle: 0.00,
+};
+
+// ----------------------------------------------------------------------------
+// State
+// ----------------------------------------------------------------------------
 
 const Bot = {
   enabled: false,
   state: {
+    // Perception
     phase: 'day',
     secondsToDusk: 0,
+    nearbyZombies: [],         // visible (viewport + LOS), sorted by distance
     nearestThreat: null,
-    threatCount: 0,
     losToTarget: false,
-    nearestChests: [],
+    threatCount: 0,
+    nearestChests: [],         // [{c, cx, cy, d2}]
     nearestPickups: [],
-    aimX: 0, aimY: 0,    // world-space lead-aim point
+
+    // Plan
+    travelGoal: null,          // {x, y, ref, reason}
+    travelGoalReason: '',
+    stuckT: 0,
+    unstuckRef: null,          // breakable target found by ray-cast
+
+    // Current intent (one decision per frame)
+    mode: 'idle',
+    modeUntilT: 0,
+    intent: null,              // {mode, moveDir, fireAt, weaponSlot, interact}
+    sidestepDirX: 0, sidestepDirY: 0,
+
+    // Diagnostics for overlay
+    aimX: 0, aimY: 0,
     firing: false,
-    fireReason: '',      // why fire decision came out true/false
-    nearbyZombies: [],   // sorted by distance, used by steering
-    moveX: 0, moveY: 0,  // steering force vector (world units, not normalized)
-    standoff: 280,       // preferred distance from target for current weapon
+    fireReason: '',
   },
-  // Keys we asked the game to hold down on the previous frame. We only ever
-  // touch these — the human's other keypresses are left alone — and we diff
-  // against this set so we don't leak presses when we change our mind.
+  // Keys we asked the game to hold down on the previous frame; we diff against
+  // this set so the human's keys are never touched.
   _heldKeys: new Set(),
+  // Position samples for stuck detection: {t, x, y}.
+  _posSamples: [],
+  // Goal-rooted flow field — our own BFS over NAV.blocked from the travel
+  // goal. NAV's own dist points zombies AT the player so we can't reuse it.
+  _gf: {
+    dist: null,
+    cols: 0, rows: 0,
+    originX: 0, originY: 0,
+    goalX: 0, goalY: 0,
+    rebuildT: 0,
+  },
 };
 
-function botPhaseLengthByName(name) {
-  for (let i = 0; i < DAY_PHASES.length; i++) {
-    if (DAY_PHASES[i].name === name) return DAY_PHASES[i].length;
-  }
-  return 0;
+// ----------------------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------------------
+
+function _botInView(x, y) {
+  const vx = x - Game.camera.x, vy = y - Game.camera.y;
+  return vx >= -BOT_VIEW_MARGIN && vy >= -BOT_VIEW_MARGIN
+      && vx <= VIEW_W + BOT_VIEW_MARGIN
+      && vy <= VIEW_H + BOT_VIEW_MARGIN;
 }
 
-// Seconds remaining until the next 'dusk' phase begins. The cycle order is
-// day -> dusk -> night -> dawn, so the answer depends on where we are in it.
+// Seconds remaining until the next 'dusk' phase begins. Useful for "head
+// home" timing later; for now it's a debug readout.
 function botSecondsToDusk() {
   const t = Game.time.t;
   let acc = 0;
@@ -47,11 +111,9 @@ function botSecondsToDusk() {
     const ph = DAY_PHASES[i];
     if (ph.name === 'dusk') {
       if (t <= acc) return acc - t;
-      // already past dusk this day; report time to next day's dusk
     }
     acc += ph.length;
   }
-  // Past dusk: time = remainder of cycle + dusk-start offset of next day
   const cycle = DAY_LENGTH;
   let duskStart = 0;
   for (let i = 0; i < DAY_PHASES.length; i++) {
@@ -61,25 +123,197 @@ function botSecondsToDusk() {
   return (cycle - t) + duskStart;
 }
 
-// Vision model: the bot can only "see" what's currently inside the viewport,
-// and zombies further require an unobstructed line of sight (cover behind a
-// wall hides them). This caps the bot's perception to roughly what a human
-// player sees through the screen.
-//
-// VIEW_MARGIN extends the viewport slightly so entities right at the edge
-// aren't lost when the player twitches; positive margin == more generous.
-const BOT_VIEW_MARGIN = 8;
-// Spatial.query radius prefilter — viewport diagonal is sqrt(1024^2+768^2)
-// ≈ 1280, but the player sits near the center most of the time so a tighter
-// 700 prefilter is enough; the viewport check below is the source of truth.
-const BOT_QUERY_RADIUS = 720;
+// ----------------------------------------------------------------------------
+// Goal-rooted flow field (BFS on NAV.blocked from the travel goal)
+// ----------------------------------------------------------------------------
 
-function _botInView(x, y) {
-  const vx = x - Game.camera.x, vy = y - Game.camera.y;
-  return vx >= -BOT_VIEW_MARGIN && vy >= -BOT_VIEW_MARGIN
-      && vx <= VIEW_W + BOT_VIEW_MARGIN
-      && vy <= VIEW_H + BOT_VIEW_MARGIN;
-}
+Bot._buildGoalFlow = function (goalX, goalY) {
+  if (!NAV.blocked) return false;
+  const cols = NAV.cols, rows = NAV.rows, cs = NAV.cellSize;
+  const ox = NAV.originX, oy = NAV.originY;
+  const n = cols * rows;
+  const gf = this._gf;
+  if (!gf.dist || gf.dist.length !== n) gf.dist = new Int32Array(n);
+  gf.cols = cols; gf.rows = rows; gf.originX = ox; gf.originY = oy;
+
+  let gx = Math.max(0, Math.min(cols - 1, Math.floor((goalX - ox) / cs)));
+  let gy = Math.max(0, Math.min(rows - 1, Math.floor((goalY - oy) / cs)));
+  let goalIdx = gy * cols + gx;
+  if (NAV.blocked[goalIdx]) {
+    let best = -1, bestD = Infinity;
+    for (let r = 1; r <= 8 && best < 0; r++) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+          const nx = gx + dx, ny = gy + dy;
+          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+          const ni = ny * cols + nx;
+          if (NAV.blocked[ni]) continue;
+          const d = dx * dx + dy * dy;
+          if (d < bestD) { bestD = d; best = ni; }
+        }
+      }
+    }
+    if (best < 0) { gf.dist.fill(-1); return false; }
+    goalIdx = best;
+  }
+  const dist = gf.dist;
+  dist.fill(-1);
+  dist[goalIdx] = 0;
+  const queue = [goalIdx];
+  let head = 0;
+  while (head < queue.length) {
+    const idx = queue[head++];
+    const cx = idx % cols, cy = (idx / cols) | 0;
+    const d = dist[idx] + 1;
+    if (cx > 0)        { const ni = idx - 1;    if (dist[ni] < 0 && !NAV.blocked[ni]) { dist[ni] = d; queue.push(ni); } }
+    if (cx < cols - 1) { const ni = idx + 1;    if (dist[ni] < 0 && !NAV.blocked[ni]) { dist[ni] = d; queue.push(ni); } }
+    if (cy > 0)        { const ni = idx - cols; if (dist[ni] < 0 && !NAV.blocked[ni]) { dist[ni] = d; queue.push(ni); } }
+    if (cy < rows - 1) { const ni = idx + cols; if (dist[ni] < 0 && !NAV.blocked[ni]) { dist[ni] = d; queue.push(ni); } }
+  }
+  gf.goalX = goalX; gf.goalY = goalY;
+  gf.rebuildT = BOT_GF_REBUILD;
+  return true;
+};
+
+Bot._goalFlowDir = function (x, y) {
+  const gf = this._gf;
+  if (!gf.dist) return null;
+  const cs = NAV.cellSize, cols = gf.cols, rows = gf.rows, ox = gf.originX, oy = gf.originY;
+  if (x < ox || y < oy || x >= ox + cols * cs || y >= oy + rows * cs) return null;
+  const cx = ((x - ox) / cs) | 0, cy = ((y - oy) / cs) | 0;
+  const idx = cy * cols + cx;
+  let myD = gf.dist[idx];
+  if (myD < 0) myD = 1e9;
+  let bestCost = myD, bestDx = 0, bestDy = 0;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+      const ni = ny * cols + nx;
+      const d = gf.dist[ni];
+      if (d < 0) continue;
+      if (dx !== 0 && dy !== 0) {
+        if (NAV.blocked[cy * cols + nx] || NAV.blocked[ny * cols + cx]) continue;
+      }
+      const cost = d + (dx !== 0 && dy !== 0 ? 0.4 : 0);
+      if (cost < bestCost) { bestCost = cost; bestDx = dx; bestDy = dy; }
+    }
+  }
+  if (bestDx === 0 && bestDy === 0) return null;
+  const l = Math.hypot(bestDx, bestDy);
+  return [bestDx / l, bestDy / l];
+};
+
+// ----------------------------------------------------------------------------
+// Weapon selection
+// ----------------------------------------------------------------------------
+
+// Pick a combat slot ('1'..'4') that has ammo and suits the situation.
+Bot._pickWeaponSlot = function (p) {
+  const u = p.unlocked, a = p.ammo;
+  const has = (k) => u[k] && a[k] && ((a[k].mag || 0) > 0 || (a[k].reserve || 0) > 0 || WEAPONS[k].magSize === Infinity);
+  const target = this.state.nearestThreat;
+  const tdist = target ? Math.hypot(target.x - p.x, target.y - p.y) : Infinity;
+  const isTank = target && target.type === 'tank';
+
+  if (isTank && has('rocket') && tdist > (WEAPONS.rocket.explodeRadius + 80)) return '4';
+  if (target && tdist < 160 && has('shotgun')) return '2';
+  if (has('smg')) return '3';
+  if (has('pistol')) return '1';
+  if (has('shotgun')) return '2';
+  if (has('rocket') && tdist > (WEAPONS.rocket.explodeRadius + 80)) return '4';
+  return null;
+};
+
+// Pick a wall-shooting slot. No rocket (self-damage), no placers, prefer
+// cheap ammo (pistol > SMG > shotgun).
+Bot._pickWallSlot = function (p) {
+  const u = p.unlocked, a = p.ammo;
+  const has = (k) => u[k] && a[k] && ((a[k].mag || 0) > 0 || (a[k].reserve || 0) > 0 || WEAPONS[k].magSize === Infinity);
+  if (has('pistol'))  return '1';
+  if (has('smg'))     return '3';
+  if (has('shotgun')) return '2';
+  return null;
+};
+
+// ----------------------------------------------------------------------------
+// Stuck detection + breakable ray-cast
+// ----------------------------------------------------------------------------
+
+Bot._updateStuck = function (p) {
+  const t = now();
+  const samples = this._posSamples;
+  samples.push({ t, x: p.x, y: p.y });
+  while (samples.length && samples[0].t < t - STUCK_WINDOW) samples.shift();
+
+  // Only count stuck time when the bot was *trying* to move last frame —
+  // intent.moveDir was non-null.
+  const intent = this.state.intent;
+  const wantedMove = intent && intent.moveDir;
+  if (!wantedMove) { this.state.stuckT = 0; return; }
+
+  if (samples.length < 4 || (t - samples[0].t) < (STUCK_WINDOW - 0.3)) return;
+  const oldest = samples[0];
+  const moved = Math.hypot(p.x - oldest.x, p.y - oldest.y);
+  if (moved < STUCK_MIN_MOVE) this.state.stuckT += TICK_DT;
+  else this.state.stuckT = 0;
+};
+
+// Ray-march from just outside the player along (dirX, dirY) for up to ~120 px
+// looking for the first breakable obstacle (player wall or world obstacle
+// with maxHp and not indestructible). Returns {x, y, kind, ref} or null.
+Bot._findStuckBreakable = function (p, dirX, dirY) {
+  if (dirX === 0 && dirY === 0) return null;
+  const stepLen = 8, maxDist = 120;
+  for (let d = p.r + 4; d <= maxDist; d += stepLen) {
+    const sx = p.x + dirX * d;
+    const sy = p.y + dirY * d;
+    for (let i = 0; i < Game.walls.length; i++) {
+      const w = Game.walls[i];
+      if (sx >= w.x && sx <= w.x + w.w && sy >= w.y && sy <= w.y + w.h) {
+        return { x: w.x + w.w / 2, y: w.y + w.h / 2, kind: 'wall', ref: w };
+      }
+    }
+    let hit = null;
+    World.forEachObstacleNear(sx, sy, 4, (o) => {
+      if (hit) return;
+      if (!o.maxHp || o.indestructible || o.dead) return;
+      if (sx >= o.x && sx <= o.x + o.w && sy >= o.y && sy <= o.y + o.h) {
+        hit = { x: o.x + o.w / 2, y: o.y + o.h / 2, kind: 'obstacle', ref: o };
+      }
+    });
+    if (hit) return hit;
+  }
+  return null;
+};
+
+// ----------------------------------------------------------------------------
+// Travel goal
+// ----------------------------------------------------------------------------
+
+// What does the bot WANT to walk toward? Visible chest > visible pickup >
+// nearest undiscovered POI (same compass the player sees). Returns null when
+// idle. Combat doesn't use this — ATTACK reads nearestThreat directly.
+Bot._chooseTravelGoal = function (p) {
+  const st = this.state;
+  if (st.nearestChests.length) {
+    const c = st.nearestChests[0];
+    return { x: c.cx, y: c.cy, ref: c.c, reason: 'visible-chest' };
+  }
+  if (st.nearestPickups.length) {
+    const pk = st.nearestPickups[0];
+    return { x: pk.x, y: pk.y, ref: pk, reason: 'visible-pickup' };
+  }
+  const poi = findNearestUndiscoveredPOI(p.x, p.y);
+  if (poi) return { x: poi.centerX, y: poi.centerY, ref: poi, reason: 'compass-poi' };
+  return null;
+};
+
+// ----------------------------------------------------------------------------
+// Perceive: gather game state, choose travel goal, update stuck timer.
+// ----------------------------------------------------------------------------
 
 Bot.perceive = function () {
   const p = Game.player;
@@ -89,9 +323,7 @@ Bot.perceive = function () {
   st.phase = Game.time.phase;
   st.secondsToDusk = botSecondsToDusk();
 
-  // Zombies: must be inside the viewport AND have unobstructed LOS from the
-  // player. The spatial hash gives us a cheap prefilter; the viewport + LOS
-  // checks gate everything we actually "see".
+  // Visible zombies (viewport + LOS).
   const scan = Spatial.query(p.x, p.y, BOT_QUERY_RADIUS, []);
   const zs = [];
   for (let i = 0; i < scan.length; i++) {
@@ -102,19 +334,12 @@ Bot.perceive = function () {
     zs.push(e);
   }
   zs.sort((a, b) => dist2(a, p) - dist2(b, p));
-  st.threatCount = zs.length;
   st.nearbyZombies = zs;
+  st.threatCount = zs.length;
+  st.nearestThreat = zs.length ? zs[0] : null;
+  st.losToTarget = !!st.nearestThreat;
 
-  // Target = nearest visible zombie. Since the visibility filter already
-  // required LOS, the first entry is by definition shootable; the losToTarget
-  // flag stays for downstream consumers that read it.
-  const target = zs.length ? zs[0] : null;
-  st.nearestThreat = target;
-  st.losToTarget = !!target;
-
-  // Chests: visible if on-screen (no LOS gate; you can spot a chest behind
-  // partial cover). Active-chest iteration is bounded to the active region,
-  // but the viewport is much smaller, so filter explicitly.
+  // Visible chests.
   const chests = [];
   World.forEachActiveChest(p.x, p.y, (c) => {
     if (c.opened) return;
@@ -127,7 +352,7 @@ Bot.perceive = function () {
   chests.sort((a, b) => a.d2 - b.d2);
   st.nearestChests = chests.slice(0, 6);
 
-  // Pickups: visible if on-screen.
+  // Visible pickups.
   const pickups = [];
   const allPickups = Game.pickups || [];
   for (let i = 0; i < allPickups.length; i++) {
@@ -137,6 +362,295 @@ Bot.perceive = function () {
   }
   pickups.sort((a, b) => dist2(a, p) - dist2(b, p));
   st.nearestPickups = pickups.slice(0, 8);
+
+  // Travel goal.
+  const goal = this._chooseTravelGoal(p);
+  st.travelGoal = goal;
+  st.travelGoalReason = goal ? goal.reason : '';
+
+  // Stuck timer (uses last frame's intent).
+  this._updateStuck(p);
+
+  // Pre-compute unstuck target if we're stuck. Ray toward the travel goal.
+  st.unstuckRef = null;
+  if (st.stuckT > STUCK_TRIGGER && goal) {
+    let dx = goal.x - p.x, dy = goal.y - p.y;
+    const dd = Math.hypot(dx, dy) || 1;
+    const br = this._findStuckBreakable(p, dx / dd, dy / dd);
+    if (br) st.unstuckRef = br;
+  }
+
+  // Rebuild goal flow when goal exists and either the NAV window moved, the
+  // goal cell shifted, or the periodic timer fired.
+  if (goal) {
+    const gf = this._gf;
+    const cs = NAV.cellSize;
+    const windowMoved = gf.originX !== NAV.originX || gf.originY !== NAV.originY;
+    const goalMoved =
+      gf.cols === 0 ||
+      Math.floor((goal.x - NAV.originX) / cs) !== Math.floor((gf.goalX - gf.originX) / cs) ||
+      Math.floor((goal.y - NAV.originY) / cs) !== Math.floor((gf.goalY - gf.originY) / cs);
+    gf.rebuildT -= TICK_DT;
+    if (!gf.dist || windowMoved || goalMoved || gf.rebuildT <= 0) {
+      this._buildGoalFlow(goal.x, goal.y);
+    }
+  }
+};
+
+// ----------------------------------------------------------------------------
+// Decide: pick a mode and emit a single Intent.
+// ----------------------------------------------------------------------------
+
+Bot._decide = function (p) {
+  const st = this.state;
+  const tNow = now();
+  const z0 = st.nearestThreat;
+  const d0 = z0 ? Math.hypot(z0.x - p.x, z0.y - p.y) : Infinity;
+
+  // Desired mode (before hysteresis).
+  let desired;
+  if (z0 && d0 < EVADE_RADIUS) {
+    desired = 'evade';
+  } else if (st.stuckT > STUCK_TRIGGER && st.unstuckRef) {
+    desired = 'unstuck';
+  } else if (z0 && d0 < ENGAGE_RADIUS && this._pickWeaponSlot(p)) {
+    desired = 'attack';
+  } else if (st.travelGoal) {
+    // Stuck with no breakable in the way -> try a perpendicular sidestep.
+    if (st.stuckT > STUCK_TRIGGER + 0.3 && !st.unstuckRef) desired = 'sidestep';
+    else desired = 'travel';
+  } else {
+    desired = 'idle';
+  }
+
+  // Hysteresis: switch immediately to a higher-priority mode; otherwise wait
+  // out the min duration so we don't flicker.
+  if (st.mode !== desired) {
+    const higher = MODE_PRI[desired] > MODE_PRI[st.mode];
+    if (higher || tNow >= st.modeUntilT) {
+      st.mode = desired;
+      st.modeUntilT = tNow + (MODE_MIN_DUR[desired] || 0);
+      // SIDESTEP picks its direction at mode-entry and holds it.
+      if (desired === 'sidestep') {
+        const flow = this._goalFlowDir(p.x, p.y);
+        let fx = 1, fy = 0;
+        if (flow) { fx = flow[0]; fy = flow[1]; }
+        else if (st.travelGoal) {
+          const ddx = st.travelGoal.x - p.x, ddy = st.travelGoal.y - p.y;
+          const ll = Math.hypot(ddx, ddy) || 1;
+          fx = ddx / ll; fy = ddy / ll;
+        }
+        // Perpendicular, random side. NAV-aware: if one side is blocked, pick the other.
+        let side = Math.random() < 0.5 ? 1 : -1;
+        const px = -fy * side, py = fx * side;
+        if (NAV.blocked && NAV.inWindow(p.x, p.y)) {
+          const probe = NAV.cellSize * 1.5;
+          const ax = p.x + px * probe, ay = p.y + py * probe;
+          const bx = p.x - px * probe, by_ = p.y - py * probe;
+          const aBlk = NAV.inWindow(ax, ay) && NAV.blocked[NAV.cy(ay) * NAV.cols + NAV.cx(ax)];
+          const bBlk = NAV.inWindow(bx, by_) && NAV.blocked[NAV.cy(by_) * NAV.cols + NAV.cx(bx)];
+          if (aBlk && !bBlk) side = -side;
+        }
+        st.sidestepDirX = -fy * side;
+        st.sidestepDirY =  fx * side;
+      }
+    }
+  }
+
+  // Emit intent for current mode.
+  const intent = { mode: st.mode, moveDir: null, fireAt: null, weaponSlot: null, interact: false };
+
+  // Loot interact (overlays on whatever else is happening).
+  if (findChestNear(p.x, p.y, CHEST_PROMPT_RADIUS)) intent.interact = true;
+
+  switch (st.mode) {
+    case 'evade': {
+      // Inverse-square weighted centroid of nearby zombies; flee directly away.
+      let cx = 0, cy = 0, ws = 0;
+      for (let i = 0; i < st.nearbyZombies.length; i++) {
+        const z = st.nearbyZombies[i];
+        const dd = Math.hypot(p.x - z.x, p.y - z.y);
+        if (dd > EVADE_RADIUS * 1.6) continue;
+        const w = 1 / Math.max(20, dd * dd);
+        cx += z.x * w; cy += z.y * w; ws += w;
+      }
+      if (ws > 0) {
+        cx /= ws; cy /= ws;
+        const fx = p.x - cx, fy = p.y - cy;
+        const fl = Math.hypot(fx, fy) || 1;
+        intent.moveDir = { x: fx / fl, y: fy / fl };
+      }
+      // No firing during EVADE — focus on escape.
+      break;
+    }
+    case 'unstuck': {
+      const w = st.unstuckRef;
+      const wx = w.x, wy = w.y;
+      intent.fireAt = { x: wx, y: wy };
+      intent.weaponSlot = this._pickWallSlot(p);
+      // No movement — stand and shoot.
+      break;
+    }
+    case 'attack': {
+      const t = st.nearestThreat;
+      if (t) {
+        intent.weaponSlot = this._pickWeaponSlot(p);
+        const weap = WEAPONS[intent.weaponSlot ? WEAPON_ORDER[parseInt(intent.weaponSlot, 10) - 1] : p.weapon];
+        const bs = (weap && weap.bulletSpeed) || 900;
+        const dd = Math.hypot(t.x - p.x, t.y - p.y);
+        const tt = dd / bs;
+        intent.fireAt = { x: t.x + (t.vx || 0) * tt, y: t.y + (t.vy || 0) * tt };
+      }
+      // No movement during ATTACK — accuracy first. EVADE preempts if a
+      // zombie closes inside EVADE_RADIUS.
+      break;
+    }
+    case 'sidestep': {
+      intent.moveDir = { x: st.sidestepDirX, y: st.sidestepDirY };
+      break;
+    }
+    case 'travel': {
+      const flow = this._goalFlowDir(p.x, p.y);
+      if (flow) {
+        intent.moveDir = { x: flow[0], y: flow[1] };
+      } else if (st.travelGoal) {
+        const dx = st.travelGoal.x - p.x, dy = st.travelGoal.y - p.y;
+        const dd = Math.hypot(dx, dy) || 1;
+        intent.moveDir = { x: dx / dd, y: dy / dd };
+      }
+      break;
+    }
+    case 'idle':
+    default:
+      break;
+  }
+
+  return intent;
+};
+
+// ----------------------------------------------------------------------------
+// Apply an Intent: write input.mouseX/Y, mouseDown, and key presses.
+// ----------------------------------------------------------------------------
+
+Bot._applyKeys = function (want) {
+  for (const k of this._heldKeys) {
+    if (!want.has(k)) input.keys.delete(k);
+  }
+  for (const k of want) input.keys.add(k);
+  this._heldKeys = want;
+};
+
+Bot._applyIntent = function (p, intent) {
+  const st = this.state;
+  const want = new Set();
+
+  // Weapon switch first so subsequent fire checks see the new weapon when
+  // the game's update loop reads input next tick.
+  if (intent.weaponSlot) {
+    const desiredKey = WEAPON_ORDER[parseInt(intent.weaponSlot, 10) - 1];
+    if (p.weapon !== desiredKey) want.add(intent.weaponSlot);
+  }
+
+  // Interact (E) — loot a chest underfoot.
+  if (intent.interact) want.add('e');
+
+  // Movement: 8-way mapping with 0.35 threshold to avoid jitter on near-axis vectors.
+  if (intent.moveDir) {
+    const nx = intent.moveDir.x, ny = intent.moveDir.y;
+    if (nx >  0.35) want.add('d');
+    if (nx < -0.35) want.add('a');
+    if (ny >  0.35) want.add('s');
+    if (ny < -0.35) want.add('w');
+  }
+
+  // Aim + fire.
+  if (intent.fireAt) {
+    st.aimX = intent.fireAt.x;
+    st.aimY = intent.fireAt.y;
+    input.mouseX = intent.fireAt.x - Game.camera.x;
+    input.mouseY = intent.fireAt.y - Game.camera.y;
+
+    const weap = WEAPONS[p.weapon];
+    const dx = intent.fireAt.x - p.x, dy = intent.fireAt.y - p.y;
+    const dist = Math.hypot(dx, dy);
+    const inRange = dist <= (weap.bulletRange || 900) * 0.95;
+    // Unstuck mode aims at a wall — LOS will be blocked BY that wall, so skip
+    // the LOS check; bullets damage walls on contact anyway.
+    const losClear = (intent.mode === 'unstuck') ? true
+                     : NAV.hasLOS(p.x, p.y, intent.fireAt.x, intent.fireAt.y);
+    const safeAoE = !weap.isRocket || dist > (weap.explodeRadius + 60);
+    const ammo = p.ammo[p.weapon];
+    const hasShot = ammo && (ammo.mag > 0 || weap.magSize === Infinity);
+    const placerCantShoot = !!weap.isPlacer;
+
+    const shouldFire = inRange && losClear && safeAoE && hasShot && !placerCantShoot;
+    st.firing = shouldFire;
+    st.fireReason = shouldFire ? 'fire'
+                  : placerCantShoot ? 'placer'
+                  : !inRange ? 'out-of-range'
+                  : !losClear ? 'no-los'
+                  : !safeAoE ? 'rocket-self'
+                  : !hasShot ? 'empty'
+                  : 'cooldown';
+    input.mouseDown = shouldFire;
+  } else {
+    input.mouseDown = false;
+    st.firing = false;
+    st.fireReason = 'no-fire';
+  }
+
+  // Reload logic. The game's auto-reload-on-empty fires only when mouseDown
+  // is held, but our fire gate drops mouseDown the moment mag hits 0, so we
+  // have to drive the reload ourselves:
+  //   - Always reload when current weapon's mag is empty + reserve has rounds.
+  //   - Opportunistically top off below half during non-combat modes so the
+  //     next ATTACK opens with a full clip.
+  {
+    const weap = WEAPONS[p.weapon];
+    const a = p.ammo[p.weapon];
+    if (weap && weap.magSize !== Infinity && a && a.reserve > 0 && p.reloading <= 0 && a.mag < weap.magSize) {
+      const offCombat = intent.mode === 'travel' || intent.mode === 'idle' || intent.mode === 'sidestep';
+      if (a.mag === 0 || (offCombat && a.mag < weap.magSize / 2)) {
+        want.add('r');
+      }
+    }
+  }
+
+  this._applyKeys(want);
+};
+
+// ----------------------------------------------------------------------------
+// Act: top-level driver
+// ----------------------------------------------------------------------------
+
+Bot.act = function () {
+  if (!this.enabled || Game.mode !== 'playing') {
+    this._applyKeys(new Set());
+    input.mouseDown = false;
+    return;
+  }
+  const p = Game.player;
+  if (!p || p.dead) {
+    this._applyKeys(new Set());
+    input.mouseDown = false;
+    return;
+  }
+  const intent = this._decide(p);
+  this.state.intent = intent;
+  this._applyIntent(p, intent);
+};
+
+// ----------------------------------------------------------------------------
+// Overlay
+// ----------------------------------------------------------------------------
+
+const MODE_COLOR = {
+  evade:    '#ff44aa',
+  unstuck:  '#ff44aa',
+  attack:   '#e35a2a',
+  sidestep: '#ffd24b',
+  travel:   '#5be3a4',
+  idle:     '#7a7e88',
 };
 
 Bot.draw = function () {
@@ -149,72 +663,49 @@ Bot.draw = function () {
 
   ctx.save();
 
-  // Threat ring around player (200px reference).
-  ctx.strokeStyle = 'rgba(226,80,80,0.35)';
+  // EVADE / ATTACK / engage rings for reference.
+  ctx.strokeStyle = 'rgba(226,80,80,0.45)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.arc(p.x - cam.x, p.y - cam.y, 200, 0, Math.PI * 2);
+  ctx.arc(p.x - cam.x, p.y - cam.y, EVADE_RADIUS, 0, Math.PI * 2);
   ctx.stroke();
-
-  // Standoff ring (cyan): preferred distance for current weapon.
-  ctx.strokeStyle = 'rgba(120,210,230,0.25)';
-  ctx.setLineDash([3, 5]);
+  ctx.strokeStyle = 'rgba(226,140,80,0.20)';
   ctx.beginPath();
-  ctx.arc(p.x - cam.x, p.y - cam.y, st.standoff, 0, Math.PI * 2);
+  ctx.arc(p.x - cam.x, p.y - cam.y, ENGAGE_RADIUS, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.setLineDash([]);
 
-  // Steering vector arrow.
-  const mvm = Math.hypot(st.moveX, st.moveY);
-  if (mvm > 8) {
-    const k = Math.min(80, mvm) / mvm;
-    const ex = p.x - cam.x + st.moveX * k * 0.8;
-    const ey = p.y - cam.y + st.moveY * k * 0.8;
-    ctx.strokeStyle = '#7ad97a';
-    ctx.lineWidth = 2;
+  // Move-intent arrow.
+  if (st.intent && st.intent.moveDir) {
+    const ex = p.x - cam.x + st.intent.moveDir.x * 60;
+    const ey = p.y - cam.y + st.intent.moveDir.y * 60;
+    ctx.strokeStyle = MODE_COLOR[st.mode] || '#7ad97a';
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.moveTo(p.x - cam.x, p.y - cam.y);
     ctx.lineTo(ex, ey);
     ctx.stroke();
-    ctx.fillStyle = '#7ad97a';
-    ctx.beginPath();
-    ctx.arc(ex, ey, 3, 0, Math.PI * 2);
-    ctx.fill();
   }
 
-  // Outer perception ring (700px).
-  ctx.strokeStyle = 'rgba(120,150,180,0.18)';
-  ctx.beginPath();
-  ctx.arc(p.x - cam.x, p.y - cam.y, 700, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Target line + ring + lead-aim marker.
-  if (st.nearestThreat) {
+  // Target ring + aim crosshair.
+  if (st.nearestThreat && (st.mode === 'attack' || st.mode === 'evade')) {
     const t = st.nearestThreat;
-    ctx.strokeStyle = st.losToTarget ? '#5be3a4' : '#e3a83a';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 4]);
-    ctx.beginPath();
-    ctx.moveTo(p.x - cam.x, p.y - cam.y);
-    ctx.lineTo(t.x - cam.x, t.y - cam.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
     ctx.strokeStyle = '#ff6464';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(t.x - cam.x, t.y - cam.y, (t.r || 12) + 5, 0, Math.PI * 2);
     ctx.stroke();
-    // Lead-aim crosshair (where the bot is actually pointing).
+  }
+  if (st.intent && st.intent.fireAt) {
+    const ax = st.aimX - cam.x, ay = st.aimY - cam.y;
     ctx.strokeStyle = st.firing ? '#ffea64' : '#9aa0a8';
     ctx.lineWidth = 1.5;
-    const ax = st.aimX - cam.x, ay = st.aimY - cam.y;
     ctx.beginPath();
     ctx.moveTo(ax - 7, ay); ctx.lineTo(ax + 7, ay);
     ctx.moveTo(ax, ay - 7); ctx.lineTo(ax, ay + 7);
     ctx.stroke();
   }
 
-  // Chest markers (top 3).
+  // Chest markers.
   ctx.fillStyle = 'rgba(91,227,164,0.55)';
   ctx.strokeStyle = 'rgba(91,227,164,0.9)';
   ctx.lineWidth = 1.5;
@@ -226,33 +717,68 @@ Bot.draw = function () {
     ctx.stroke();
   }
 
-  // Pickup markers (top 5, small).
-  ctx.fillStyle = 'rgba(120,200,255,0.7)';
-  for (let i = 0; i < st.nearestPickups.length && i < 5; i++) {
-    const pk = st.nearestPickups[i];
+  // Travel goal marker (on-screen or edge arrow).
+  if (st.travelGoal) {
+    const gx = st.travelGoal.x - cam.x, gy = st.travelGoal.y - cam.y;
+    const inView = gx >= 0 && gy >= 0 && gx <= VIEW_W && gy <= VIEW_H;
+    ctx.strokeStyle = '#caa760';
+    ctx.lineWidth = 1.2;
+    if (inView) {
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath();
+      ctx.moveTo(p.x - cam.x, p.y - cam.y);
+      ctx.lineTo(gx, gy);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(gx, gy, 11, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      const cx = VIEW_W / 2, cy = VIEW_H / 2;
+      const ang = Math.atan2(gy - cy, gx - cx);
+      const ex = clamp(cx + Math.cos(ang) * 350, 30, VIEW_W - 30);
+      const ey = clamp(cy + Math.sin(ang) * 250, 30, VIEW_H - 30);
+      ctx.beginPath();
+      ctx.arc(ex, ey, 6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(ex + Math.cos(ang) * 14, ey + Math.sin(ang) * 14);
+      ctx.stroke();
+    }
+  }
+
+  // Unstuck wall marker.
+  if (st.mode === 'unstuck' && st.unstuckRef) {
+    const w = st.unstuckRef.ref;
+    const wcx = w.x + (w.w || 40) / 2 - cam.x;
+    const wcy = w.y + (w.h || 40) / 2 - cam.y;
+    ctx.strokeStyle = '#ff44aa';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(pk.x - cam.x, pk.y - cam.y, 4, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.arc(wcx, wcy, 18, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   ctx.restore();
 
-  // Screen-space text panel.
+  // Text panel.
   ctx.save();
   ctx.font = '12px "JetBrains Mono", ui-monospace, monospace';
   ctx.textBaseline = 'top';
   const lines = [
-    `BOT v0.4  [B to toggle]  ENABLED  (aim+fire+move, vision=viewport+LOS)`,
+    `BOT v1.0  [B to toggle]  state-machine`,
     `day=${Game.time.day}  phase=${st.phase}  ->dusk=${st.secondsToDusk.toFixed(1)}s`,
     `hp=${Math.round(p.hp)}/${p.maxHp}  weapon=${p.weapon}  walls=${p.ammo.wall.reserve}`,
-    `visible threats=${st.threatCount}  target=${st.nearestThreat ? st.nearestThreat.type : 'none'}`,
+    `MODE=${st.mode.toUpperCase()}  goal=${st.travelGoalReason || '-'}  stuck=${(st.stuckT || 0).toFixed(1)}s`,
+    `threats=${st.threatCount}  nearest=${st.nearestThreat ? st.nearestThreat.type : '-'}`,
     `firing=${st.firing}  reason=${st.fireReason}`,
     `chests=${st.nearestChests.length}  pickups=${st.nearestPickups.length}`,
   ];
-  const w = 280, h = 14 * lines.length + 12;
+  const w = 320, h = 14 * lines.length + 12;
   ctx.fillStyle = 'rgba(7,8,10,0.78)';
   ctx.fillRect(8, 8, w, h);
-  ctx.strokeStyle = 'rgba(210,75,53,0.7)';
+  ctx.strokeStyle = MODE_COLOR[st.mode] || 'rgba(210,75,53,0.7)';
   ctx.strokeRect(8.5, 8.5, w - 1, h - 1);
   ctx.fillStyle = '#e8e6df';
   for (let i = 0; i < lines.length; i++) {
@@ -261,205 +787,13 @@ Bot.draw = function () {
   ctx.restore();
 };
 
-// Preferred standoff distance per weapon (px). Driven by weapon range/AoE
-// and bullet speed — shotguns want to be close, rockets far, pistol/SMG mid.
-const BOT_STANDOFF = {
-  pistol: 280, smg: 240, shotgun: 140, rocket: 480, barrel: 220, wall: 220,
-};
+// ----------------------------------------------------------------------------
+// Lifecycle + B-toggle + render hook
+// ----------------------------------------------------------------------------
 
-// Compute a desired steering vector in world units. Sum of:
-//  - per-zombie inverse-distance repulsion (panic zone + standoff backoff),
-//  - perpendicular strafe past the target while firing (kite),
-//  - repulsion from NAV-blocked cells (obstacles + player walls),
-//  - repulsion from the world boundary.
-// Returns {dx, dy}; caller maps to WASD via 8-way thresholds.
-Bot._steer = function (p) {
-  let dx = 0, dy = 0;
-  const st = this.state;
-  const zs = st.nearbyZombies;
-  const standoff = BOT_STANDOFF[p.weapon] || 250;
-  st.standoff = standoff;
-  const lowHp = p.hp < 35;
-
-  // Repel from every nearby zombie. Two regimes:
-  //   d < 100  : panic — strong push, scales with how close they are.
-  //   d < standoff : gentle backoff to maintain weapon's comfort range.
-  for (let i = 0; i < zs.length; i++) {
-    const z = zs[i];
-    const rdx = p.x - z.x, rdy = p.y - z.y;
-    const d = Math.hypot(rdx, rdy);
-    if (d < 1) continue;
-    const ux = rdx / d, uy = rdy / d;
-    // Heavier weight for fast zombies (runners) and tanks (big damage).
-    const tw = z.type === 'runner' ? 1.4 : (z.type === 'tank' ? 1.3 : 1.0);
-    if (d < 100) {
-      const k = (100 - d) * 6 * tw;
-      dx += ux * k; dy += uy * k;
-    } else if (d < standoff) {
-      const k = (standoff - d) * 0.5 * tw;
-      dx += ux * k; dy += uy * k;
-    }
-  }
-  if (lowHp) { dx *= 1.8; dy *= 1.8; }
-
-  // Strafe: while firing, move perpendicular to the target so we drift across
-  // the zombie's approach line instead of letting it close on us. Pick whichever
-  // side has open NAV cells.
-  const t = st.nearestThreat;
-  if (t && st.firing) {
-    const tx = t.x - p.x, ty = t.y - p.y;
-    const td = Math.hypot(tx, ty) || 1;
-    const px = -ty / td, py = tx / td;   // 90deg rotation
-    let side = 1;
-    if (NAV.blocked && NAV.inWindow(p.x, p.y)) {
-      const probe = NAV.cellSize * 1.5;
-      const ax = p.x + px * probe, ay = p.y + py * probe;
-      const bx = p.x - px * probe, by_ = p.y - py * probe;
-      const aBlk = NAV.inWindow(ax, ay) && NAV.blocked[NAV.cy(ay) * NAV.cols + NAV.cx(ax)];
-      const bBlk = NAV.inWindow(bx, by_) && NAV.blocked[NAV.cy(by_) * NAV.cols + NAV.cx(bx)];
-      if (aBlk && !bBlk) side = -1;
-      else if (!aBlk && bBlk) side = 1;
-      else side = (Math.floor(Game.elapsed / 1.5) % 2) ? 1 : -1;
-    }
-    dx += px * 35 * side;
-    dy += py * 35 * side;
-  }
-
-  // Avoid NAV-blocked cells around the bot (level obstacles + player walls).
-  if (NAV.blocked && NAV.inWindow(p.x, p.y)) {
-    const cs = NAV.cellSize, probe = 1.8;
-    for (let oy = -1; oy <= 1; oy++) {
-      for (let ox = -1; ox <= 1; ox++) {
-        if (ox === 0 && oy === 0) continue;
-        const sx = p.x + ox * cs * probe, sy = p.y + oy * cs * probe;
-        if (!NAV.inWindow(sx, sy)) continue;
-        if (NAV.blocked[NAV.cy(sy) * NAV.cols + NAV.cx(sx)]) {
-          dx -= ox * 70; dy -= oy * 70;
-        }
-      }
-    }
-  }
-
-  // World-edge repulsion (bot is way smaller than the 32k world but boundaries
-  // still matter near the spawn corner of the map).
-  const m = 120;
-  if (p.x < m)             dx += (m - p.x) * 2;
-  if (p.y < m)             dy += (m - p.y) * 2;
-  if (WORLD_W - p.x < m)   dx -= (m - (WORLD_W - p.x)) * 2;
-  if (WORLD_H - p.y < m)   dy -= (m - (WORLD_H - p.y)) * 2;
-
-  return { dx, dy };
-};
-
-// Apply a desired key set, diffed against the previous frame. Bot only ever
-// adds/removes keys it has previously claimed; anything the human is holding
-// is left as-is.
-Bot._applyKeys = function (want) {
-  for (const k of this._heldKeys) {
-    if (!want.has(k)) input.keys.delete(k);
-  }
-  for (const k of want) input.keys.add(k);
-  this._heldKeys = want;
-};
-
-// Decide aim + fire + (optional) weapon switch / reload. Phase 2: no movement.
-Bot.act = function () {
-  const want = new Set();
-  if (!this.enabled || Game.mode !== 'playing') {
-    this._applyKeys(want);
-    input.mouseDown = false;
-    return;
-  }
-  const p = Game.player;
-  if (!p || p.dead) {
-    this._applyKeys(want);
-    input.mouseDown = false;
-    return;
-  }
-  const st = this.state;
-
-  // If we're parked on a placer (wall/barrel), mouseDown does nothing useful.
-  // Switch to pistol — always unlocked, infinite ammo — as the phase-2 default.
-  if (WEAPONS[p.weapon].isPlacer) {
-    want.add('1');
-  }
-
-  const target = st.nearestThreat;
-  if (!target) {
-    // Still steer — there may be off-LOS zombies worth fleeing.
-    st.firing = false;
-    st.fireReason = 'no-target';
-    input.mouseDown = false;
-    Bot._mapSteerToKeys(p, want);
-    this._applyKeys(want);
-    return;
-  }
-
-  const weap = WEAPONS[p.weapon];
-
-  // Lead the shot using zombie velocity and bullet travel time. Pistol bullets
-  // are very fast (900 u/s) so the lead is small, but it matters for runners.
-  const dx0 = target.x - p.x, dy0 = target.y - p.y;
-  const dist = Math.hypot(dx0, dy0);
-  const bulletSpd = weap.bulletSpeed || 900;
-  const ttHit = dist / bulletSpd;
-  const aimX = target.x + (target.vx || 0) * ttHit;
-  const aimY = target.y + (target.vy || 0) * ttHit;
-  st.aimX = aimX; st.aimY = aimY;
-
-  // Write aim into viewport coords (game converts back to world via camera).
-  input.mouseX = aimX - Game.camera.x;
-  input.mouseY = aimY - Game.camera.y;
-
-  // Fire gating.
-  const inRange = dist <= (weap.bulletRange || 900) * 0.95;
-  const losClear = st.losToTarget;   // already computed in perceive()
-  // Don't blow ourselves up with our own rocket.
-  const safeAoE = !weap.isRocket || dist > (weap.explodeRadius + 60);
-  const ready = p.fireCd <= 0 && p.reloading <= 0;
-  const a = p.ammo[p.weapon];
-  const hasShot = a && (a.mag > 0 || weap.magSize === Infinity);
-
-  let shouldFire = inRange && losClear && safeAoE && hasShot;
-
-  // Hold 'r' to start a reload during a lull (mag below half and no immediate
-  // threat in range). The game already auto-reloads on empty mag.
-  if (weap.magSize !== Infinity && a && a.reserve > 0 && a.mag < weap.magSize / 2 && !inRange && p.reloading <= 0) {
-    want.add('r');
-  }
-
-  st.firing = shouldFire;
-  st.fireReason = shouldFire
-    ? 'fire'
-    : !inRange ? 'out-of-range'
-      : !losClear ? 'no-los'
-        : !safeAoE ? 'rocket-self'
-          : !hasShot ? 'empty'
-            : 'cooldown';
-
-  input.mouseDown = shouldFire;
-  Bot._mapSteerToKeys(p, want);
-  this._applyKeys(want);
-};
-
-// Map a steering vector to 8-way WASD presses. The 0.35 threshold prevents
-// jitter when the vector is nearly axis-aligned.
-Bot._mapSteerToKeys = function (p, want) {
-  const { dx, dy } = this._steer(p);
-  this.state.moveX = dx; this.state.moveY = dy;
-  const m = Math.hypot(dx, dy);
-  if (m < 8) return;
-  const nx = dx / m, ny = dy / m;
-  if (nx >  0.35) want.add('d');
-  if (nx < -0.35) want.add('a');
-  if (ny >  0.35) want.add('s');
-  if (ny < -0.35) want.add('w');
-};
-
-Bot.start  = function () { this.enabled = true;  };
+Bot.start  = function () { this.enabled = true; };
 Bot.stop   = function () {
   this.enabled = false;
-  // Release any keys/buttons we were holding so the human regains control.
   this._applyKeys(new Set());
   input.mouseDown = false;
 };
@@ -467,16 +801,12 @@ Bot.toggle = function () { if (this.enabled) this.stop(); else this.start(); };
 
 window.bot = Bot;
 
-// B toggles. Don't preventDefault — game already ignores B.
 window.addEventListener('keydown', (e) => {
   if (e.key && e.key.toLowerCase() === 'b' && Game.mode === 'playing') {
     Bot.toggle();
   }
 });
 
-// Hook the render pass so the overlay paints over the game frame.
-// render is a top-level function declaration in render.js, so it lives on
-// window; reassigning here redirects the bare render() call in ui.js#loop.
 (function patchRender() {
   const orig = window.render;
   if (typeof orig !== 'function') {

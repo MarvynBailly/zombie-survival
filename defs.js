@@ -5,7 +5,7 @@ const WEAPONS = {
   pistol: {
     name: 'Pistol', key: '1', fireRate: 0.25, damage: 25, spread: 0.02,
     pellets: 1, bulletSpeed: 900, bulletRange: 900,
-    magSize: Infinity, reserve: Infinity, reloadTime: 0,
+    magSize: 12, reserve: 60, reloadTime: 0.8,
     sfx: 'pistol', unlocked: true,
   },
   shotgun: {

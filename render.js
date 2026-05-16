@@ -22,12 +22,44 @@ function getChunkSurface(chunk) {
   s.width = cs; s.height = cs;
   const sx = s.getContext('2d');
   const tpc = cs / TILE_SIZE;
-  // Terrain pass
+  const terrain = chunk.terrain;
+  // Neighbor terrain lookup with cross-chunk fallback. Out-of-bounds chunks
+  // or not-yet-generated neighbors return -1, which drawTerrainTile treats
+  // as "skip corner rounding on that side."
+  const neighborAt = (lx, ly) => {
+    if (lx >= 0 && ly >= 0 && lx < tpc && ly < tpc) {
+      return terrain[ly * tpc + lx];
+    }
+    let ncx = chunk.cx, ncy = chunk.cy, llx = lx, lly = ly;
+    if (lx < 0)         { ncx--; llx = tpc - 1; }
+    else if (lx >= tpc) { ncx++; llx = 0; }
+    if (ly < 0)         { ncy--; lly = tpc - 1; }
+    else if (ly >= tpc) { ncy++; lly = 0; }
+    const ch = World.chunks.get(ncx + ',' + ncy);
+    if (!ch || !ch.terrain) return -1;
+    return ch.terrain[lly * tpc + llx];
+  };
+  const baseTx = chunk.cx * tpc;
+  const baseTy = chunk.cy * tpc;
+  // Whole-chunk base color in one ImageData write. Smooth bilinear noise
+  // is shared at tile corners so adjacent same-type tiles blend across
+  // their seam — no visible lattice in homogeneous areas. Different-type
+  // boundaries stay sharp.
+  ZSprites.paintChunkTerrainBase(sx, chunk, cs, TILE_SIZE);
+  // Per-tile overlay pass: tufts, flora, ripples, corner blends, foam.
   for (let ly = 0; ly < tpc; ly++) {
     for (let lx = 0; lx < tpc; lx++) {
-      const t = chunk.terrain[ly * tpc + lx];
-      const parity = ((lx + ly) & 1) === 0;
-      ZSprites.drawTerrainTile(sx, lx * TILE_SIZE, ly * TILE_SIZE, TILE_SIZE, t, parity);
+      const t = terrain[ly * tpc + lx];
+      ZSprites.drawTerrainTile(
+        sx,
+        lx * TILE_SIZE, ly * TILE_SIZE, TILE_SIZE,
+        t,
+        baseTx + lx, baseTy + ly,
+        neighborAt(lx - 1, ly),
+        neighborAt(lx + 1, ly),
+        neighborAt(lx, ly - 1),
+        neighborAt(lx, ly + 1),
+      );
     }
   }
   // Decor pass — translate so chunk-local origin == 0,0
@@ -42,6 +74,19 @@ function getChunkSurface(chunk) {
   }
   return s;
 }
+
+// Invalidate a chunk's cached surface (and its 4 neighbors, since their
+// edge-rounding decisions referenced this chunk's terrain). Called from
+// World.ensureChunk after a fresh chunk is generated so neighbors that
+// were baked before this one appears get re-baked with proper transitions.
+function invalidateChunkSurface(cx, cy) {
+  __surfaceCache.delete(cx + ',' + cy);
+  __surfaceCache.delete((cx - 1) + ',' + cy);
+  __surfaceCache.delete((cx + 1) + ',' + cy);
+  __surfaceCache.delete(cx + ',' + (cy - 1));
+  __surfaceCache.delete(cx + ',' + (cy + 1));
+}
+window.invalidateChunkSurface = invalidateChunkSurface;
 
 // ---------- Render ----------
 function render(alpha) {
@@ -95,6 +140,21 @@ function render(alpha) {
 
     // (decor is now baked into the chunk-surface cache above)
 
+    // Tier-3 puddles (toxic from spitters / bloater corpses / drum bursts)
+    // sit on the ground — render above terrain, beneath obstacles + entities.
+    if (Game.puddles) {
+      for (const pu of Game.puddles) {
+        if (!inView(pu.x, pu.y)) continue;
+        const a = Math.max(0, Math.min(0.55, pu.life / pu.maxLife * 0.55));
+        ctx.fillStyle = pu.kind === 'fire'
+          ? `rgba(225,90,42,${a})`
+          : `rgba(142,197,71,${a * 0.85})`;
+        ctx.beginPath();
+        ctx.arc(pu.x, pu.y, pu.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
     // Obstacles in chunks that intersect the viewport (with 60px margin).
     // Each chunk's obstacle carries its own style.
     World.forEachVisibleObstacle(cam.x, cam.y, VIEW_W, VIEW_H, 60, (o) => {
@@ -124,6 +184,27 @@ function render(alpha) {
     // zombies (culled)
     for (const z of Game.zombies) if (inView(z.x, z.y)) ZSprites.drawZombie(ctx, z);
 
+    // Charger telegraph — a red ground line pointing at the player while
+    // the charger is winding up its dash. Drawn under the player so the
+    // player silhouette stays readable.
+    for (const z of Game.zombies) {
+      if (z.charge && z.chargeState === 'telegraph') {
+        const dx = Game.player.x - z.x, dy = Game.player.y - z.y;
+        const dn = Math.hypot(dx, dy) || 1;
+        const ux = dx / dn, uy = dy / dn;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(210,75,53,0.55)';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([10, 8]);
+        ctx.beginPath();
+        ctx.moveTo(z.x + ux * z.r, z.y + uy * z.r);
+        ctx.lineTo(z.x + ux * (z.r + 360), z.y + uy * (z.r + 360));
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+    }
+
     // player
     if (Game.player && !Game.player.dead) {
       const p = Game.player;
@@ -134,6 +215,17 @@ function render(alpha) {
         iframe: p.iframe || 0,
         muzzleFlash: p.muzzleFlash || 0,
       });
+      // Railgun charge bar — small white meter that fills above the player
+      // while LMB is held. When it hits 1.0 release fires the beam.
+      const wDef = WEAPONS[p.weapon];
+      if (wDef && wDef.chargeTime && (p.railCharge || 0) > 0) {
+        const frac = Math.min(1, p.railCharge / wDef.chargeTime);
+        const bw = 32;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(p.x - bw / 2 - 1, p.y - p.r - 12, bw + 2, 4);
+        ctx.fillStyle = frac >= 1 ? '#a8d8e8' : '#9fc4ff';
+        ctx.fillRect(p.x - bw / 2, p.y - p.r - 11, bw * frac, 2);
+      }
     }
 
     // rockets (culled)
@@ -141,6 +233,20 @@ function render(alpha) {
 
     // bullets (culled)
     for (const b of Game.bullets) if (inView(b.x, b.y)) ZSprites.drawBullet(ctx, b);
+
+    // Spitter goo projectiles in-flight.
+    if (Game.zombieProjectiles) {
+      for (const pr of Game.zombieProjectiles) {
+        if (!inView(pr.x, pr.y)) continue;
+        ctx.fillStyle = '#a4c45a';
+        ctx.beginPath();
+        ctx.arc(pr.x, pr.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#566a32';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
 
     // particles (culled)
     for (const pa of Game.particles) {
@@ -695,7 +801,7 @@ function findNearestUndiscoveredPOI(px, py) {
 
 // ---------- HUD (DOM) ----------
 const WEAPON_INFO = {
-  pistol:  'INFINITE · SEMI',
+  pistol:  '12 RND · SEMI',
   shotgun: '6 PELLET · BUCK',
   smg:     'AUTO · 14 RPS',
   rocket:  'AoE · 120 DMG',

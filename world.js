@@ -1319,6 +1319,12 @@ const World = {
     if (!chunk) {
       chunk = generateChunk(this.seed, cx, cy, this.region, this);
       this.chunks.set(key, chunk);
+      // Newly-generated chunk: its 4 neighbors' baked surfaces decided their
+      // edge-rounding against a "not loaded" neighbor — invalidate so they
+      // re-bake against the real terrain across the seam.
+      if (typeof window !== 'undefined' && typeof window.invalidateChunkSurface === 'function') {
+        window.invalidateChunkSurface(cx, cy);
+      }
     }
     return chunk;
   },
@@ -1582,6 +1588,9 @@ function rollChestContents(rng, tier) {
   const out = [];
   if (tier === 'wood') {
     out.push('health');
+    // Pistol rounds are the baseline scavenge drop — wood chests almost
+    // always carry them so the player's starter weapon can be refilled.
+    out.push('ammo_pistol');
     if (rng() < 0.55) out.push('ammo_shotgun');
     if (rng() < 0.45) out.push('wall');
     if (rng() < 0.30) out.push('barrel');
@@ -1590,6 +1599,7 @@ function rollChestContents(rng, tier) {
   } else if (tier === 'iron') {
     out.push('ammo_smg');
     out.push('wall');
+    if (rng() < 0.65) out.push('ammo_pistol');
     if (rng() < 0.55) out.push('barrel');
     if (rng() < 0.40) out.push('ammo_rocket');
     if (rng() < 0.40) out.push('ammo_shotgun');

@@ -1439,26 +1439,169 @@
   }
 
   // ---------- ENVIRONMENT OBSTACLES (trees, boulders, mountains) ----------
-  // Trees are smaller than a tile (20x20 within a 40x40 cell) so the canopy
-  // reads as round rather than square.
+  // A forest reads as one species (all pines, or all oaks, etc.) because
+  // the species is picked from a coarse zone hash — every tree within the
+  // same ~1600px patch resolves to the same species id. Per-tree variation
+  // (size jitter, canopy lean, color tint, asymmetric lobes) is layered on
+  // top so two same-species trees never look identical.
+  const TREE_ZONE_PX = 1600;
+  function pickTreeSpecies(o) {
+    const zx = Math.floor(o.x / TREE_ZONE_PX);
+    const zy = Math.floor(o.y / TREE_ZONE_PX);
+    let h = ((zx * 2654435761) ^ (zy * 40503) ^ 0x9e3779b9) >>> 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    const r = ((h ^ (h >>> 16)) >>> 0) % 100;
+    if      (r < 32) return 'oak';
+    else if (r < 60) return 'pine';
+    else if (r < 74) return 'birch';
+    else if (r < 86) return 'maple';
+    else if (r < 94) return 'willow';
+    else             return 'dead';
+  }
   function drawTree(ctx, o) {
     const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
-    const r = Math.min(o.w, o.h) * 0.55;
-    // trunk
+    const baseR = Math.min(o.w, o.h) * 0.55;
+    const seed = (((o.x | 0) * 73856093) ^ ((o.y | 0) * 19349663)) >>> 0;
+    const sizeJit = (((seed >>> 8)  & 0xff) / 255 - 0.5) * 0.30; // ±15% size
+    const leanX   = (((seed >>> 16) & 0xff) / 255 - 0.5) * 4;     // ±2px canopy lean
+    const leanY   = (((seed >>> 24) & 0xff) / 255 - 0.5) * 3;
+    const tint    = (((seed >>> 4)  & 0xff) / 255 - 0.5) * 30;    // ±15 brightness
+    const lobePhase = ((seed >>> 2) & 0xff) / 255 * TAU;           // canopy rotation
+    const r = baseR * (1 + sizeJit);
+    const species = pickTreeSpecies(o);
+    if      (species === 'oak')    drawOakTree(ctx, cx + leanX, cy + leanY, r, tint, lobePhase);
+    else if (species === 'pine')   drawPineTree(ctx, cx + leanX, cy + leanY, r, tint, lobePhase);
+    else if (species === 'birch')  drawBirchTree(ctx, cx + leanX, cy + leanY, r, tint, lobePhase);
+    else if (species === 'maple')  drawMapleTree(ctx, cx + leanX, cy + leanY, r, tint, lobePhase);
+    else if (species === 'willow') drawWillowTree(ctx, cx + leanX, cy + leanY, r, tint, lobePhase);
+    else                           drawDeadTree(ctx, cx + leanX, cy + leanY, r, tint, lobePhase);
+  }
+
+  function drawOakTree(ctx, cx, cy, r, tint, phase) {
     ctx.fillStyle = '#3a2412';
     ctx.fillRect(cx - 3, cy - 1, 6, 10);
-    // canopy shadow
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath(); ctx.arc(cx + 2, cy + 2, r, 0, TAU); ctx.fill();
-    // canopy
-    ctx.fillStyle = '#244a1a';
+    ctx.fillStyle = shadeHex('#244a1a', tint | 0);
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#356a26';
-    ctx.beginPath(); ctx.arc(cx - r * 0.35, cy - r * 0.35, r * 0.6, 0, TAU); ctx.fill();
-    // tiny leaf highlights
-    ctx.fillStyle = 'rgba(160,200,90,0.45)';
-    ctx.fillRect(cx - r * 0.6, cy - r * 0.45, 2, 2);
+    // Two side lobes whose direction is rotated by phase — every tree's
+    // canopy outline is therefore unique even at identical (r, tint).
+    const ox1 = Math.cos(phase) * r * 0.55, oy1 = Math.sin(phase) * r * 0.5;
+    const ox2 = Math.cos(phase + Math.PI) * r * 0.55, oy2 = Math.sin(phase + Math.PI) * r * 0.5;
+    ctx.beginPath(); ctx.arc(cx + ox1, cy + oy1, r * 0.55, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + ox2, cy + oy2, r * 0.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = shadeHex('#356a26', tint | 0);
+    ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.35, r * 0.55, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(160,200,90,0.5)';
+    ctx.fillRect(cx - r * 0.55, cy - r * 0.4, 2, 2);
     ctx.fillRect(cx + r * 0.2, cy - r * 0.55, 2, 2);
+  }
+  function drawPineTree(ctx, cx, cy, r, tint, phase) {
+    ctx.fillStyle = '#2c1a08';
+    ctx.fillRect(cx - 2, cy + 2, 4, 9);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(cx + 2, cy - r + 2);
+    ctx.lineTo(cx + r + 2, cy + r * 0.85 + 2);
+    ctx.lineTo(cx - r + 2, cy + r * 0.85 + 2);
+    ctx.closePath(); ctx.fill();
+    // Slight asymmetry: the base tier shifts by phase so trees lean.
+    const skew = (Math.cos(phase)) * r * 0.08;
+    ctx.fillStyle = shadeHex('#1a3a14', tint | 0);
+    ctx.beginPath();
+    ctx.moveTo(cx + skew, cy + r * 0.1);
+    ctx.lineTo(cx + r + skew, cy + r * 0.95);
+    ctx.lineTo(cx - r + skew, cy + r * 0.95);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shadeHex('#23501a', tint | 0);
+    ctx.beginPath();
+    ctx.moveTo(cx + skew * 0.6, cy - r * 0.45);
+    ctx.lineTo(cx + r * 0.78 + skew * 0.6, cy + r * 0.35);
+    ctx.lineTo(cx - r * 0.78 + skew * 0.6, cy + r * 0.35);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shadeHex('#327026', tint | 0);
+    ctx.beginPath();
+    ctx.moveTo(cx + skew * 0.3, cy - r * 0.95);
+    ctx.lineTo(cx + r * 0.48 + skew * 0.3, cy - r * 0.1);
+    ctx.lineTo(cx - r * 0.48 + skew * 0.3, cy - r * 0.1);
+    ctx.closePath(); ctx.fill();
+  }
+  function drawBirchTree(ctx, cx, cy, r, tint, phase) {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.arc(cx + 2, cy + 2, r * 0.95, 0, TAU); ctx.fill();
+    // birch white trunk with horizontal dark bands; band positions drift
+    // by phase so two adjacent birches don't share scar marks.
+    ctx.fillStyle = '#d4d0bc';
+    ctx.fillRect(cx - 2, cy - 1, 4, 11);
+    ctx.fillStyle = '#3a2412';
+    const bandOff = ((phase * 1.7) | 0) % 3;
+    ctx.fillRect(cx - 2, cy + 1 + bandOff, 4, 1);
+    ctx.fillRect(cx - 2, cy + 5, 4, 1);
+    ctx.fillRect(cx - 2, cy + 8 - bandOff, 4, 1);
+    ctx.fillStyle = shadeHex('#3a5a22', tint | 0);
+    ctx.beginPath(); ctx.arc(cx, cy - 1, r * 0.95, 0, TAU); ctx.fill();
+    ctx.fillStyle = shadeHex('#5e8a3a', tint | 0);
+    const hx = Math.cos(phase + 1.2) * r * 0.35;
+    const hy = Math.sin(phase + 1.2) * r * 0.35;
+    ctx.beginPath(); ctx.arc(cx + hx, cy + hy - r * 0.2, r * 0.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(200,220,130,0.6)';
+    ctx.beginPath(); ctx.arc(cx + r * 0.2, cy - r * 0.55, r * 0.22, 0, TAU); ctx.fill();
+  }
+  function drawMapleTree(ctx, cx, cy, r, tint, phase) {
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    ctx.beginPath(); ctx.arc(cx + 2, cy + 2, r * 1.05, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#3a2412';
+    ctx.fillRect(cx - 3, cy - 1, 6, 10);
+    ctx.fillStyle = shadeHex('#7a281a', tint | 0);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+    const ox1 = Math.cos(phase) * r * 0.5, oy1 = Math.sin(phase) * r * 0.45;
+    const ox2 = Math.cos(phase + Math.PI) * r * 0.5, oy2 = Math.sin(phase + Math.PI) * r * 0.45;
+    ctx.beginPath(); ctx.arc(cx + ox1, cy + oy1, r * 0.5, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + ox2, cy + oy2, r * 0.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = shadeHex('#b04a22', tint | 0);
+    ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.55, 0, TAU); ctx.fill();
+    ctx.fillStyle = shadeHex('#e3a83a', tint | 0);
+    ctx.beginPath(); ctx.arc(cx + r * 0.4, cy - r * 0.2, r * 0.28, 0, TAU); ctx.fill();
+  }
+  function drawWillowTree(ctx, cx, cy, r, tint, phase) {
+    ctx.fillStyle = 'rgba(0,0,0,0.32)';
+    ctx.beginPath(); ctx.ellipse(cx + 2, cy + 2, r * 1.15, r * 0.75, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#3a2c14';
+    ctx.fillRect(cx - 2, cy, 4, 9);
+    ctx.fillStyle = shadeHex('#1f3a1a', tint | 0);
+    const sway = Math.cos(phase) * 1.4;
+    ctx.beginPath(); ctx.ellipse(cx + sway, cy - 2, r * 1.1, r * 0.72, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = shadeHex('#2f5e26', tint | 0);
+    ctx.beginPath(); ctx.ellipse(cx - r * 0.35 + sway, cy - r * 0.3, r * 0.5, r * 0.35, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(60,100,40,0.7)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = -3; i <= 3; i++) {
+      const drop = r * 0.6 + Math.sin(phase + i) * 1.2;
+      ctx.moveTo(cx + i * 2 + sway, cy + r * 0.25);
+      ctx.lineTo(cx + i * 2 + 0.5 + sway, cy + drop);
+    }
+    ctx.stroke();
+  }
+  function drawDeadTree(ctx, cx, cy, r, tint, phase) {
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath(); ctx.ellipse(cx + 1, cy + r * 0.7, r * 0.5, r * 0.18, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = shadeHex('#3a2c1c', tint | 0);
+    ctx.fillRect(cx - 2, cy - r * 0.7, 4, r * 1.4 + 4);
+    ctx.strokeStyle = shadeHex('#3a2c1c', tint | 0);
+    ctx.lineWidth = 2;
+    // Branches angle off in directions seeded by phase so no two dead
+    // trees match silhouettes.
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const a = phase + i * 1.7;
+      const len = r * (0.55 + (i & 1) * 0.25);
+      const startY = cy - r * 0.5 + i * (r * 0.3);
+      ctx.moveTo(cx, startY);
+      ctx.lineTo(cx + Math.cos(a) * len, startY + Math.sin(a) * len * 0.6);
+    }
+    ctx.stroke();
+    ctx.lineWidth = 1;
   }
 
   function drawBoulder(ctx, o) {
@@ -1668,59 +1811,408 @@
   }
 
   // ---------- GROUND / TERRAIN TILES ----------
-  // Per-terrain-type ground colors. Renderer iterates the chunk.terrain grid
-  // for chunks intersecting the camera and paints each tile here, skipping
-  // tiles outside the viewport. The result is one paint per visible tile
-  // (~ 26 * 20 = 520 fills per frame) which is well within Canvas2D budget.
-  const TERRAIN_COLORS = [
-    /* GRASS         */ ['#1e2a16', '#243218'],
-    /* FOREST        */ ['#152012', '#1c2818'],
-    /* SAND          */ ['#a89767', '#b8a978'],
-    /* SHALLOW_WATER */ ['#1f4b66', '#2a5a78'],
-    /* DEEP_WATER    */ ['#0e2a44', '#143352'],
-    /* HILL          */ ['#3a3024', '#463a2c'],
-    /* MOUNTAIN      */ ['#3a3a40', '#4a4a52'],
-    /* PATH          */ ['#3a3024', '#463a2c'],
+  // Each tile uses a hashed per-coord seed for color variation, sub-tile
+  // detail (grass tufts / ripples / pebbles), and sparse flora (flowers,
+  // mushrooms, bushes). Adjacent tiles also pass their 4-neighbor terrain
+  // types so the corners between two different terrain types get rounded
+  // instead of meeting at a hard L-shape. All of this gets baked once into
+  // the chunk-surface offscreen canvas in render.js, so the per-tile cost
+  // only pays at chunk-load time.
+  const TERRAIN_BASE = [
+    /* GRASS         */ '#1f2c14',
+    /* FOREST        */ '#152018',
+    /* SAND          */ '#b3a275',
+    /* SHALLOW_WATER */ '#22506e',
+    /* DEEP_WATER    */ '#0e2a44',
+    /* HILL          */ '#3f3328',
+    /* MOUNTAIN      */ '#43434c',
+    /* PATH          */ '#5a4828',
   ];
+  const TERRAIN_BASE_RGB = TERRAIN_BASE.map(hex => [
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16),
+  ]);
+  // ±range applied to base RGB channel — smooth noise (bilerped from shared
+  // tile corners) shifts each pixel by this much. Same-type tiles share
+  // corner values, so colors flow continuously across the seam.
+  const TERRAIN_TINT_RANGE = [14, 11, 13, 16, 9, 14, 18, 10];
 
-  function drawTerrainTile(ctx, x, y, size, type, parity) {
-    const pair = TERRAIN_COLORS[type] || TERRAIN_COLORS[0];
-    ctx.fillStyle = parity ? pair[0] : pair[1];
-    ctx.fillRect(x, y, size, size);
+  // Stable [0,1) hash per integer tile (tx, ty). Two coprime multipliers +
+  // xor-shift; cheap, no allocations, no module-globals.
+  function tileHash(tx, ty, salt) {
+    let h = ((tx | 0) * 73856093) ^ ((ty | 0) * 19349663) ^ ((salt | 0) * 83492791) ^ 0x9e3779b9;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  }
+  // Smoothstep-bilerped value noise. Sampling at (x*k, y*k) for small k
+  // produces low-frequency smooth variation suitable for biome-scale
+  // color drift; same function reused for boundary depth variation.
+  function smoothValueNoise(x, y, salt) {
+    const ix = Math.floor(x), iy = Math.floor(y);
+    const fx = x - ix, fy = y - iy;
+    const u = fx * fx * (3 - 2 * fx);
+    const v = fy * fy * (3 - 2 * fy);
+    const n00 = tileHash(ix,     iy,     salt);
+    const n10 = tileHash(ix + 1, iy,     salt);
+    const n01 = tileHash(ix,     iy + 1, salt);
+    const n11 = tileHash(ix + 1, iy + 1, salt);
+    return (n00 * (1 - u) + n10 * u) * (1 - v) + (n01 * (1 - u) + n11 * u) * v;
+  }
+  function shadeHex(hex, delta) {
+    let r = parseInt(hex.slice(1, 3), 16);
+    let g = parseInt(hex.slice(3, 5), 16);
+    let b = parseInt(hex.slice(5, 7), 16);
+    r = Math.max(0, Math.min(255, r + delta));
+    g = Math.max(0, Math.min(255, g + delta));
+    b = Math.max(0, Math.min(255, b + delta));
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
 
-    // Per-type embellishment
-    if (type === 3 /* SHALLOW */ || type === 4 /* DEEP */) {
-      // simple ripple highlights derived from tile position
-      const phase = ((x + y) * 0.013) | 0;
-      ctx.fillStyle = type === 4 ? 'rgba(120,170,210,0.06)' : 'rgba(160,200,230,0.10)';
-      ctx.fillRect(x + 4 + (phase % 4), y + 8, 16, 1);
-      ctx.fillRect(x + 10 + (phase % 7), y + 22, 12, 1);
-    } else if (type === 1 /* FOREST */) {
-      // dappled lighter spots
-      ctx.fillStyle = 'rgba(120,160,90,0.10)';
-      ctx.fillRect(x + 6, y + 8, 5, 4);
-      ctx.fillRect(x + 22, y + 24, 4, 3);
-    } else if (type === 2 /* SAND */) {
-      // a few darker grains
-      ctx.fillStyle = 'rgba(80,60,30,0.18)';
-      ctx.fillRect(x + 6, y + 10, 2, 2);
-      ctx.fillRect(x + 22, y + 26, 2, 2);
-      ctx.fillRect(x + 14, y + 18, 2, 2);
-    } else if (type === 5 /* HILL */) {
-      ctx.fillStyle = 'rgba(255,230,180,0.05)';
-      ctx.fillRect(x, y, size, 2);
-    } else if (type === 6 /* MOUNTAIN */) {
-      // jagged top highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.06)';
-      ctx.fillRect(x, y, size, 3);
-      ctx.fillRect(x + 4, y + 6, size - 8, 1);
-    } else if (type === 0 /* GRASS */) {
-      // sparse grass tufts
-      ctx.fillStyle = 'rgba(120,160,80,0.08)';
-      ctx.fillRect(x + 7, y + 6, 1, 3);
-      ctx.fillRect(x + 18, y + 22, 1, 3);
-      ctx.fillRect(x + 26, y + 12, 1, 3);
+  // Per-tile detail pass. The chunk's base color is painted in one shot
+  // by paintChunkTerrainBase (smooth bilinear noise, no per-tile flat
+  // rectangles) — this function only stamps tufts/ripples/flora on top
+  // and draws the corner blends + beach foam at terrain boundaries.
+  function drawTerrainTile(ctx, x, y, size, type, tx, ty, nL, nR, nU, nD) {
+    if      (type === 0) drawGrassDetail(ctx, x, y, size, tx, ty);
+    else if (type === 1) drawForestDetail(ctx, x, y, size, tx, ty);
+    else if (type === 2) drawSandDetail(ctx, x, y, size, tx, ty);
+    else if (type === 3) drawShallowWaterDetail(ctx, x, y, size, tx, ty);
+    else if (type === 4) drawDeepWaterDetail(ctx, x, y, size, tx, ty);
+    else if (type === 5) drawHillDetail(ctx, x, y, size, tx, ty);
+    else if (type === 6) drawMountainDetail(ctx, x, y, size, tx, ty);
+    else if (type === 7) drawPathDetail(ctx, x, y, size, tx, ty);
+
+    if (nL !== undefined) {
+      drawTerrainCorners(ctx, x, y, size, type, nL, nR, nU, nD, tx, ty);
+      drawBeachFoam     (ctx, x, y, size, type, nL, nR, nU, nD);
     }
+  }
+
+  // Fills the L-corner where two adjacent neighbors agree on a different
+  // terrain type with a clean quarter-arc of that neighbor's color. Radius
+  // varies per corner so adjacent corners aren't carbon copies, but each
+  // arc is a single smooth canvas arc() — no jagged jitter.
+  function drawTerrainCorners(ctx, x, y, size, type, nL, nR, nU, nD, tx, ty) {
+    if (nL >= 0 && nU >= 0 && nL === nU && nL !== type) {
+      ctx.fillStyle = TERRAIN_BASE[nL] || TERRAIN_BASE[0];
+      cornerWedge(ctx, x, y, size * (0.40 + tileHash(tx, ty, 80) * 0.18), 'tl');
+    }
+    if (nR >= 0 && nU >= 0 && nR === nU && nR !== type) {
+      ctx.fillStyle = TERRAIN_BASE[nR] || TERRAIN_BASE[0];
+      cornerWedge(ctx, x + size, y, size * (0.40 + tileHash(tx, ty, 82) * 0.18), 'tr');
+    }
+    if (nL >= 0 && nD >= 0 && nL === nD && nL !== type) {
+      ctx.fillStyle = TERRAIN_BASE[nL] || TERRAIN_BASE[0];
+      cornerWedge(ctx, x, y + size, size * (0.40 + tileHash(tx, ty, 84) * 0.18), 'bl');
+    }
+    if (nR >= 0 && nD >= 0 && nR === nD && nR !== type) {
+      ctx.fillStyle = TERRAIN_BASE[nR] || TERRAIN_BASE[0];
+      cornerWedge(ctx, x + size, y + size, size * (0.40 + tileHash(tx, ty, 86) * 0.18), 'br');
+    }
+  }
+  function cornerWedge(ctx, x, y, r, which) {
+    ctx.beginPath();
+    if (which === 'tl') {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + r, y);
+      ctx.arc(x + r, y + r, r, -Math.PI / 2, Math.PI, true);
+      ctx.lineTo(x, y);
+    } else if (which === 'tr') {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y + r);
+      ctx.arc(x - r, y + r, r, 0, -Math.PI / 2, true);
+      ctx.lineTo(x, y);
+    } else if (which === 'bl') {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + r, y);
+      ctx.arc(x + r, y - r, r, Math.PI / 2, Math.PI, false);
+      ctx.lineTo(x, y);
+    } else {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - r, y);
+      ctx.arc(x - r, y - r, r, Math.PI / 2, 0, true);
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Sand↔water seams get a thin foam band on the sand side. Painted only
+  // on sand tiles (the water side stays clean) so the result reads as a
+  // beach with surf rather than a generic dither.
+  function drawBeachFoam(ctx, x, y, size, type, nL, nR, nU, nD) {
+    if (type !== 2) return;
+    ctx.fillStyle = 'rgba(248,236,210,0.55)';
+    if (nL === 3 || nL === 4) ctx.fillRect(x,            y,            2,    size);
+    if (nR === 3 || nR === 4) ctx.fillRect(x + size - 2, y,            2,    size);
+    if (nU === 3 || nU === 4) ctx.fillRect(x,            y,            size, 2);
+    if (nD === 3 || nD === 4) ctx.fillRect(x,            y + size - 2, size, 2);
+  }
+
+  // Whole-chunk base paint. One ImageData write fills every pixel with
+  // TERRAIN_BASE[tile_type] plus a smooth bilinear-noise tint, where the
+  // noise samples are precomputed at every tile *corner*. Because the four
+  // tiles sharing a corner all read the same noise value there, adjacent
+  // same-type tiles transition smoothly — the grid lattice disappears in
+  // homogeneous regions. Type seams stay sharp (the base color step is
+  // discrete) but no longer "snap" to the lattice in solid-color areas.
+  function paintChunkTerrainBase(ctx, chunk, chunkSize, tileSize) {
+    const cs = chunkSize, ts = tileSize, tpc = cs / ts;
+    const terrain = chunk.terrain;
+    const img = ctx.createImageData(cs, cs);
+    const data = img.data;
+    const baseTx = chunk.cx * tpc;
+    const baseTy = chunk.cy * tpc;
+
+    // Smoothstep-bilerped value noise at each tile corner. Two octaves
+    // with wavelengths of ~5 and ~14 tiles, so each patch of similar tint
+    // covers a meadow-sized area (200-560px) instead of jittering per
+    // tile. Continuous across chunks (the hash is indexed by world coord).
+    const stride = tpc + 1;
+    const cornerN = new Float32Array(stride * stride);
+    for (let cy = 0; cy <= tpc; cy++) {
+      for (let cx = 0; cx <= tpc; cx++) {
+        const wx = baseTx + cx, wy = baseTy + cy;
+        const o1 = smoothValueNoise(wx * 0.18, wy * 0.18, 601); // ~5 tile wavelength
+        const o2 = smoothValueNoise(wx * 0.07, wy * 0.07, 603); // ~14 tile wavelength
+        cornerN[cy * stride + cx] = o1 * 0.55 + o2 * 0.45;
+      }
+    }
+
+    for (let py = 0; py < cs; py++) {
+      const lyF = py / ts;
+      const tileY = lyF >= tpc ? tpc - 1 : lyF | 0;
+      const fy = lyF - tileY;
+      const ifsy = 1 - fy;
+      const cornRow0 = tileY * stride;
+      const cornRow1 = cornRow0 + stride;
+      const terrRow = tileY * tpc;
+      for (let px = 0; px < cs; px++) {
+        const lxF = px / ts;
+        const tileX = lxF >= tpc ? tpc - 1 : lxF | 0;
+        const fx = lxF - tileX;
+        const ifsx = 1 - fx;
+        const t = terrain[terrRow + tileX];
+        const rgb = TERRAIN_BASE_RGB[t] || TERRAIN_BASE_RGB[0];
+        const n00 = cornerN[cornRow0 + tileX];
+        const n10 = cornerN[cornRow0 + tileX + 1];
+        const n01 = cornerN[cornRow1 + tileX];
+        const n11 = cornerN[cornRow1 + tileX + 1];
+        const ntop = n00 * ifsx + n10 * fx;
+        const nbot = n01 * ifsx + n11 * fx;
+        const n = ntop * ifsy + nbot * fy;
+        const delta = ((n - 0.5) * 2 * (TERRAIN_TINT_RANGE[t] || 10)) | 0;
+        const i = (py * cs + px) << 2;
+        let r = rgb[0] + delta; if (r < 0) r = 0; else if (r > 255) r = 255;
+        let g = rgb[1] + delta; if (g < 0) g = 0; else if (g > 255) g = 255;
+        let b = rgb[2] + delta; if (b < 0) b = 0; else if (b > 255) b = 255;
+        data[i]     = r;
+        data[i + 1] = g;
+        data[i + 2] = b;
+        data[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // ---------- Per-terrain detail + flora ----------
+  function drawGrassDetail(ctx, x, y, size, tx, ty) {
+    const h1 = tileHash(tx, ty, 1);
+    const h2 = tileHash(tx, ty, 2);
+    const h3 = tileHash(tx, ty, 3);
+    const h4 = tileHash(tx, ty, 4);
+    // darker clump shadow
+    ctx.fillStyle = 'rgba(20,38,18,0.55)';
+    const sx1 = x + (h1 * 0.7 + 0.15) * size, sy1 = y + (h2 * 0.7 + 0.15) * size;
+    ctx.fillRect(sx1 - 2, sy1, 2, 2);
+    ctx.fillRect(sx1, sy1 - 1, 1, 3);
+    // lighter blade specks
+    ctx.fillStyle = 'rgba(150,188,80,0.45)';
+    ctx.fillRect(x + h3 * (size - 4) + 1, y + h4 * (size - 4) + 1, 1, 2);
+    const h5 = tileHash(tx, ty, 5);
+    const h6 = tileHash(tx, ty, 6);
+    ctx.fillRect(x + h5 * (size - 4) + 1, y + h6 * (size - 4) + 1, 1, 1);
+
+    // Sparse flora. The buckets are disjoint so each tile gets at most one.
+    const r = tileHash(tx, ty, 7);
+    if (r < 0.06)      drawFlower(ctx, x + 6 + h1 * (size - 12), y + 6 + h2 * (size - 12), h3);
+    else if (r < 0.09) drawMushrooms(ctx, x + 6 + h1 * (size - 12), y + 6 + h2 * (size - 12));
+    else if (r < 0.13) drawBush(ctx, x + size * 0.5, y + size * 0.5, h3);
+    else if (r < 0.17) drawFern(ctx, x + 8 + h1 * (size - 16), y + 8 + h2 * (size - 16));
+    else if (r < 0.22) drawTallGrass(ctx, x + 4 + h1 * (size - 8), y + 4 + h2 * (size - 8));
+  }
+  function drawForestDetail(ctx, x, y, size, tx, ty) {
+    // dappled light + leaf litter
+    const h1 = tileHash(tx, ty, 11);
+    const h2 = tileHash(tx, ty, 12);
+    ctx.fillStyle = 'rgba(120,160,90,0.10)';
+    ctx.fillRect(x + h1 * (size - 6), y + h2 * (size - 6), 5, 4);
+    ctx.fillStyle = 'rgba(60,40,18,0.4)';
+    const h3 = tileHash(tx, ty, 13);
+    const h4 = tileHash(tx, ty, 14);
+    ctx.fillRect(x + h3 * (size - 4), y + h4 * (size - 4), 2, 1);
+    ctx.fillRect(x + h4 * (size - 3), y + h3 * (size - 3), 1, 2);
+    // occasional fern/mushroom in the leaf litter
+    const r = tileHash(tx, ty, 15);
+    if (r < 0.08) drawFern(ctx, x + 8 + h1 * (size - 16), y + 8 + h2 * (size - 16));
+    else if (r < 0.13) drawMushrooms(ctx, x + 6 + h1 * (size - 12), y + 6 + h2 * (size - 12));
+    else if (r < 0.17) drawBush(ctx, x + size * 0.5, y + size * 0.5, h3);
+  }
+  function drawSandDetail(ctx, x, y, size, tx, ty) {
+    const h1 = tileHash(tx, ty, 21);
+    const h2 = tileHash(tx, ty, 22);
+    const h3 = tileHash(tx, ty, 23);
+    // pebbles
+    ctx.fillStyle = 'rgba(70,52,28,0.35)';
+    ctx.fillRect(x + h1 * (size - 4), y + h2 * (size - 4), 2, 2);
+    ctx.fillStyle = 'rgba(90,72,40,0.3)';
+    ctx.fillRect(x + h2 * (size - 3), y + h3 * (size - 3), 1, 1);
+    ctx.fillRect(x + h3 * (size - 3), y + h1 * (size - 3), 1, 1);
+    // highlight grain
+    ctx.fillStyle = 'rgba(230,210,170,0.18)';
+    ctx.fillRect(x + 2, y + h1 * (size - 4), size - 4, 1);
+  }
+  function drawShallowWaterDetail(ctx, x, y, size, tx, ty) {
+    const h1 = tileHash(tx, ty, 31);
+    const h2 = tileHash(tx, ty, 32);
+    // long ripple highlights
+    ctx.fillStyle = 'rgba(170,210,235,0.18)';
+    const ry1 = y + h1 * (size - 2);
+    ctx.fillRect(x + 4, ry1, size - 8, 1);
+    ctx.fillStyle = 'rgba(140,190,225,0.12)';
+    ctx.fillRect(x + 6 + h2 * 4, y + 6 + h2 * (size - 12), size - 12, 1);
+    // sun-glint dots
+    ctx.fillStyle = 'rgba(220,235,250,0.35)';
+    ctx.fillRect(x + h1 * (size - 4) + 2, y + h2 * (size - 4) + 2, 1, 1);
+  }
+  function drawDeepWaterDetail(ctx, x, y, size, tx, ty) {
+    const h1 = tileHash(tx, ty, 41);
+    const h2 = tileHash(tx, ty, 42);
+    // subtle ripple
+    ctx.fillStyle = 'rgba(80,140,180,0.08)';
+    ctx.fillRect(x + 6, y + h1 * (size - 4), size - 12, 1);
+    // tiny sparkle
+    if (h2 < 0.18) {
+      ctx.fillStyle = 'rgba(200,225,240,0.4)';
+      ctx.fillRect(x + h1 * (size - 4) + 2, y + h2 * (size - 4) + 2, 1, 1);
+    }
+  }
+  function drawHillDetail(ctx, x, y, size, tx, ty) {
+    const h1 = tileHash(tx, ty, 51);
+    const h2 = tileHash(tx, ty, 52);
+    // gradient-style top highlight (lighter band on top of tile)
+    ctx.fillStyle = 'rgba(230,200,160,0.08)';
+    ctx.fillRect(x, y, size, 3);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(x, y + size - 2, size, 2);
+    // small rocks scattered
+    ctx.fillStyle = 'rgba(60,42,24,0.5)';
+    ctx.fillRect(x + h1 * (size - 4) + 1, y + h2 * (size - 4) + 1, 2, 1);
+    if (h2 < 0.4) ctx.fillRect(x + h2 * (size - 3) + 1, y + h1 * (size - 3) + 1, 1, 1);
+  }
+  function drawMountainDetail(ctx, x, y, size, tx, ty) {
+    const h1 = tileHash(tx, ty, 61);
+    const h2 = tileHash(tx, ty, 62);
+    // snow-cap highlights along the top
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.fillRect(x, y, size, 3);
+    ctx.fillRect(x + 3, y + 4, size - 6, 1);
+    // crags
+    ctx.fillStyle = 'rgba(20,20,30,0.4)';
+    ctx.fillRect(x + h1 * (size - 4), y + size * 0.55, 2, size * 0.35);
+    ctx.fillRect(x + h2 * (size - 3), y + size * 0.45, 1, size * 0.4);
+    // highlight on the right side (lit from upper-right)
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(x + size - 6, y + 4, 4, size - 8);
+  }
+  function drawPathDetail(ctx, x, y, size, tx, ty) {
+    const h1 = tileHash(tx, ty, 71);
+    const h2 = tileHash(tx, ty, 72);
+    // gravel
+    ctx.fillStyle = 'rgba(40,28,16,0.45)';
+    ctx.fillRect(x + h1 * (size - 3), y + h2 * (size - 3), 1, 1);
+    ctx.fillStyle = 'rgba(110,84,48,0.4)';
+    ctx.fillRect(x + h2 * (size - 3), y + h1 * (size - 3), 2, 1);
+    ctx.fillRect(x + h1 * (size - 2), y + h2 * (size - 2), 1, 1);
+  }
+
+  // ---------- Flora sprites (sub-tile, called from terrain detail) ----------
+  const FLOWER_PALETTES = [
+    ['#e8e6df', '#e3a83a'], // daisy
+    ['#e3a83a', '#7a4a18'], // marigold
+    ['#d24b35', '#3a0c08'], // poppy
+    ['#a04ad8', '#382060'], // violet
+    ['#7fb6ff', '#1f3a66'], // bluebell
+    ['#f2c8d6', '#a04d6a'], // pink
+  ];
+  function drawFlower(ctx, cx, cy, h) {
+    const p = FLOWER_PALETTES[(h * FLOWER_PALETTES.length) | 0] || FLOWER_PALETTES[0];
+    // stem
+    ctx.fillStyle = 'rgba(40,72,22,0.7)';
+    ctx.fillRect(cx, cy + 1, 1, 3);
+    // petals (4)
+    ctx.fillStyle = p[0];
+    ctx.fillRect(cx - 1, cy - 2, 2, 1);
+    ctx.fillRect(cx - 2, cy - 1, 1, 2);
+    ctx.fillRect(cx + 1, cy - 1, 1, 2);
+    ctx.fillRect(cx - 1, cy + 1, 2, 1);
+    // center
+    ctx.fillStyle = p[1];
+    ctx.fillRect(cx - 1, cy - 1, 2, 2);
+  }
+  function drawMushrooms(ctx, cx, cy) {
+    // small cluster of 2
+    ctx.fillStyle = 'rgba(70,50,30,0.5)';
+    ctx.fillRect(cx - 2, cy + 3, 6, 1);
+    // stem
+    ctx.fillStyle = '#d8cfb8';
+    ctx.fillRect(cx, cy, 1, 3);
+    ctx.fillRect(cx + 3, cy + 1, 1, 2);
+    // caps
+    ctx.fillStyle = '#7a2618';
+    ctx.fillRect(cx - 1, cy - 1, 3, 1);
+    ctx.fillRect(cx, cy - 2, 1, 1);
+    ctx.fillStyle = '#b04a22';
+    ctx.fillRect(cx + 2, cy, 3, 1);
+    // spots
+    ctx.fillStyle = 'rgba(255,250,235,0.85)';
+    ctx.fillRect(cx, cy - 1, 1, 1);
+    ctx.fillRect(cx + 3, cy, 1, 1);
+  }
+  function drawBush(ctx, cx, cy, h) {
+    const tint = h < 0.5;
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    ctx.beginPath(); ctx.ellipse(cx + 1, cy + 3, 7, 3, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = tint ? '#1c2e14' : '#1a2c1a';
+    ctx.beginPath(); ctx.arc(cx - 2, cy + 1, 4, 0, TAU); ctx.fill();
+    ctx.fillStyle = tint ? '#2a4a1c' : '#284820';
+    ctx.beginPath(); ctx.arc(cx + 1, cy - 1, 3.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = tint ? '#3d6022' : '#3a5e26';
+    ctx.beginPath(); ctx.arc(cx + 2, cy + 1, 2, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(160,200,90,0.5)';
+    ctx.fillRect(cx, cy - 2, 1, 1);
+  }
+  function drawFern(ctx, cx, cy) {
+    ctx.strokeStyle = 'rgba(50,90,40,0.85)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 4); ctx.lineTo(cx, cy - 4);
+    ctx.moveTo(cx, cy - 3); ctx.lineTo(cx - 3, cy - 1);
+    ctx.moveTo(cx, cy - 1); ctx.lineTo(cx + 3, cy + 1);
+    ctx.moveTo(cx, cy + 1); ctx.lineTo(cx - 3, cy + 3);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(110,160,70,0.45)';
+    ctx.fillRect(cx - 1, cy - 4, 2, 1);
+  }
+  function drawTallGrass(ctx, cx, cy) {
+    ctx.strokeStyle = 'rgba(110,160,72,0.65)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - 1, cy + 2); ctx.lineTo(cx - 2, cy - 2);
+    ctx.moveTo(cx, cy + 2);     ctx.lineTo(cx, cy - 3);
+    ctx.moveTo(cx + 1, cy + 2); ctx.lineTo(cx + 2, cy - 2);
+    ctx.stroke();
   }
 
   // Paint the camera-visible terrain by iterating each loaded chunk's
@@ -1751,8 +2243,7 @@
             const t = chunk.terrain[ly * tilesPerChunk + lx];
             const wx = baseX + lx * tileSize;
             const wy = baseY + ly * tileSize;
-            const parity = ((lx + ly) & 1) === 0;
-            drawTerrainTile(ctx, wx, wy, tileSize, t, parity);
+            drawTerrainTile(ctx, wx, wy, tileSize, t, cx * tilesPerChunk + lx, cy * tilesPerChunk + ly, -1, -1, -1, -1);
           }
         }
       }
@@ -1791,7 +2282,7 @@
     drawPlayer, drawZombie, drawWalker, drawRunner, drawTank, drawFireZombie,
     drawBarrel, drawWall, drawWallGhost, drawPickup, drawBullet, drawRocket, drawExplosion,
     drawCrate, drawTombstone, drawWarehouseWall, drawObstacle, drawGround,
-    drawTerrain, drawTerrainTile,
+    drawTerrain, drawTerrainTile, paintChunkTerrainBase,
     drawWoodWall, drawBrickWall, drawStoneWall, drawInteriorWall,
     drawFence, drawVehicle, drawBarrelDecor,
     drawTree, drawBoulder,

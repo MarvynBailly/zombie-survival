@@ -303,7 +303,7 @@ button.ghost:hover { color: var(--fg); border-left-color: var(--muted); }
 .hud-stats .stat-row.muted .v  { color: var(--muted); font-size: 16px; }
 
 /* bottom-left weapon dock */
-.hud-weapon { position: absolute; left: 14px; bottom: 14px; width: 340px; }
+.hud-weapon { position: absolute; left: 14px; bottom: 14px; width: 460px; }
 .hud-weapon .head {
   display: flex; align-items: center; gap: 10px;
 }
@@ -341,10 +341,10 @@ button.ghost:hover { color: var(--fg); border-left-color: var(--muted); }
 }
 .hud-weapon .mag-bar .tick.on { background: var(--warn); }
 .hud-weapon .slots {
-  display: flex; gap: 4px; margin-top: 8px;
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;
 }
 .hud-weapon .slot {
-  flex: 1; padding: 4px 0 6px;
+  flex: 1 0 30px; min-width: 28px; padding: 4px 0 6px;
   background: var(--panel2);
   border: 1px solid var(--border);
   border-radius: 3px;
