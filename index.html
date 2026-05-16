@@ -70,6 +70,15 @@
 <!-- Foundry: production-chain module. Loaded after items.js so it can
      extend ITEMS, and before game.js so resetRun can call initFoundryState. -->
 <script src="foundry.js"></script>
+<!-- Phase 1 — MICRO machine defs. Each file calls registerMachine().
+     Order doesn't matter (registry is keyed by id); pure additions. -->
+<script src="foundry-ore-drill.js"></script>
+<script src="foundry-hand-mine.js"></script>
+<script src="foundry-blast-furnace.js"></script>
+<script src="foundry-powder-mill.js"></script>
+<script src="foundry-casing-press.js"></script>
+<script src="foundry-primer-bench.js"></script>
+<script src="foundry-ammo-press.js"></script>
 <script src="perks.js"></script>
 <script src="lore.js"></script>
 <script src="trophy.js"></script>
