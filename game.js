@@ -105,6 +105,9 @@ const Game = {
   // Phase 2: short-lived lightning visuals for the chain taser. Each entry
   // { points: [{x,y}, ...], life: secs }.
   lightning: [],
+  // Phase 1.2 — Sire Call deferred-spawn queue. Entries {type, at} where `at`
+  // is a wall-clock-seconds (now()) target. Processed in updateDayCycle.
+  spawnQueue: [],
   // Day/night state. day counts up, t is seconds elapsed in current day,
   // phase is one of DAY_PHASES.name. spawnTimer paces zombie spawns.
   time: { day: 1, t: 0, phase: 'day' },
@@ -148,6 +151,7 @@ function resetRun(levelIndex) {
   Game.corpseLog = [];
   Game.smokeClouds = [];
   Game.lightning = [];
+  Game.spawnQueue = [];
   Game.time = { day: 1, t: 0, phase: 'day' };
   Game.spawnTimer = 0;
   if (typeof WEATHER !== 'undefined') WEATHER.reset();
@@ -592,11 +596,31 @@ function updateDayCycle(dt) {
   } else if (rate > 0 && Game.zombies.length < cap) {
     Game.spawnTimer -= dt;
     if (Game.spawnTimer <= 0) {
-      spawnZombieAtEdge(pickZombieType(t.phase, t.day));
+      const pickedType = pickZombieType(t.phase, t.day);
+      const z = spawnZombieAtEdge(pickedType);
+      // Phase 1.2 (C·04 Sire Call) — ~1-in-12 of edge-spawned walkers becomes
+      // a Sire. On death they emit a red ring and call 4 more walkers in over
+      // 8s (via Game.spawnQueue, processed below).
+      if (z && pickedType === 'walker' && Math.random() < 1 / 12) {
+        z.isSire = true;
+      }
       Game.spawnTimer = 1 / rate * (0.7 + Math.random() * 0.6);
     }
   } else {
     Game.spawnTimer = Math.max(0, Game.spawnTimer);
+  }
+
+  // Phase 1.2 — Sire deferred spawn queue. killZombie pushes {type, at} entries
+  // (at = wall-clock seconds when the spawn should fire). Cheap to scan; the
+  // queue is empty in almost every frame.
+  if (Game.spawnQueue && Game.spawnQueue.length) {
+    const tnow = now();
+    for (let i = Game.spawnQueue.length - 1; i >= 0; i--) {
+      if (Game.spawnQueue[i].at <= tnow) {
+        spawnZombieAtEdge(Game.spawnQueue[i].type);
+        Game.spawnQueue.splice(i, 1);
+      }
+    }
   }
 
   // During dawn, suspend any zombies that drift outside the active region.
@@ -689,6 +713,7 @@ function spawnZombieAtEdge(type) {
   } while (Math.hypot(x - player.x, y - player.y) < 820 || inObstacle(x, y, def.radius + 4));
   const z = buildZombieInstance(type, x, y);
   if (z) Game.zombies.push(z);
+  return z || null;
 }
 
 function inObstacle(x, y, r) {
@@ -2127,6 +2152,25 @@ function killZombie(z, weapon) {
   // visibly orphaned. No special cleanup — the def's score handles the
   // wave-clearing reward.
 
+  // Phase 1.2 (C·04 Sire Call) — sires emit a red expanding ring and queue
+  // 4 walkers to edge-spawn over the next 8 seconds.
+  if (z.isSire) {
+    Game.explosions.push({ x: z.x, y: z.y, r: 0, maxR: 100, t: 0, sire: true });
+    for (let i = 0; i < 18; i++) {
+      const a = (i / 18) * Math.PI * 2;
+      Game.particles.push({
+        x: z.x, y: z.y,
+        vx: Math.cos(a) * rand(80, 140),
+        vy: Math.sin(a) * rand(80, 140),
+        life: rand(0.4, 0.7), color: '#d24b35', r: rand(2, 4),
+      });
+    }
+    const tnow = now();
+    for (let i = 1; i <= 4; i++) {
+      Game.spawnQueue.push({ type: 'walker', at: tnow + i * 2.0 });
+    }
+  }
+
   // Necromancer / corpse log: any kill registers a corpse so a nearby necro
   // can raise it on the next cycle. Trim happens in tick.
   Game.corpseLog.push({ x: z.x, y: z.y, type: z.type, until: now() + 6 });
@@ -2680,7 +2724,11 @@ function updateZombies(dt) {
   const zs = Game.zombies;
   // Reset per-frame derived stats (screamer aura writes into o.speedBoost,
   // so we zero it at the start of each tick).
-  for (let i = 0; i < zs.length; i++) zs[i].speedBoost = 1;
+  for (let i = 0; i < zs.length; i++) {
+    zs[i].speedBoost = 1;
+    // Phase 1.2 — Sire pulse anim time used by render.js for the marker ring.
+    if (zs[i].isSire) zs[i].sirePulse = (zs[i].sirePulse || 0) + dt;
+  }
 
   // Boss arena: fire phase transitions when the boss's HP crosses an
   // atHpPct threshold. Each phase fires once. The arena is torn down in
@@ -2707,6 +2755,89 @@ function updateZombies(dt) {
   if (Game.corpseLog && Game.corpseLog.length) {
     const t = now();
     Game.corpseLog = Game.corpseLog.filter(c => c.until > t);
+  }
+
+  // ---------- Phase 1.1 (Pack Flanking, C·01) ----------
+  // Tag a deterministic 30% of same-faction zombies inside 200px of the
+  // player with z.flankSide = +/-1 when the pack is >= 5. The tag drives a
+  // perpendicular offset to the seek vector (applied below). Stationary /
+  // boss / ranged-only enemies skip flanking — they should never get yanked
+  // sideways by this code.
+  // Single pass over Game.zombies (cheap; ~hundreds of entries at most): we
+  // need the live index for the stable hash anyway, and the 200px radius
+  // check is just a hypot. Skipping the Spatial.query avoids an indexOf().
+  const factionCount = {};
+  for (let i = 0; i < zs.length; i++) {
+    const z = zs[i];
+    z.flankSide = 0;
+    if (z.stationary || z.boss) continue;
+    if (z.ranged && !z.damage) continue;
+    if (Math.hypot(z.x - p.x, z.y - p.y) > 200) continue;
+    const f = z.faction || 'zombie';
+    factionCount[f] = (factionCount[f] || 0) + 1;
+  }
+  for (let i = 0; i < zs.length; i++) {
+    const z = zs[i];
+    if (z.stationary || z.boss) continue;
+    if (z.ranged && !z.damage) continue;
+    if (Math.hypot(z.x - p.x, z.y - p.y) > 200) continue;
+    const f = z.faction || 'zombie';
+    if ((factionCount[f] || 0) < 5) continue;
+    // Stable hash off the live zombie-array index — the tag persists across
+    // ticks as long as the zombie keeps its slot in Game.zombies.
+    const h = (i * 2654435761) >>> 0;
+    if ((h % 100) < 30) {
+      z.flankSide = (h & 1) ? 1 : -1;
+    }
+  }
+
+  // ---------- Phase 1.3 (Stampede, C·02) ----------
+  // BFS the spatial hash for clusters of 8+ walkers within 4 tiles of each
+  // other. Each member of a qualifying cluster accumulates `momentum` per
+  // dt; at 2.5s sustained packing it triggers a 4s stampede (speed *1.6,
+  // breaksWalls). Non-walkers and zombies not in a big cluster have their
+  // momentum decay so brief bunching doesn't snowball.
+  const STAMPEDE_R = 4 * TILE_SIZE; // 160px
+  const stampedeVisited = new Set();
+  for (let i = 0; i < zs.length; i++) {
+    const z = zs[i];
+    if (z.type !== 'walker' || stampedeVisited.has(z)) continue;
+    // BFS
+    const cluster = [z];
+    stampedeVisited.add(z);
+    for (let q = 0; q < cluster.length; q++) {
+      const cur = cluster[q];
+      const nbrs = Spatial.query(cur.x, cur.y, STAMPEDE_R, []);
+      for (let j = 0; j < nbrs.length; j++) {
+        const n = nbrs[j];
+        if (n.type !== 'walker' || stampedeVisited.has(n)) continue;
+        if (Math.hypot(n.x - cur.x, n.y - cur.y) <= STAMPEDE_R) {
+          stampedeVisited.add(n);
+          cluster.push(n);
+        }
+      }
+    }
+    if (cluster.length >= 8) {
+      for (let c = 0; c < cluster.length; c++) {
+        const m = cluster[c];
+        // Already mid-stampede — let it run, don't stack momentum.
+        if ((m.stampedeT || 0) > 0) continue;
+        m.momentum = (m.momentum || 0) + dt;
+        if (m.momentum >= 2.5) {
+          m.stampedeT = 4;
+          m.breaksWalls = true;
+          m.momentum = 0;
+        }
+      }
+    }
+  }
+  // Decay momentum on anyone who didn't make it into a qualifying cluster
+  // this frame so transient bunching doesn't slowly tick toward stampede.
+  for (let i = 0; i < zs.length; i++) {
+    const z = zs[i];
+    if (!stampedeVisited.has(z) && z.momentum) {
+      z.momentum = Math.max(0, z.momentum - dt * 2);
+    }
   }
 
   for (let i = 0; i < zs.length; i++) {
@@ -2828,6 +2959,28 @@ function updateZombies(dt) {
     z.blocked = blocked;
     const d = Math.hypot(dx, dy) || 1;
     dx /= d; dy /= d;
+    // Phase 1.1 — Pack Flanking offset. Tagged flankers slide perpendicular
+    // to the player-bearing so the pack envelops instead of stacking. Offset
+    // decays smoothly inside 100px so the flanker still actually reaches the
+    // player. Skipped while bashing (we want them committed to the wall).
+    if (z.flankSide && mode !== 'bash') {
+      const pdx = p.x - z.x, pdy = p.y - z.y;
+      const pd = Math.hypot(pdx, pdy) || 1;
+      const ux = pdx / pd, uy = pdy / pd;
+      const perpX = -uy, perpY = ux;
+      // Strength: 100px outside the 100–200 ring, ramping to 0 by 100px.
+      const flankStrength = 100;
+      const decay = pd < 100 ? 0 : Math.min(1, (pd - 100) / 100);
+      const off = flankStrength * decay * z.flankSide;
+      // Re-form the seek as direction-to-player plus the perpendicular
+      // offset, then re-normalize. Using player-bearing here (rather than
+      // dx,dy which may be a flow-field vector) keeps the offset cleanly
+      // perpendicular to the line-of-sight to the player.
+      const sxk = pdx + perpX * off;
+      const syk = pdy + perpY * off;
+      const sl = Math.hypot(sxk, syk) || 1;
+      dx = sxk / sl; dy = syk / sl;
+    }
     // separation — only consult zombies in nearby spatial buckets
     let sx = 0, sy = 0;
     const sepRadius = z.r + 28;
@@ -2848,7 +3001,27 @@ function updateZombies(dt) {
     vx /= vl; vy /= vl;
     // Screamer aura applies as a per-frame speed boost (set in tier3PreTick).
     const wMul = (typeof WEATHER !== 'undefined') ? WEATHER.zombieSpeedMult() : 1;
-    const speedMul = (z.speedBoost || 1) * wMul;
+    let speedMul = (z.speedBoost || 1) * wMul;
+    // Phase 1.3 — Stampede adds another 1.6x while stampedeT > 0, and emits
+    // dust trail particles. breaksWalls is cleared when the timer expires.
+    if ((z.stampedeT || 0) > 0) {
+      speedMul *= 1.6;
+      z.stampedeT -= dt;
+      z.dustT = (z.dustT || 0) - dt;
+      if (z.dustT <= 0) {
+        z.dustT = 0.1;
+        Game.particles.push({
+          x: z.x + rand(-z.r * 0.6, z.r * 0.6),
+          y: z.y + rand(-z.r * 0.4, z.r * 0.4),
+          vx: rand(-12, 12), vy: rand(-20, -4),
+          life: rand(0.3, 0.55), color: '#a09070', r: rand(1.5, 3),
+        });
+      }
+      if (z.stampedeT <= 0) {
+        z.stampedeT = 0;
+        z.breaksWalls = false;
+      }
+    }
     z.x += vx * z.speed * speedMul * dt;
     z.y += vy * z.speed * speedMul * dt;
     // facing + walk cycle
@@ -2858,9 +3031,25 @@ function updateZombies(dt) {
     // clamp to the world bounds so it doesn't escape the arena.
     if (!z.ignoresWalls) {
       World.forEachObstacleNear(z.x, z.y, z.r + TILE_SIZE, (o) => {
-        if (!o.walkable) resolveCircleRect(z, o);
+        if (!o.walkable) {
+          // Phase 1.3 — Stampede walkers crack breakable obstacles on contact
+          // (~25 dmg/tick). Wood walls (HP 80) fall in 3-4 ticks; brick walls
+          // (HP 180) hold. Falls through to the regular push-out after.
+          if (z.breaksWalls && o.maxHp && !o.dead
+              && circleRectCollide(z.x, z.y, z.r + 1, o.x, o.y, o.w, o.h)) {
+            damageObstacle(o, 25, 'zombie');
+          }
+          resolveCircleRect(z, o);
+        }
       });
-      for (const w of Game.walls) resolveCircleRect(z, w);
+      for (let wi = Game.walls.length - 1; wi >= 0; wi--) {
+        const w = Game.walls[wi];
+        if (z.breaksWalls && circleRectCollide(z.x, z.y, z.r + 1, w.x, w.y, w.w, w.h)) {
+          w.hp -= 25;
+          if (w.hp <= 0) { destroyWall(wi, 'zombie'); continue; }
+        }
+        resolveCircleRect(z, w);
+      }
       World.forEachActiveChest(z.x, z.y, (c) => { if (!c.opened) resolveCircleRect(z, c); });
     }
     z.x = clamp(z.x, z.r, WORLD_W - z.r);

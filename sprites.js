@@ -1095,6 +1095,21 @@
   // ---------- EXPLOSIONS ----------
   function drawExplosion(ctx, ex) {
     const a = 1 - ex.t / 0.6;
+    if (ex.sire) {
+      // Phase 1.2 (C·04 Sire Call) — red expanding ring on Sire death.
+      // No hot center; this is a screech / call, not a blast.
+      ctx.strokeStyle = `rgba(210,75,53,${a})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(ex.x, ex.y, ex.r, 0, TAU);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255,140,120,${a * 0.5})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(ex.x, ex.y, ex.r * 0.72, 0, TAU);
+      ctx.stroke();
+      return;
+    }
     // outer ring
     ctx.strokeStyle = `rgba(255,170,50,${a})`;
     ctx.lineWidth = 6;

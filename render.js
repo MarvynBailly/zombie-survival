@@ -210,6 +210,21 @@ function render(alpha) {
       }
     }
 
+    // Phase 1.2 (C·04 Sire Call) — faint red pulse ring around live Sires so
+    // the player can spot the caller before it dies and floods the wave.
+    for (const z of Game.zombies) {
+      if (!z.isSire || !inView(z.x, z.y)) continue;
+      const t = z.sirePulse || 0;
+      const pulse = 0.5 + 0.5 * Math.sin(t * 3);
+      ctx.save();
+      ctx.strokeStyle = `rgba(210,75,53,${0.25 + pulse * 0.3})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(z.x, z.y, z.r + 4 + pulse * 3, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     // Charger telegraph — a red ground line pointing at the player while
     // the charger is winding up its dash. Drawn under the player so the
     // player silhouette stays readable.
