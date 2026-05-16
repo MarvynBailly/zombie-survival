@@ -810,7 +810,73 @@
         ctx.fillText('!', 0, 0);
         break;
       }
+      case 'wall': {
+        ctx.fillStyle = '#7a5a30';
+        ctx.fillRect(-6, -5, 12, 10);
+        ctx.fillStyle = '#5a4020';
+        ctx.fillRect(-6, -5, 12, 2);
+        ctx.fillRect(-6, 3, 12, 2);
+        ctx.fillStyle = '#9a7a4a';
+        ctx.fillRect(-1, -5, 2, 10);
+        break;
+      }
     }
+    ctx.restore();
+  }
+
+  // ---------- WALL (player-placed barricade) ----------
+  function drawWall(ctx, w) {
+    const hpPct = Math.max(0, w.hp / w.maxHp);
+    // base
+    ctx.fillStyle = '#5a4528';
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+    // plank lines
+    ctx.fillStyle = '#7a6238';
+    ctx.fillRect(w.x + 2, w.y + 2, w.w - 4, w.h / 2 - 3);
+    ctx.fillRect(w.x + 2, w.y + w.h / 2 + 1, w.w - 4, w.h / 2 - 3);
+    // grain accent
+    ctx.fillStyle = '#3a2c18';
+    ctx.fillRect(w.x + 2, w.y + w.h / 2 - 1, w.w - 4, 1);
+    // bolts
+    ctx.fillStyle = '#caa760';
+    ctx.fillRect(w.x + 3, w.y + 3, 2, 2);
+    ctx.fillRect(w.x + w.w - 5, w.y + 3, 2, 2);
+    ctx.fillRect(w.x + 3, w.y + w.h - 5, 2, 2);
+    ctx.fillRect(w.x + w.w - 5, w.y + w.h - 5, 2, 2);
+    // damage cracks (more as hp drops)
+    if (hpPct < 0.66) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(w.x + 4, w.y + 6);
+      ctx.lineTo(w.x + w.w * 0.6, w.y + w.h - 6);
+      ctx.stroke();
+    }
+    if (hpPct < 0.33) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.beginPath();
+      ctx.moveTo(w.x + w.w - 5, w.y + 5);
+      ctx.lineTo(w.x + w.w * 0.4, w.y + w.h - 4);
+      ctx.stroke();
+    }
+    // hp bar (only when damaged)
+    if (hpPct < 1) {
+      const bw = w.w - 4, bh = 3;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(w.x + 2, w.y - bh - 2, bw, bh);
+      ctx.fillStyle = hpPct > 0.5 ? '#7ad97a' : hpPct > 0.25 ? '#e3c054' : '#d24b35';
+      ctx.fillRect(w.x + 2, w.y - bh - 2, bw * hpPct, bh);
+    }
+  }
+  function drawWallGhost(ctx, rect, valid) {
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = valid ? '#7ad97a' : '#d24b35';
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = valid ? '#7ad97a' : '#d24b35';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
     ctx.restore();
   }
 
@@ -997,7 +1063,7 @@
   root.ZSprites = {
     palette: C,
     drawPlayer, drawZombie, drawWalker, drawRunner, drawTank, drawFireZombie,
-    drawBarrel, drawPickup, drawBullet, drawRocket, drawExplosion,
+    drawBarrel, drawWall, drawWallGhost, drawPickup, drawBullet, drawRocket, drawExplosion,
     drawCrate, drawTombstone, drawWarehouseWall, drawObstacle, drawGround,
     drawHeldWeapon, drawMuzzleFlash,
   };
