@@ -71,6 +71,11 @@ function openMachineOverlay(m) {
 }
 
 function buildMachinePanel(m, def, refresh) {
+  // Machines may supply their own panel renderer (e.g. the foreman console
+  // shows a factory-wide x-ray instead of the standard input/output UI).
+  if (typeof def.customPanel === 'function') {
+    return def.customPanel(m, refresh);
+  }
   const recipe = def.recipes.find(r => r.id === m.recipeId);
   const progressPct = recipe ? Math.min(100, Math.round((m.progress / recipe.cycle) * 100)) : 0;
 
