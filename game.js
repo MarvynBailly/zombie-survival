@@ -184,6 +184,10 @@ function resetRun(levelIndex) {
       gl:       { mag: 0, reserve: 0 },
       saw:      { mag: Infinity, reserve: Infinity }, // melee weapon
     },
+    // Phase 1 arsenal foundation — offhand item slot + shield HP pool. The
+    // damage path / shield bash live in Phase 2.
+    offhand: null,
+    offhandHp: 0,
     fireCd: 0, reloading: 0, placeCd: 0, openCd: 0,
     walkPhase: 0, muzzleFlash: 0,
     dead: false,
@@ -203,6 +207,10 @@ function resetRun(levelIndex) {
   };
   // Foundry: reset placeable-machine state on every run.
   if (typeof initFoundryState === 'function') initFoundryState();
+  // Phase 1 arsenal foundation: extend every ammo entry with the new per-
+  // weapon fields (kills counter, condition meter, named/trait slots, ammo
+  // type, attachment slots, jam flag). Consumed by Phase 2-4 systems.
+  for (const k in Game.player.ammo) ensureArsenalFields(Game.player.ammo[k]);
   World.ensureActive(Game.player.x, Game.player.y);
   Game.camera.x = Game.player.x - VIEW_W / 2;
   Game.camera.y = Game.player.y - VIEW_H / 2;
@@ -253,7 +261,19 @@ function restoreFromSave(d) {
     const a = d.player.ammo[k];
     p.ammo[k].mag = a.mag === -1 ? Infinity : a.mag;
     p.ammo[k].reserve = a.reserve === -1 ? Infinity : a.reserve;
+    // Phase 1 fields — may be missing on v5 saves; ensureArsenalFields below
+    // backfills defaults for any field that didn't survive the round-trip.
+    if (a.kills != null) p.ammo[k].kills = a.kills;
+    if (a.condition != null) p.ammo[k].condition = a.condition;
+    if (a.name !== undefined) p.ammo[k].name = a.name;
+    if (a.trait !== undefined) p.ammo[k].trait = a.trait;
+    if (a.ammoType) p.ammo[k].ammoType = a.ammoType;
+    if (a.attachments) p.ammo[k].attachments = { ...a.attachments };
   }
+  for (const k in p.ammo) ensureArsenalFields(p.ammo[k]);
+  // Offhand slot — may be absent from v5 saves; default to empty.
+  if (d.player.offhand !== undefined) p.offhand = d.player.offhand;
+  if (d.player.offhandHp != null) p.offhandHp = d.player.offhandHp;
   // Legacy saves from when the pistol was infinite — clamp back to the
   // finite defaults so the player still has to scavenge after resuming.
   if (p.ammo.pistol.mag === Infinity) p.ammo.pistol.mag = WEAPONS.pistol.magSize;
@@ -444,8 +464,57 @@ function unlockWeapon(key, reserve, notice) {
     p.ammo[key].mag = w.magSize;
     p.ammo[key].reserve = reserve;
   }
+  ensureArsenalFields(p.ammo[key]);
   setNotice(notice, 3);
   Audio.sfx.pickup();
+}
+
+// ---------- Arsenal foundation helpers ----------
+// Idempotent: tops up an ammo entry with the new Phase 1 fields without
+// clobbering any existing values. Called from resetRun, restoreFromSave, and
+// unlockWeapon so every code path that touches p.ammo[k] hits this once.
+function ensureArsenalFields(a) {
+  if (!a) return;
+  if (a.kills == null) a.kills = 0;
+  if (a.condition == null) a.condition = 1.0;
+  if (a.name == null) a.name = null;
+  if (a.trait == null) a.trait = null;
+  if (a.ammoType == null) a.ammoType = 'standard';
+  if (!a.attachments) a.attachments = { sight: null, muzzle: null, mag: null, under: null };
+  if (a.jammed == null) a.jammed = false;
+  if (a.jamClearT == null) a.jamClearT = 0;
+}
+
+// Wear: every shot trims condition slightly. Phase 2/3 will tune the rate per
+// weapon; the helper is the single sink so it stays consistent. Floors at 0.
+function decrementCondition(p, key, amount = 0.0008) {
+  const a = p && p.ammo && p.ammo[key];
+  if (!a) return;
+  a.condition = Math.max(0, (a.condition == null ? 1 : a.condition) - amount);
+}
+
+// Jam check: chance ramps from 0% at 30% condition to 15% at 0%. Returns true
+// if the gun jammed this trigger pull and sets a.jammed. Phase 4 owns the
+// tap-R-twice UX; for now callers just early-return on a jam.
+function tryJam(p, key) {
+  const a = p && p.ammo && p.ammo[key];
+  if (!a) return false;
+  const c = a.condition == null ? 1 : a.condition;
+  if (c >= 0.30) return false;
+  const t = (0.30 - c) / 0.30;      // 0 at 30%, 1 at 0%
+  const chance = 0.15 * t;
+  if (Math.random() < chance) { a.jammed = true; return true; }
+  return false;
+}
+
+// Clear-jam start: caller sets the 1.5s timer. Phase 4 will drive the actual
+// countdown + double-tap-R detection; this helper just exposes the duration
+// and clears the flag at the end.
+function clearJam(p, key) {
+  const a = p && p.ammo && p.ammo[key];
+  if (!a) return 0;
+  a.jamClearT = 1.5;
+  return 1.5;
 }
 
 function advanceDayPhase(prevPhase, newPhase) {
@@ -778,6 +847,7 @@ function updatePlayer(dt) {
         if (p.railCharge >= weap.chargeTime && p.ammo[p.weapon].mag > 0) {
           fireRailgunBeam(p, weap);
           p.ammo[p.weapon].mag = Math.max(0, p.ammo[p.weapon].mag - 1);
+          decrementCondition(p, p.weapon, 0.0025);
           if (p.ammo[p.weapon].mag === 0 && p.ammo[p.weapon].reserve > 0) {
             p.reloading = weap.reloadTime;
             Audio.sfx.reload();
@@ -787,7 +857,11 @@ function updatePlayer(dt) {
       }
     } else if (input.mouseDown && p.fireCd <= 0 && p.reloading <= 0) {
       const a = p.ammo[p.weapon];
-      if (a.mag > 0) {
+      // Phase 1 jam check — jammed firearm just clicks; Phase 4 will own the
+      // tap-R-twice clear UX. Melee weapons (magSize Infinity) are exempt.
+      if (a.jammed && weap.magSize !== Infinity) {
+        if (p.fireCd <= 0) { Audio.sfx.empty(); p.fireCd = 0.3; }
+      } else if (a.mag > 0) {
         // Minigun: don't actually fire until spun up. Show muzzle flare so
         // the player has feedback that the trigger is registering.
         if (weap.spinUp && p.minigunSpin < weap.spinUp) {
@@ -796,7 +870,13 @@ function updatePlayer(dt) {
         } else {
           fireWeapon(p, weap);
           p.fireCd = weap.fireRate * perkMult('fireRateMult');
-          if (weap.magSize !== Infinity) a.mag--;
+          if (weap.magSize !== Infinity) {
+            a.mag--;
+            decrementCondition(p, p.weapon);
+            if (tryJam(p, p.weapon)) {
+              // Jam fired this shot — leave mag where it is; next click clicks.
+            }
+          }
           if (weap.magSize !== Infinity && a.mag === 0 && a.reserve > 0) {
             p.reloading = weap.reloadTime;
             Audio.sfx.reload();

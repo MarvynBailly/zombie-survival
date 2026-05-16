@@ -33,6 +33,18 @@ function saveGame() {
     ammo[k] = {
       mag: a.mag === Infinity ? -1 : a.mag,
       reserve: a.reserve === Infinity ? -1 : a.reserve,
+      // Phase 1 arsenal foundation fields. Stored even at defaults so any
+      // future tweaks to default values don't silently overwrite a player's
+      // actual progress on resume.
+      kills: a.kills | 0,
+      condition: a.condition == null ? 1.0 : a.condition,
+      name: a.name || null,
+      trait: a.trait || null,
+      ammoType: a.ammoType || 'standard',
+      attachments: a.attachments
+        ? { sight: a.attachments.sight || null, muzzle: a.attachments.muzzle || null,
+            mag: a.attachments.mag || null, under: a.attachments.under || null }
+        : { sight: null, muzzle: null, mag: null, under: null },
     };
   }
   const data = {
@@ -54,6 +66,9 @@ function saveGame() {
       weapon: p.weapon,
       unlocked: { ...p.unlocked },
       ammo,
+      // Phase 1 arsenal foundation — offhand slot + shield HP.
+      offhand: p.offhand || null,
+      offhandHp: p.offhandHp | 0,
       inventory: p.inventory ? {
         capacity: p.inventory.capacity,
         slots: p.inventory.slots.map(s => s ? { id: s.id, count: s.count } : null),
@@ -114,9 +129,40 @@ function loadSavedGame() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const d = JSON.parse(raw);
-    if (!d || d.v !== SAVE_VERSION) return null;
-    return d;
+    if (!d) return null;
+    if (d.v === SAVE_VERSION) return d;
+    const migrated = migrateSave(d);
+    return migrated;
   } catch { return null; }
+}
+
+// Save-version migrations. Each branch upgrades the data shape one step; the
+// caller still expects the final shape so we fall through versions in order.
+// Returns null if no path forward exists (player gets a fresh run).
+function migrateSave(d) {
+  if (!d || typeof d.v !== 'number') return null;
+  // v5 → v6: Phase 1 arsenal foundation. Backfill per-weapon arsenal fields
+  // and offhand slot with safe defaults; restoreFromSave's ensureArsenalFields
+  // call will also catch anything we miss here.
+  if (d.v === 5) {
+    if (d.player) {
+      if (d.player.ammo) {
+        for (const k in d.player.ammo) {
+          const a = d.player.ammo[k];
+          if (a.kills == null) a.kills = 0;
+          if (a.condition == null) a.condition = 1.0;
+          if (a.name === undefined) a.name = null;
+          if (a.trait === undefined) a.trait = null;
+          if (!a.ammoType) a.ammoType = 'standard';
+          if (!a.attachments) a.attachments = { sight: null, muzzle: null, mag: null, under: null };
+        }
+      }
+      if (d.player.offhand === undefined) d.player.offhand = null;
+      if (d.player.offhandHp == null) d.player.offhandHp = 0;
+    }
+    d.v = 6;
+  }
+  return d.v === SAVE_VERSION ? d : null;
 }
 function clearSavedGame() {
   try { localStorage.removeItem(SAVE_KEY); } catch {}

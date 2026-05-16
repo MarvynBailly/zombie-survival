@@ -16,6 +16,55 @@ const ITEMS = {
     stackMax: 999, tint: '#a8a59c',
     desc: 'Salvaged metal, wire, plastic. Spent at workbenches.',
   },
+  // Phase 1 arsenal foundation: new material economy. These slot into the
+  // ammo-press / chainsaw / taser systems wired up in Phase 2-4.
+  fuel: {
+    id: 'fuel', name: 'Fuel', category: 'material',
+    stackMax: 99, tint: '#e3a83a',
+    desc: 'Burnable. Powers chainsaws and engines.',
+  },
+  casing: {
+    id: 'casing', name: 'Casing', category: 'material',
+    stackMax: 999, tint: '#caa760',
+    desc: 'Spent brass. Reload at a workbench.',
+  },
+  capacitor: {
+    id: 'capacitor', name: 'Capacitor', category: 'material',
+    stackMax: 20, tint: '#5fb6e8',
+    desc: 'Charge cell. Feeds the railgun and chain taser.',
+  },
+  nail: {
+    id: 'nail', name: 'Nail', category: 'material',
+    stackMax: 999, tint: '#cad0d8',
+    desc: 'Crude ammunition. Made from scrap.',
+  },
+  battery: {
+    id: 'battery', name: 'Battery', category: 'material',
+    stackMax: 20, tint: '#8ec547',
+    desc: 'Power source. Feeds taser-class weapons.',
+  },
+  thermite: {
+    id: 'thermite', name: 'Thermite', category: 'material',
+    stackMax: 20, tint: '#d24b35',
+    desc: 'Exotic charge. Used to craft incendiary rounds.',
+  },
+  phosphorus: {
+    id: 'phosphorus', name: 'Phosphorus', category: 'material',
+    stackMax: 20, tint: '#e8e6df',
+    desc: 'Lab jar. Used to craft incendiary/explosive ammo.',
+  },
+
+  // ----- tools (Phase 1: registered only; use() is Phase 3/4) -----
+  weapon_wall: {
+    id: 'weapon_wall', name: 'Weapon Wall', category: 'tool',
+    stackMax: 1, tint: '#7e8a98',
+    desc: 'Hang every firearm you find. Click to swap loadout.',
+  },
+  ammo_press: {
+    id: 'ammo_press', name: 'Ammo Press', category: 'tool',
+    stackMax: 1, tint: '#5e6a78',
+    desc: 'Workbench add-on. Print rounds from scrap + casings.',
+  },
 
   // ----- consumables -----
   bandage: {
@@ -262,8 +311,104 @@ function drawItemIconShape(ctx, id, size) {
     ctx.fillStyle = '#7a7e88';
     ctx.font = 'bold 6px monospace';
     ctx.fillText('Rx', cx - 5, cy + 7);
+  } else if (id === 'fuel') {
+    // jerrycan: amber body, dark cap
+    ctx.fillStyle = '#3a2a14';
+    ctx.fillRect(cx - 10, cy - 11, 20, 22);
+    ctx.fillStyle = '#e3a83a';
+    ctx.fillRect(cx - 9, cy - 10, 18, 20);
+    ctx.fillStyle = '#8a5a2a';
+    ctx.fillRect(cx - 4, cy - 14, 8, 4);
+    ctx.fillStyle = '#0b0c0e';
+    ctx.fillRect(cx + 6, cy - 8, 2, 4);
+  } else if (id === 'casing') {
+    // a few brass cylinders
+    ctx.fillStyle = '#caa760';
+    ctx.fillRect(cx - 11, cy - 2, 6, 10);
+    ctx.fillRect(cx - 3, cy - 4, 6, 12);
+    ctx.fillRect(cx + 5, cy - 1, 6, 9);
+    ctx.fillStyle = '#8a6a32';
+    ctx.fillRect(cx - 11, cy + 6, 6, 2);
+    ctx.fillRect(cx - 3, cy + 6, 6, 2);
+    ctx.fillRect(cx + 5, cy + 6, 6, 2);
+  } else if (id === 'capacitor') {
+    // cell: dark body, blue glow line
+    ctx.fillStyle = '#1c2630';
+    ctx.fillRect(cx - 10, cy - 9, 20, 18);
+    ctx.fillStyle = '#5fb6e8';
+    ctx.fillRect(cx - 8, cy - 7, 16, 4);
+    ctx.fillStyle = '#3a3f4a';
+    ctx.fillRect(cx - 8, cy + 1, 16, 6);
+    ctx.fillStyle = '#caa760';
+    ctx.fillRect(cx - 3, cy - 12, 6, 3);
+  } else if (id === 'nail') {
+    // three nails fanned
+    ctx.strokeStyle = '#cad0d8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, cy - 8); ctx.lineTo(cx - 4, cy + 8);
+    ctx.moveTo(cx, cy - 9);     ctx.lineTo(cx, cy + 9);
+    ctx.moveTo(cx + 8, cy - 8); ctx.lineTo(cx + 4, cy + 8);
+    ctx.stroke();
+    ctx.fillStyle = '#e0e4ea';
+    ctx.fillRect(cx - 9, cy - 10, 4, 2);
+    ctx.fillRect(cx - 2, cy - 11, 4, 2);
+    ctx.fillRect(cx + 5, cy - 10, 4, 2);
+  } else if (id === 'battery') {
+    // AA-ish battery: green body, brass nub
+    ctx.fillStyle = '#2a3618';
+    ctx.fillRect(cx - 10, cy - 6, 20, 12);
+    ctx.fillStyle = '#8ec547';
+    ctx.fillRect(cx - 9, cy - 5, 16, 10);
+    ctx.fillStyle = '#caa760';
+    ctx.fillRect(cx + 7, cy - 2, 3, 4);
+    ctx.fillStyle = '#0b0c0e';
+    ctx.font = 'bold 8px monospace';
+    ctx.fillText('+', cx - 5, cy + 3);
+  } else if (id === 'thermite') {
+    // jar with red contents
+    ctx.fillStyle = '#3a3f4a';
+    ctx.fillRect(cx - 7, cy - 11, 14, 3);
+    ctx.fillStyle = '#1c1f25';
+    ctx.fillRect(cx - 9, cy - 8, 18, 18);
+    ctx.fillStyle = '#d24b35';
+    ctx.fillRect(cx - 8, cy - 4, 16, 13);
+    ctx.fillStyle = '#e3a83a';
+    ctx.fillRect(cx - 8, cy - 4, 16, 2);
+  } else if (id === 'phosphorus') {
+    // jar with pale contents
+    ctx.fillStyle = '#3a3f4a';
+    ctx.fillRect(cx - 7, cy - 11, 14, 3);
+    ctx.fillStyle = '#1c1f25';
+    ctx.fillRect(cx - 9, cy - 8, 18, 18);
+    ctx.fillStyle = '#e8e6df';
+    ctx.fillRect(cx - 8, cy - 4, 16, 13);
+    ctx.fillStyle = '#cad0d8';
+    ctx.fillRect(cx - 6, cy + 2, 12, 3);
+  } else if (id === 'weapon_wall') {
+    // pegboard with two rifles
+    ctx.fillStyle = '#3a2a14';
+    ctx.fillRect(cx - 14, cy - 12, 28, 24);
+    ctx.fillStyle = '#7a5a30';
+    ctx.fillRect(cx - 13, cy - 11, 26, 22);
+    ctx.fillStyle = '#3a3f4a';
+    ctx.fillRect(cx - 11, cy - 7, 22, 3);
+    ctx.fillRect(cx - 11, cy + 4, 22, 3);
+    ctx.fillStyle = '#0b0c0e';
+    ctx.fillRect(cx - 9, cy - 6, 2, 1);
+    ctx.fillRect(cx + 7, cy + 5, 2, 1);
+  } else if (id === 'ammo_press') {
+    // small press: heavy frame + brass shell
+    ctx.fillStyle = '#3a3f4a';
+    ctx.fillRect(cx - 12, cy + 4, 24, 6);
+    ctx.fillStyle = '#5e6a78';
+    ctx.fillRect(cx - 4, cy - 12, 8, 16);
+    ctx.fillStyle = '#7e8a98';
+    ctx.fillRect(cx - 11, cy - 9, 22, 4);
+    ctx.fillStyle = '#caa760';
+    ctx.fillRect(cx - 2, cy + 2, 4, 4);
   } else if (typeof drawFoundryItemIcon === 'function' && drawFoundryItemIcon(ctx, id, size) !== false) {
-    // foundry resources are drawn by foundry.js' shared lump renderer
+    // foundry resources fall through to the foundry's shared lump renderer
   } else {
     // unknown/fallback — gray box with a question mark
     ctx.fillStyle = '#3a3f4a';

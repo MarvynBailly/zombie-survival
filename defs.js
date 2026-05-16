@@ -328,3 +328,86 @@ const LEVELS = [
     },
   },
 ];
+
+// ---------- Arsenal foundation registries ----------
+// Phase 1 plumbing: registries + helpers consumed by later phases. The fire
+// path, attachment UI, and named-drop rolls are wired up in later passes; this
+// file only declares the data shapes + lookup helpers.
+
+// Ammo-type registry. Each weapon has an ammoType slot on p.ammo[k]; Phase 3
+// fills onHit() with the real effects (DoT, AP pierce, AoE). 'compatibleWith'
+// is by weapon-class string — checked at the press/conversion site.
+const AMMO_TYPES = {
+  standard: {
+    id: 'standard', name: 'Standard', color: '#caa760',
+    compatibleWith: ['pistol', 'smg', 'shotgun', 'rifle', 'crossbow', 'minigun', 'gl'],
+    onHit(z, p, weapon) { /* phase 3 */ },
+  },
+  incendiary: {
+    id: 'incendiary', name: 'Incendiary', color: '#e3a83a',
+    compatibleWith: ['pistol', 'smg', 'shotgun'],
+    onHit(z, p, weapon) { /* phase 3: 4s burn DoT + ground patch */ },
+  },
+  ap: {
+    id: 'ap', name: 'Armor-Piercing', color: '#5fb6e8',
+    compatibleWith: ['pistol', 'smg', 'rifle', 'crossbow', 'minigun'],
+    onHit(z, p, weapon) { /* phase 3: pierces 3, cuts armor */ },
+  },
+  explosive: {
+    id: 'explosive', name: 'Explosive', color: '#d24b35',
+    compatibleWith: ['pistol', 'smg', 'rifle'],
+    onHit(z, p, weapon) { /* phase 3: 1.5-tile AoE on impact */ },
+  },
+};
+
+function getAmmoTypeFor(p, key) {
+  const a = p && p.ammo && p.ammo[key];
+  const id = (a && a.ammoType) || 'standard';
+  return AMMO_TYPES[id] || AMMO_TYPES.standard;
+}
+
+// Offhand slot — paired with one-hand weapons (pistol, machete). Damage path
+// wiring lives in Phase 2; this declaration is just the data table + the
+// p.offhand slot that game.js sets up.
+const OFFHANDS = {
+  shield: {
+    id: 'shield', name: 'Riot Shield',
+    frontDR: 1.0, frontRangeDR: 0.6,
+    hp: 300, bashCd: 8,
+  },
+};
+
+// Named-weapon rolls — Mythic-tier drops get a unique name and one trait from
+// the pool. Phase 4 calls rollNamedWeapon() from the chest path.
+const WEAPON_TRAITS = [
+  { id: 'headshotCrit', name: 'Headhunter',  desc: '+25% crit on headshot' },
+  { id: 'ricochet',     name: 'Ricochet',    desc: 'bullets bounce once' },
+  { id: 'fastHolster',  name: 'Quickdraw',   desc: 'reloads while holstered' },
+  { id: 'bulletBack',   name: 'Frugal',      desc: 'refund 1 bullet on kill' },
+];
+const WEAPON_NAMES = [
+  'Widowmaker', 'Old Reliable', 'Coyote', 'Last Word', 'Sunday',
+  'Bonecutter', 'Tin Lizzy', 'Hellraiser', 'Quiet Earl', 'Magpie',
+  'Razor', 'Foreman',
+];
+
+function rollNamedWeapon(rng, weaponKey) {
+  const r = (typeof rng === 'function') ? rng : Math.random;
+  const name = WEAPON_NAMES[Math.floor(r() * WEAPON_NAMES.length)];
+  const trait = WEAPON_TRAITS[Math.floor(r() * WEAPON_TRAITS.length)];
+  return { name, trait };
+}
+
+// effectiveWeapon — returns a shallow-merged WEAPONS[key] with attachment
+// modifiers folded in. Consumers in Phase 2/3 will call this instead of
+// reading WEAPONS[p.weapon] directly. Defined here (defs.js) so it's in scope
+// before game.js's fire path. applyAttachments is provided by attachments.js
+// (script-tagged after defs.js); this guards for load order during dev.
+function effectiveWeapon(p, key) {
+  const base = WEAPONS[key];
+  if (!base) return null;
+  const ent = p && p.ammo && p.ammo[key];
+  const atts = ent && ent.attachments;
+  if (!atts || typeof applyAttachments !== 'function') return base;
+  return applyAttachments(base, atts);
+}
