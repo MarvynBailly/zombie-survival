@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Outbreak — Map &amp; City Brainstorm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="brainstorm.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="header">
+  <div class="top">
+    <span class="dot"></span>
+    <span>FIELD BRIEF · WORLDGEN TRACK</span>
+    <span class="spacer"></span>
+    <span>FILE <span class="x">WG-001</span></span>
+    <span>·</span>
+    <span>REV A</span>
+    <span>·</span>
+    <span>DAY <span class="x">∞</span></span>
+  </div>
+  <h1>MAP <span class="slash">&amp;</span> <span class="bleed">CITY</span></h1>
+  <div class="lede">
+    <div class="cell"><div class="l">DIRECTIONS</div><div class="v">20</div></div>
+    <div class="cell"><div class="l">CLUSTERS</div><div class="v">05</div></div>
+    <div class="cell"><div class="l">FOCUS</div><div class="v">WORLD<span class="unit">gen + explore</span></div></div>
+    <div class="cell"><div class="l">SCOPE</div><div class="v">S → XL</div></div>
+  </div>
+</header>
+
+<div class="intro">
+  <div class="body">
+    <p>The world right now: 32k×32k procgen, deterministic per‑chunk seeds, terrain classified into grass / forest / water / mountain. POIs go from <em>hut</em> at low tiers up through <em>city</em> (36×36 tiles), plus terrain‑flavored variants (fishing dock, lumber camp, mining outpost, farm). Buildings are procedurally laid out inside each POI footprint.</p>
+    <p>That's a great floor — but the city POI is still <em>"a denser hut"</em>, and the world reads as a noise field with buildings scattered on top. This brief pushes in five directions: <strong class="acc">making cities feel like cities</strong>, adding <strong>landmark POIs</strong> the player will actually remember, fixing <strong>exploration legibility</strong>, opening up <strong>hidden spaces</strong>, and texturing the empty miles between things.</p>
+    <p>None of these duplicate the prior briefs. Each card respects the existing chunk/POI/zone system. Tell me which to push.</p>
+  </div>
+  <aside class="legend">
+    <h4>LEGEND</h4>
+    <div class="row"><span class="key">COMPLEXITY</span><span class="tag s">S</span><span class="tag m">M</span><span class="tag l">L</span><span class="tag xl">XL</span></div>
+    <div class="row"><span class="key">IMPACT</span><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip"></span><span class="pip"></span></div></div>
+    <div class="row"><span class="key">HOOKS</span><span style="color:var(--fg-dim)">existing system the idea plugs into</span></div>
+    <div class="row" style="margin-top:14px;border-top:1px dashed var(--border);padding-top:12px"><span class="key">STATUS</span><span style="color:var(--toxic)">all 20 unbuilt — pitch only</span></div>
+  </aside>
+</div>
+
+<!-- A — CITY GEN -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">A</div>
+    <div class="ttl">CITY GEN</div>
+    <div class="sub">// making the city POI feel like a city</div>
+  </div>
+  <div class="grid">
+
+    <div class="card feature">
+      <div class="num">A·01</div>
+      <div class="meta"><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span></div><span class="tag xl">XL</span></div>
+      <div class="left">
+        <div class="ico">
+          <svg class="ic" width="84" height="60" viewBox="0 0 84 60">
+            <rect x="4" y="4" width="38" height="26" fill="#3a3f4a" stroke="#5e6a78"/>
+            <rect x="44" y="4" width="36" height="26" fill="#5e6a78" stroke="#3a3f4a"/>
+            <rect x="4" y="32" width="40" height="26" fill="#7a9a55" stroke="#3a4024" opacity="0.6"/>
+            <rect x="46" y="32" width="34" height="26" fill="#8a5a2a" stroke="#5a3a1a" opacity="0.7"/>
+            <text x="23" y="20" font-family="Bebas Neue" font-size="9" fill="#e8e6df" text-anchor="middle" letter-spacing="2">DOWNTOWN</text>
+            <text x="62" y="20" font-family="Bebas Neue" font-size="9" fill="#e8e6df" text-anchor="middle" letter-spacing="2">INDUST.</text>
+            <text x="24" y="48" font-family="Bebas Neue" font-size="9" fill="#0b0c0e" text-anchor="middle" letter-spacing="2">SUBURB</text>
+            <text x="63" y="48" font-family="Bebas Neue" font-size="9" fill="#0b0c0e" text-anchor="middle" letter-spacing="2">HARBOR</text>
+          </svg>
+        </div>
+        <div class="nm">DISTRICTS</div>
+        <p class="one">Downtown. Industrial. Suburbs. Harbor. Each looks different.</p>
+        <div class="body">
+          <p>City POIs are currently a uniform grid of buildings. Split each city's footprint into <strong>3–5 districts</strong>, each with its own theme: <em>Downtown</em> (tall narrow buildings, dense), <em>Industrial</em> (warehouse + factory geometry, fuel barrels, fenced yards), <em>Residential</em> (rows of houses with backyards), <em>Harbor</em> (only on coastal cities, piers + crates), <em>Commercial</em> (storefronts + mall).</p>
+          <p>The split is a Voronoi cut on the POI footprint, seeded from the city's existing seed — fully deterministic, fully cached. Each district uses a different building emitter from the existing palette.</p>
+        </div>
+      </div>
+      <div class="right">
+        <div class="row"><span class="k">SPLIT</span><span class="v">Voronoi · 3–5 cells</span></div>
+        <div class="row"><span class="k">DETERMINISM</span><span class="v">poi.seed driven</span></div>
+        <div class="row"><span class="k">LOOT BIAS</span><span class="v">per district table</span></div>
+        <div class="row"><span class="k">ENEMY BIAS</span><span class="v">e.g. raiders → harbor</span></div>
+        <div class="row"><span class="k">MAP UI</span><span class="v">district labels on minimap</span></div>
+        <div class="row"><span class="k">REUSE</span><span class="v">emitProcBuilding · theme</span></div>
+      </div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="4" y="20" width="56" height="8" fill="#3a3f4a"/>
+          <rect x="28" y="4" width="8" height="40" fill="#3a3f4a"/>
+          <line x1="10" y1="24" x2="20" y2="24" stroke="#e3a83a" stroke-width="0.6" stroke-dasharray="3 2"/>
+          <line x1="44" y1="24" x2="56" y2="24" stroke="#e3a83a" stroke-width="0.6" stroke-dasharray="3 2"/>
+          <line x1="32" y1="10" x2="32" y2="18" stroke="#e3a83a" stroke-width="0.6" stroke-dasharray="3 2"/>
+          <line x1="32" y1="32" x2="32" y2="40" stroke="#e3a83a" stroke-width="0.6" stroke-dasharray="3 2"/>
+          <rect x="6" y="14" width="14" height="4" fill="#5e6a78"/>
+          <rect x="40" y="32" width="12" height="4" fill="#5e6a78"/>
+        </svg>
+      </div>
+      <div class="nm">ROAD <span class="alt">GRID</span></div>
+      <p class="one">A real network. POIs hang off it.</p>
+      <div class="body">
+        <p>Right now POIs sit in scattered zones. Add a <strong>connecting road layer</strong>: stamp paved tiles between every city/town pair within 6 zones, with smaller gravel spurs to outlying POIs. Roads bias spawns (cars wreck on them, raider patrols use them). Players have something to <em>follow</em>.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">terrain.PATH (reserved)</span><span class="chip">POI graph</span><span class="chip">vehicles</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·03</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="56" viewBox="0 0 56 56">
+          <rect x="20" y="6" width="20" height="46" fill="#5e6a78" stroke="#2a2e36"/>
+          <rect x="22" y="10" width="4" height="4" fill="#e3a83a"/>
+          <rect x="30" y="10" width="4" height="4" fill="#1c1f25"/>
+          <rect x="22" y="18" width="4" height="4" fill="#1c1f25"/>
+          <rect x="30" y="18" width="4" height="4" fill="#e3a83a"/>
+          <rect x="22" y="26" width="4" height="4" fill="#e3a83a"/>
+          <rect x="30" y="26" width="4" height="4" fill="#1c1f25"/>
+          <rect x="22" y="34" width="4" height="4" fill="#1c1f25"/>
+          <rect x="30" y="34" width="4" height="4" fill="#e3a83a"/>
+          <rect x="26" y="44" width="8" height="8" fill="#3a3f4a"/>
+        </svg>
+      </div>
+      <div class="nm">HIGH <span class="alt">RISES</span></div>
+      <p class="one">A 3‑floor building you actually enter.</p>
+      <div class="body">
+        <p>Within downtown districts, 10–20% of buildings get <strong>vertical interiors</strong>. Enter at street level, stair tile takes you to a separately‑generated floor 2, then floor 3. Top floors hold higher‑tier chests but the climb is one‑way (zombies follow). Hooks into the Foundations & Floors home‑base feature for shared rendering.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">multi‑floor (homestead)</span><span class="chip">camera</span><span class="chip">stair tile</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·04</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="6" y="30" width="44" height="3" fill="#3a3f4a"/>
+          <rect x="10" y="14" width="4" height="16" fill="#5e6a78"/>
+          <rect x="9" y="12" width="6" height="4" fill="#d24b35"/>
+          <rect x="22" y="22" width="10" height="8" fill="#8a5a2a"/>
+          <rect x="36" y="20" width="4" height="10" fill="#5e6a78"/>
+          <rect x="35" y="14" width="6" height="6" fill="#1c1f25"/>
+          <line x1="36" y1="16" x2="40" y2="16" stroke="#e3a83a" stroke-width="0.5"/>
+        </svg>
+      </div>
+      <div class="nm">STREET <span class="alt">PROPS</span></div>
+      <p class="one">Mailboxes, benches, hydrants, bus stops, dumpsters.</p>
+      <div class="body">
+        <p>City tiles are mostly empty between buildings. Add a procedural <strong>street decoration pass</strong>: per‑tile lookup that drops one of ~12 small props on sidewalk tiles. Most are decor; a few (mailbox, dumpster) hold <strong>scrap</strong>. Costs nothing at runtime — just makes "the empty block between two buildings" read.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">decor pass</span><span class="chip">scrap econ</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- B — LANDMARKS -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">B</div>
+    <div class="ttl">LANDMARKS</div>
+    <div class="sub">// rare unique POIs · the places you tell stories about</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">B·01</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <ellipse cx="32" cy="28" rx="28" ry="16" fill="#3a3024" stroke="#5e6a78"/>
+          <ellipse cx="32" cy="28" rx="20" ry="10" fill="#7a9a55"/>
+          <rect x="28" y="22" width="8" height="12" fill="#5e6a78"/>
+          <circle cx="20" cy="28" r="1" fill="#d24b35"/>
+          <circle cx="44" cy="28" r="1" fill="#d24b35"/>
+          <circle cx="32" cy="20" r="1" fill="#d24b35"/>
+          <circle cx="32" cy="36" r="1" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="alt">STADIUM</span></div>
+      <p class="one">A bowl. 200 walkers. One mythic chest at center field.</p>
+      <div class="body">
+        <p>One stadium per region. From outside it's just a tall ring; the gates are barricaded. Find the open service entrance and the field is a <strong>set‑piece arena</strong>: dense horde of 150+, two mini‑bosses, a single mythic chest on the 50‑yard line. Pure risk / reward. Lookout: getting back out.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">city POI variant</span><span class="chip">spawn director</span><span class="chip">mythic chest</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">B·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="8" y="10" width="48" height="32" fill="#e8e6df"/>
+          <rect x="26" y="12" width="12" height="8" fill="#d24b35"/>
+          <rect x="30" y="10" width="4" height="12" fill="#d24b35"/>
+          <rect x="12" y="22" width="6" height="6" fill="#5fb6e8"/>
+          <rect x="22" y="22" width="6" height="6" fill="#5fb6e8"/>
+          <rect x="36" y="22" width="6" height="6" fill="#5fb6e8"/>
+          <rect x="46" y="22" width="6" height="6" fill="#5fb6e8"/>
+          <rect x="12" y="32" width="6" height="6" fill="#5fb6e8"/>
+          <rect x="22" y="32" width="6" height="6" fill="#5fb6e8"/>
+          <rect x="36" y="32" width="6" height="6" fill="#5fb6e8"/>
+          <rect x="46" y="32" width="6" height="6" fill="#5fb6e8"/>
+        </svg>
+      </div>
+      <div class="nm">HOSPITAL</div>
+      <p class="one">Antibiotics, surgical kits, and what's loose in the wards.</p>
+      <div class="body">
+        <p>Multi‑floor POI. Pharmacy on floor 1 (drugs / antibiotics — directly hooks Infection from brief 1). Wards on floor 2 (Bloaters in beds). Surgical theater mini‑boss: <strong>The Surgeon</strong>, a Necromancer variant who reanimates the corpses on the slabs. Drops named scalpel weapon.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">infection %</span><span class="chip">high rises</span><span class="chip">named drops</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">B·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="8" y="10" width="40" height="30" fill="#5e6a78"/>
+          <rect x="8" y="8" width="40" height="4" fill="#3a3f4a"/>
+          <rect x="14" y="16" width="4" height="6" fill="#1c1f25"/>
+          <rect x="22" y="16" width="4" height="6" fill="#1c1f25"/>
+          <rect x="30" y="16" width="4" height="6" fill="#1c1f25"/>
+          <rect x="38" y="16" width="4" height="6" fill="#1c1f25"/>
+          <rect x="14" y="26" width="4" height="6" fill="#1c1f25"/>
+          <rect x="22" y="26" width="4" height="6" fill="#d24b35"/>
+          <rect x="30" y="26" width="4" height="6" fill="#1c1f25"/>
+          <rect x="38" y="26" width="4" height="6" fill="#1c1f25"/>
+        </svg>
+      </div>
+      <div class="nm">PRISON</div>
+      <p class="one">A long corridor. A lot of cells. Some are open.</p>
+      <div class="body">
+        <p>Walled compound POI. The walls work to your advantage <em>and</em> against you — once inside the yard, a few cell doors are open. <strong>Conjoined Twins</strong> spawn in cellblocks. Riot armory at the back holds shield + SMG. The wall guarantees a corridor fight on the way out.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">walled POI</span><span class="chip">twins</span><span class="chip">named loot</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">B·04</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="40" viewBox="0 0 64 40">
+          <rect x="4" y="22" width="56" height="6" fill="#3a3f4a"/>
+          <polygon points="32,12 48,24 16,24" fill="#5e6a78"/>
+          <rect x="30" y="14" width="4" height="6" fill="#3a3f4a"/>
+          <line x1="4" y1="22" x2="60" y2="22" stroke="#e3a83a" stroke-width="0.6" stroke-dasharray="4 4"/>
+        </svg>
+      </div>
+      <div class="nm">AIRPORT</div>
+      <p class="one">A runway. A control tower. A radio.</p>
+      <div class="body">
+        <p>One per map. Largest POI in the game — terminal building, control tower, hangar, runway. The control tower hides a working long‑range radio (hooks the Radio Tower extraction goal from brief 1). Final extraction site for the win run.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">extraction (radio tower)</span><span class="chip">unique POI</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- C — EXPLORATION -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">C</div>
+    <div class="ttl">EXPLORATION</div>
+    <div class="sub">// finding things · remembering things · navigation</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">C·01</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="6" y="6" width="52" height="36" fill="#1c1f25" stroke="#3a3f4a"/>
+          <line x1="6" y1="24" x2="58" y2="24" stroke="#3a3f4a" stroke-width="0.4"/>
+          <line x1="32" y1="6" x2="32" y2="42" stroke="#3a3f4a" stroke-width="0.4"/>
+          <path d="M20 16 L24 22 L18 22 Z" fill="#d24b35"/>
+          <circle cx="46" cy="32" r="3" fill="#e3a83a"/>
+          <text x="46" y="35" font-family="JetBrains Mono" font-size="5" fill="#0b0c0e" text-anchor="middle">!</text>
+          <path d="M14 32 L18 36 L12 38 Z" fill="#8ec547"/>
+        </svg>
+      </div>
+      <div class="nm">PLAYER <span class="alt">PINS</span></div>
+      <p class="one">Stamp the map. Color‑code it. Remember.</p>
+      <div class="body">
+        <p>Right‑click anywhere on the map menu to drop a colored pin with a short label ("car works", "good chest", "dog cage"). Up to 32 pins per run, 8 per safehouse, meta‑saved. Tiny system, huge perceived control over an enormous map. Pins show on compass when within 200 tiles.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">map UI</span><span class="chip">compass</span><span class="chip">persistence</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">C·02</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="6" y="6" width="52" height="36" fill="#1c1f25" stroke="#3a3f4a"/>
+          <circle cx="20" cy="18" r="3" fill="none" stroke="#e3a83a" stroke-width="1"/>
+          <circle cx="20" cy="18" r="1" fill="#e3a83a"/>
+          <path d="M42 14 L44 20 L48 14" stroke="#5fb6e8" stroke-width="1" fill="none"/>
+          <circle cx="44" cy="20" r="1" fill="#5fb6e8"/>
+          <path d="M30 32 Q34 28 38 32" stroke="#d24b35" stroke-width="1" fill="none"/>
+          <circle cx="34" cy="30" r="1" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">LANDMARK <span class="alt">SCAN</span></div>
+      <p class="one">First time near a stadium, the map remembers.</p>
+      <div class="body">
+        <p>When the player gets within 80 tiles of any unique landmark (B·01–04), it's <strong>auto‑pinned</strong> on the map with the landmark's icon and name. Cheap, but does the heavy lifting on "I know roughly where the hospital is" without removing the joy of finding it.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">map UI</span><span class="chip">landmark POIs</span><span class="chip">proximity check</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="26" y="20" width="4" height="22" fill="#5a3a1a"/>
+          <rect x="14" y="14" width="28" height="6" fill="#8a5a2a"/>
+          <polygon points="42,14 50,17 42,20" fill="#8a5a2a"/>
+          <text x="28" y="19" font-family="JetBrains Mono" font-size="4" fill="#0b0c0e" text-anchor="middle">CITY 4mi</text>
+          <rect x="14" y="6" width="28" height="6" fill="#8a5a2a"/>
+          <polygon points="14,6 6,9 14,12" fill="#8a5a2a"/>
+          <text x="28" y="11" font-family="JetBrains Mono" font-size="4" fill="#0b0c0e" text-anchor="middle">FARM 1mi</text>
+        </svg>
+      </div>
+      <div class="nm">SIGNPOSTS</div>
+      <p class="one">In‑world arrows. Old highway signs. Hand‑lettered planks.</p>
+      <div class="body">
+        <p>Decor prop placed automatically at every road junction: a worn sign pointing to the <strong>nearest 2–3 named POIs</strong> with rough distance. Costs nothing beyond decor placement; gives the world diegetic navigation. A "Welcome to <em>Mason</em>" sign at the city edge is free flavor.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">road grid</span><span class="chip">POI names</span><span class="chip">decor</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="6" y="8" width="44" height="32" fill="#e8e6df" transform="rotate(-3 28 24)"/>
+          <line x1="14" y1="18" x2="38" y2="20" stroke="#0b0c0e" stroke-width="0.6"/>
+          <line x1="12" y1="22" x2="32" y2="26" stroke="#0b0c0e" stroke-width="0.6"/>
+          <circle cx="36" cy="32" r="3" fill="none" stroke="#d24b35" stroke-width="1.4"/>
+          <path d="M36 32 L42 38" stroke="#d24b35" stroke-width="1"/>
+          <text x="42" y="40" font-family="JetBrains Mono" font-size="4" fill="#d24b35">X</text>
+        </svg>
+      </div>
+      <div class="nm">SCAVENGER <span class="alt">MAPS</span></div>
+      <p class="one">A folded paper. A circled barn. A walk worth taking.</p>
+      <div class="body">
+        <p>Lootable item. Reveals one specific high‑tier chest somewhere within 8 zones, marked with a 1‑tile reveal on the map. Cheap to spawn (rare paper drop), gives the player a clear self‑directed goal to chase. The chest contents are biased toward the loot type of the POI you found the map in.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">chests</span><span class="chip">map UI</span><span class="chip">loot tables</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- D — HIDDEN SPACES -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">D</div>
+    <div class="ttl">HIDDEN SPACES</div>
+    <div class="sub">// below · above · behind</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">D·01</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="6" y="6" width="52" height="14" fill="#5e6a78"/>
+          <rect x="6" y="22" width="52" height="20" fill="#3a3024"/>
+          <line x1="6" y1="20" x2="58" y2="20" stroke="#0b0c0e" stroke-width="2"/>
+          <rect x="28" y="14" width="8" height="6" fill="#1c1f25"/>
+          <path d="M32 20 L32 26" stroke="#e3a83a" stroke-width="1" stroke-dasharray="2 2"/>
+          <rect x="14" y="28" width="6" height="6" fill="#d24b35"/>
+          <rect x="44" y="28" width="6" height="6" fill="#d24b35"/>
+          <rect x="28" y="34" width="8" height="6" fill="#e3a83a"/>
+        </svg>
+      </div>
+      <div class="nm">BASEMENTS</div>
+      <p class="one">A trapdoor in 1 of 20 houses. Down to a different room.</p>
+      <div class="body">
+        <p>Trapdoor prop spawns at ~5% rate in residential buildings. Drops you into a <strong>single‑room basement</strong> (instanced, 6×6 tiles, hand‑seeded layout pool of ~30). Always contains one Steel‑tier chest, often Plague Rats (E·03 from Enemies brief). Walk‑in budget‑version of the Sewer dungeons from brief 1 — much smaller scope.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">house POI</span><span class="chip">instanced rooms</span><span class="chip">chest tiers</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">D·02</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="6" y="22" width="20" height="20" fill="#5e6a78"/>
+          <rect x="30" y="14" width="20" height="28" fill="#5e6a78"/>
+          <rect x="6" y="18" width="20" height="4" fill="#3a3f4a"/>
+          <rect x="30" y="10" width="20" height="4" fill="#3a3f4a"/>
+          <path d="M26 14 L30 8" stroke="#e3a83a" stroke-width="1.5" stroke-dasharray="2 2"/>
+          <circle cx="38" cy="6" r="2" fill="#d24b35"/>
+          <rect x="36" y="4" width="4" height="3" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">ROOFTOP <span class="alt">PARKOUR</span></div>
+      <p class="one">Climb a fire escape. Cross the city at 3 stories up.</p>
+      <div class="body">
+        <p>Adjacent High‑Rise buildings (A·03) gain <strong>roof‑edge tiles</strong> that the player can leap between if they're within 2 tiles. Roofs hold rare chests (no zombies up there) but the gaps are real — miss the jump and you fall, take 30 dmg, restart from street level. Risk path through the city.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">multi‑floor</span><span class="chip">high rises</span><span class="chip">leap action</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·03</div>
+      <div class="meta"><span class="tag xl">XL</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="6" y="20" width="44" height="6" fill="#1c1f25"/>
+          <line x1="6" y1="23" x2="50" y2="23" stroke="#3a3f4a" stroke-width="0.6"/>
+          <circle cx="14" cy="23" r="2" fill="#5fb6e8"/>
+          <circle cx="28" cy="23" r="2" fill="#5fb6e8"/>
+          <circle cx="42" cy="23" r="2" fill="#5fb6e8"/>
+          <line x1="14" y1="23" x2="14" y2="42" stroke="#5fb6e8" stroke-width="0.6" stroke-dasharray="2 2"/>
+          <line x1="42" y1="23" x2="42" y2="42" stroke="#5fb6e8" stroke-width="0.6" stroke-dasharray="2 2"/>
+        </svg>
+      </div>
+      <div class="nm">METRO <span class="alt">TUNNELS</span></div>
+      <p class="one">A subterranean shortcut from one city to the next.</p>
+      <div class="body">
+        <p>Each city has 2–3 metro station entrances. Take any one, walk a procedural tunnel (8–20 rooms), pop up at any other station in the same city or the next city over. Fast travel for the brave — dense Burrowers / Plague Rats, no daylight.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">city POI</span><span class="chip">sewers dungeon system</span><span class="chip">fast travel</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·04</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="8" y="8" width="40" height="32" fill="#5e6a78"/>
+          <rect x="14" y="14" width="12" height="12" fill="#3a3f4a"/>
+          <rect x="30" y="14" width="12" height="12" fill="#3a3f4a"/>
+          <rect x="14" y="28" width="28" height="10" fill="#3a3f4a"/>
+          <rect x="38" y="26" width="6" height="12" fill="#8a5a2a"/>
+          <line x1="38" y1="20" x2="42" y2="26" stroke="#d24b35" stroke-width="0.8" stroke-dasharray="2 1"/>
+          <text x="42" y="20" font-family="JetBrains Mono" font-size="5" fill="#d24b35">?</text>
+        </svg>
+      </div>
+      <div class="nm">SECRET <span class="alt">ROOMS</span></div>
+      <p class="one">A wall that breaks. A floor tile that lifts.</p>
+      <div class="body">
+        <p>~3% of generated rooms have one wall flagged as <em>false</em> — looks like a wall, takes melee hits, breaks open into a small 3×3 stash. Or a single floor tile lifts (interact prompt). Mythic chest inside. Rewards close‑looking players without breaking the regular loot economy.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">emitProcBuilding</span><span class="chip">walls.hp</span><span class="chip">mythic loot</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- E — WORLD FEEL -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">E</div>
+    <div class="ttl">WORLD FEEL</div>
+    <div class="sub">// the texture between POIs · what tells you something happened here</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">E·01</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <ellipse cx="20" cy="34" rx="12" ry="3" fill="#0b0c0e" opacity="0.5"/>
+          <path d="M14 34 L20 22 L26 34 Z" fill="#5a3a1a"/>
+          <rect x="36" y="26" width="14" height="10" fill="#5e6a78"/>
+          <rect x="34" y="24" width="18" height="3" fill="#3a3f4a"/>
+          <path d="M44 32 L48 28 L48 32" stroke="#d24b35" stroke-width="1" fill="none"/>
+          <circle cx="50" cy="34" r="1" fill="#e3a83a"/>
+          <line x1="22" y1="28" x2="38" y2="26" stroke="#7a7e88" stroke-width="0.4" stroke-dasharray="1 2"/>
+        </svg>
+      </div>
+      <div class="nm">ABANDONED <span class="alt">CAMPS</span></div>
+      <p class="one">A tent. A dead fire. A skeleton with a journal.</p>
+      <div class="body">
+        <p>Tiny POI type (~5×5 tiles) that spawns at 4× the density of the larger POIs. Always tells a single visual story — <em>collapsed tent + bullet casings + a Lore Journal</em>. No combat, no chest, just texture. The world starts feeling like other people died here before you arrived.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">tiny POI tier</span><span class="chip">journals/lore</span><span class="chip">decor</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">E·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="2" y="22" width="60" height="6" fill="#3a3f4a"/>
+          <rect x="6" y="16" width="10" height="8" fill="#d24b35"/>
+          <rect x="20" y="14" width="12" height="10" fill="#5e6a78"/>
+          <rect x="36" y="18" width="14" height="6" fill="#e3a83a"/>
+          <rect x="52" y="14" width="10" height="10" fill="#7a9a55"/>
+          <circle cx="10" cy="26" r="2" fill="#0b0c0e"/>
+          <circle cx="26" cy="26" r="2" fill="#0b0c0e"/>
+          <circle cx="42" cy="26" r="2" fill="#0b0c0e"/>
+          <circle cx="58" cy="26" r="2" fill="#0b0c0e"/>
+        </svg>
+      </div>
+      <div class="nm">WRECK <span class="alt">RIVERS</span></div>
+      <p class="one">Highways frozen at the moment of the outbreak.</p>
+      <div class="body">
+        <p>Along the road grid (A·02), 30% of road segments are <strong>traffic jams</strong> — a continuous line of car wrecks with intact loot inside (glove compartments → ammo, trunks → scrap). The cars themselves become natural cover and a corridor — fights here read like the highway scenes from every zombie movie ever made.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">road grid</span><span class="chip">vehicles</span><span class="chip">car wrecks</span><span class="chip">scrap</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">E·03</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <polygon points="14,38 28,18 42,38" fill="#3a3f4a" stroke="#5e6a78"/>
+          <rect x="22" y="30" width="12" height="8" fill="#3a3f4a"/>
+          <path d="M28 18 Q30 8 36 6" stroke="#e3a83a" stroke-width="1" fill="none" opacity="0.6"/>
+          <circle cx="36" cy="6" r="1.5" fill="#e3a83a"/>
+          <line x1="44" y1="38" x2="50" y2="34" stroke="#d24b35" stroke-width="0.6" stroke-dasharray="1 1"/>
+          <line x1="14" y1="38" x2="6" y2="34" stroke="#d24b35" stroke-width="0.6" stroke-dasharray="1 1"/>
+        </svg>
+      </div>
+      <div class="nm">CRASH <span class="alt">SITES</span></div>
+      <p class="one">A burning helicopter. A scattered care package.</p>
+      <div class="body">
+        <p>One‑off micro‑POIs in remote tiles: <em>helicopter</em>, <em>cargo plane wing</em>, <em>satellite debris</em>. Each one's a small loot bonanza guarded by a tier‑appropriate enemy. Plays into the Care Packages air‑drop system from brief 1 — a crashed package is a permanent version of the same beat.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">tiny POI tier</span><span class="chip">care packages</span><span class="chip">unique loot</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">E·04</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="14" y="8" width="28" height="20" fill="#e8e6df"/>
+          <rect x="14" y="8" width="28" height="20" fill="#d24b35" opacity="0.6"/>
+          <text x="28" y="20" font-family="Bebas Neue" font-size="8" fill="#e8e6df" text-anchor="middle" letter-spacing="2">SHELTER</text>
+          <text x="28" y="26" font-family="Bebas Neue" font-size="5" fill="#e8e6df" text-anchor="middle" letter-spacing="1">→ N</text>
+          <rect x="26" y="28" width="4" height="14" fill="#5e6a78"/>
+          <rect x="14" y="14" width="2" height="6" fill="#0b0c0e"/>
+        </svg>
+      </div>
+      <div class="nm">SIGNAGE</div>
+      <p class="one">Government warnings. Spray‑paint. Ads from before.</p>
+      <div class="body">
+        <p>Static signage props with hand‑written copy variants: <em>CDC EVAC POINT 4MI</em>, <em>DON'T TRUST RANGERS</em>, <em>SARAH — I WAITED. GONE NORTH.</em> Drop randomly along roads, at POI entrances. Costs almost nothing; transforms the emptiness into a place people lived.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">decor</span><span class="chip">copy table</span><span class="chip">narrative</span></div>
+    </div>
+
+  </div>
+</section>
+
+<footer class="footer">
+  <div>
+    <h3>WHAT NEXT</h3>
+    <p>The biggest single lever in this brief is <strong style="color:var(--accent)">A·01 Districts</strong> — it makes the city POI actually <em>feel</em> different from the town POI, which it currently doesn't. Pair it with <strong style="color:var(--accent)">A·02 Road Grid</strong> and <strong style="color:var(--accent)">E·02 Wreck Rivers</strong> and the whole worldmap reads as a connected place instead of scattered points.</p>
+    <p>The Landmarks (Cluster B) are content‑heavy but the highest narrative payoff per POI. The Exploration cards (C) are mostly small UI work — quick wins.</p>
+    <ol>
+      <li>react to the cards — strike any that don't fit</li>
+      <li>flag two clusters to prioritize</li>
+      <li>i'll spec / prototype from there</li>
+    </ol>
+  </div>
+  <div class="stamp">
+    <div class="big">WORLDGEN</div>
+    <div class="small">REV A · PITCH ONLY</div>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>

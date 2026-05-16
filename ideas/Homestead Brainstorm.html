@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Outbreak — Homestead Brainstorm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:        #0b0c0e;
+  --ink-2:      #07080a;
+  --panel:      #14161a;
+  --panel2:     #1c1f25;
+  --panel3:     #24272f;
+  --border:     #2a2e36;
+  --border-hi:  #3a3f4a;
+  --fg:         #e8e6df;
+  --fg-dim:     #b0afa7;
+  --muted:      #7a7e88;
+  --muted-2:    #555964;
+  --accent:     #d24b35;
+  --accent-deep:#8a2a1a;
+  --accent-hi:  #ec6448;
+  --toxic:      #8ec547;
+  --warn:       #e3a83a;
+  --info:       #5fb6e8;
+  --danger:     #c83232;
+  --gold:       #d9b35a;
+  --f-display:  "Bebas Neue", Impact, sans-serif;
+  --f-body:     "Manrope", "Helvetica Neue", Helvetica, sans-serif;
+  --f-mono:     "JetBrains Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--ink-2);
+  color: var(--fg);
+  font-family: var(--f-body);
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  background:
+    radial-gradient(ellipse at 10% -10%, rgba(95,182,232,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 100%, rgba(210,75,53,0.08) 0%, transparent 50%),
+    var(--ink-2);
+  min-height: 100vh;
+  padding: 56px 0 80px;
+}
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+
+/* ─────────────────────────  HEADER  ───────────────────────── */
+.header { border-bottom: 1px solid var(--border); padding-bottom: 28px; margin-bottom: 36px; }
+.header .top {
+  display: flex; align-items: center; gap: 14px;
+  font-family: var(--f-mono);
+  font-size: 11px; letter-spacing: 4px;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+.header .top .x { color: var(--accent); }
+.header .top .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 12px var(--accent); animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.header .top .spacer { flex: 1; }
+.header h1 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: clamp(56px, 9vw, 132px);
+  letter-spacing: 8px;
+  line-height: 0.88;
+  color: var(--fg);
+}
+.header h1 .bleed { color: var(--accent); }
+.header h1 .slash { color: var(--muted-2); font-weight: 400; padding: 0 6px; }
+.header .lede {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 0;
+  margin-top: 28px;
+  border-top: 1px solid var(--border);
+}
+.header .lede .cell {
+  padding: 14px 18px 4px 0;
+  border-right: 1px solid var(--border);
+}
+.header .lede .cell:last-child { border-right: none; }
+.header .lede .l {
+  font-family: var(--f-mono);
+  font-size: 9px; letter-spacing: 3px;
+  color: var(--muted);
+}
+.header .lede .v {
+  font-family: var(--f-display);
+  font-size: 32px; letter-spacing: 2px;
+  margin-top: 4px;
+  color: var(--fg);
+}
+.header .lede .v .unit { font-size: 13px; color: var(--muted); letter-spacing: 1px; margin-left: 4px; }
+
+/* ─────────────────────────  INTRO  ───────────────────────── */
+.intro {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 32px;
+  margin: 8px 0 56px;
+}
+.intro .body { font-size: 15px; line-height: 1.65; color: var(--fg-dim); max-width: 64ch; text-wrap: pretty; }
+.intro .body p { margin: 0 0 12px; }
+.intro .body strong { color: var(--fg); font-weight: 600; }
+.intro .body .acc { color: var(--accent); }
+.intro .legend {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  padding: 18px 20px;
+  align-self: start;
+}
+.intro .legend h4 {
+  margin: 0 0 14px;
+  font-family: var(--f-display);
+  font-size: 14px; letter-spacing: 3px;
+  color: var(--muted);
+}
+.intro .legend .row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--fg-dim);
+  letter-spacing: 0.5px;
+}
+.intro .legend .row .key { font-size: 10px; color: var(--muted); width: 78px; letter-spacing: 2px; }
+.intro .legend .pips { display: flex; gap: 3px; }
+.intro .legend .pip { width: 10px; height: 10px; background: var(--border); }
+.intro .legend .pip.on { background: var(--warn); }
+.intro .legend .tag {
+  display: inline-block;
+  font-family: var(--f-mono);
+  font-size: 9px; letter-spacing: 2px;
+  padding: 2px 6px;
+  border: 1px solid;
+  border-radius: 2px;
+}
+.tag.s { color: var(--toxic); border-color: rgba(142,197,71,0.45); }
+.tag.m { color: var(--warn);  border-color: rgba(227,168,58,0.45); }
+.tag.l { color: var(--accent);border-color: rgba(210,75,53,0.5); }
+.tag.xl { color: var(--info);  border-color: rgba(95,182,232,0.45); }
+
+/* ─────────────────────────  SECTIONS  ───────────────────────── */
+section.cluster { margin-bottom: 60px; }
+section.cluster .sec-head {
+  display: flex; align-items: baseline; gap: 14px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px; margin-bottom: 24px;
+}
+section.cluster .sec-head .idx {
+  font-family: var(--f-display);
+  font-size: 64px; letter-spacing: 0;
+  color: var(--accent);
+  line-height: 0.7;
+}
+section.cluster .sec-head .ttl {
+  font-family: var(--f-display);
+  font-size: 38px; letter-spacing: 5px;
+  color: var(--fg);
+  line-height: 1;
+}
+section.cluster .sec-head .sub {
+  font-family: var(--f-mono);
+  font-size: 11px; letter-spacing: 2px;
+  color: var(--muted);
+  flex: 1;
+  text-align: right;
+  align-self: end;
+  padding-bottom: 4px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 16px;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--border-hi);
+  padding: 20px 20px 18px;
+  position: relative;
+  display: flex; flex-direction: column;
+  transition: border-top-color 0.2s, transform 0.1s;
+}
+.card:hover { border-top-color: var(--accent); transform: translateY(-2px); }
+.card .num {
+  position: absolute; top: -1px; right: -1px;
+  font-family: var(--f-mono);
+  font-size: 10px; letter-spacing: 2px;
+  color: var(--muted);
+  background: var(--ink);
+  border: 1px solid var(--border);
+  border-top: none; border-right: none;
+  padding: 3px 8px 4px;
+}
+.card .nm {
+  font-family: var(--f-display);
+  font-size: 26px; letter-spacing: 3px;
+  color: var(--fg);
+  line-height: 1;
+  margin: 0 0 4px;
+}
+.card .nm .alt { color: var(--accent); }
+.card .nm .glow { color: var(--toxic); }
+.card .nm .gold { color: var(--gold); }
+.card .one {
+  font-family: var(--f-body);
+  font-size: 12px; letter-spacing: 0.3px;
+  color: var(--accent-hi);
+  margin: 0 0 14px;
+  text-transform: none;
+}
+.card .body { font-size: 13px; line-height: 1.6; color: var(--fg-dim); text-wrap: pretty; }
+.card .body p { margin: 0 0 10px; }
+.card .hooks {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+  display: flex; align-items: center;
+  gap: 10px;
+  font-family: var(--f-mono);
+  font-size: 10px; letter-spacing: 1px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+.card .hooks .lbl { color: var(--muted-2); letter-spacing: 2px; }
+.card .hooks .chip {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  color: var(--fg-dim);
+  border-radius: 2px;
+}
+.card .meta {
+  position: absolute; top: 12px; right: 38px;
+  display: flex; gap: 4px;
+  align-items: center;
+}
+.card .meta .pips { display: flex; gap: 2px; }
+.card .meta .pip { width: 8px; height: 8px; background: var(--border); }
+.card .meta .pip.on { background: var(--warn); }
+.card .ico {
+  width: 64px; height: 48px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* span helpers */
+.s-4 { grid-column: span 4; }
+.s-5 { grid-column: span 5; }
+.s-6 { grid-column: span 6; }
+.s-7 { grid-column: span 7; }
+.s-8 { grid-column: span 8; }
+.s-12 { grid-column: span 12; }
+
+@media (max-width: 980px) {
+  .s-4, .s-5, .s-6, .s-7, .s-8 { grid-column: span 12; }
+  .intro { grid-template-columns: 1fr; }
+  .header .lede { grid-template-columns: 1fr 1fr; }
+  .header .lede .cell:nth-child(2) { border-right: none; }
+}
+
+/* hero feature card */
+.feature {
+  background:
+    linear-gradient(135deg, rgba(210,75,53,0.12) 0%, transparent 60%),
+    var(--panel);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  padding: 28px 32px;
+  grid-column: span 12;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 32px;
+  align-items: center;
+}
+.feature .num { color: var(--accent); }
+.feature .nm { font-size: 44px; letter-spacing: 4px; }
+.feature .body { font-size: 14px; }
+.feature .ico { width: 84px; height: 60px; }
+.feature .right { font-family: var(--f-mono); font-size: 11px; color: var(--muted); letter-spacing: 1px; line-height: 1.9; }
+.feature .right .row { display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding: 6px 0; }
+.feature .right .row:last-child { border-bottom: none; }
+.feature .right .row .k { color: var(--muted-2); letter-spacing: 3px; font-size: 9px; }
+.feature .right .row .v { color: var(--fg-dim); }
+
+/* footer */
+.footer {
+  margin-top: 56px;
+  padding: 28px 0 0;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
+}
+.footer h3 {
+  font-family: var(--f-display);
+  font-size: 24px; letter-spacing: 4px;
+  margin: 0 0 12px; color: var(--fg);
+}
+.footer p { font-size: 13px; color: var(--fg-dim); line-height: 1.65; margin: 0 0 10px; max-width: 60ch; }
+.footer ol {
+  margin: 0; padding: 0 0 0 18px;
+  font-family: var(--f-mono);
+  font-size: 11px; letter-spacing: 0.5px;
+  color: var(--muted);
+  line-height: 1.9;
+}
+.footer ol li::marker { color: var(--accent); }
+.footer .stamp {
+  border: 2px dashed var(--accent-deep);
+  padding: 18px 22px;
+  align-self: start;
+  text-align: center;
+  transform: rotate(-2deg);
+  color: var(--accent);
+}
+.footer .stamp .big {
+  font-family: var(--f-display);
+  font-size: 28px; letter-spacing: 4px;
+}
+.footer .stamp .small {
+  font-family: var(--f-mono);
+  font-size: 10px; letter-spacing: 2px;
+  color: var(--accent-hi);
+  margin-top: 4px;
+}
+
+svg.ic { display: block; }
+.bleed { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ───────────  HEADER  ─────────── -->
+<header class="header">
+  <div class="top">
+    <span class="dot"></span>
+    <span>FIELD BRIEF · HOMESTEAD TRACK</span>
+    <span class="spacer"></span>
+    <span>FILE <span class="x">HB-001</span></span>
+    <span>·</span>
+    <span>REV A</span>
+    <span>·</span>
+    <span>DAY <span class="x">∞</span></span>
+  </div>
+  <h1>HOMESTEAD <span class="slash">/</span> <span class="bleed">BRAINSTORM</span></h1>
+  <div class="lede">
+    <div class="cell"><div class="l">DIRECTIONS</div><div class="v">20</div></div>
+    <div class="cell"><div class="l">CLUSTERS</div><div class="v">05</div></div>
+    <div class="cell"><div class="l">FOCUS</div><div class="v">BASE<span class="unit">only</span></div></div>
+    <div class="cell"><div class="l">SCOPE</div><div class="v">S → XL</div></div>
+  </div>
+</header>
+
+<!-- ───────────  INTRO  ─────────── -->
+<div class="intro">
+  <div class="body">
+    <p>Round three. The lens this time is <strong class="acc">the four walls you come home to</strong> — the safehouse, the build mode, the rhythm of leaving in the morning and pulling the gate shut at dusk.</p>
+    <p>What's already on the books (power grid, turrets, traps, the weapon wall, food/beds, scrap & workbench) is the floor, not the ceiling. The 20 cards below extend in five directions: <strong>Construction</strong> (the building system itself), <strong>Rooms</strong> (functional interiors), <strong>Defense</strong> (perimeter), <strong>Strategy</strong> (meta‑level base rules), and <strong>Life</strong> (the parts that make it feel <em>yours</em>).</p>
+    <p>None of these duplicate prior briefs. Same rules: tagged, hooked into existing systems, all unbuilt. Pick the ones you want.</p>
+  </div>
+  <aside class="legend">
+    <h4>LEGEND</h4>
+    <div class="row"><span class="key">COMPLEXITY</span><span class="tag s">S</span><span class="tag m">M</span><span class="tag l">L</span><span class="tag xl">XL</span></div>
+    <div class="row"><span class="key">IMPACT</span><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip"></span><span class="pip"></span></div></div>
+    <div class="row"><span class="key">HOOKS</span><span style="color:var(--fg-dim)">existing system the idea plugs into</span></div>
+    <div class="row" style="margin-top:14px;border-top:1px dashed var(--border);padding-top:12px"><span class="key">STATUS</span><span style="color:var(--toxic)">all 20 unbuilt — pitch only</span></div>
+  </aside>
+</div>
+
+<!-- ───────────  CLUSTER A — CONSTRUCTION  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">A</div>
+    <div class="ttl">CONSTRUCTION</div>
+    <div class="sub">// the building system itself · walls, floors, plans</div>
+  </div>
+  <div class="grid">
+
+    <!-- HERO: Multi-floor -->
+    <div class="card feature">
+      <div class="num">A·01</div>
+      <div class="meta"><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span></div><span class="tag xl">XL</span></div>
+      <div class="left">
+        <div class="ico">
+          <svg class="ic" width="84" height="60" viewBox="0 0 84 60">
+            <rect x="4" y="40" width="76" height="16" fill="#5e6a78" stroke="#2a2e36"/>
+            <rect x="14" y="20" width="56" height="20" fill="#7e8a98" stroke="#2a2e36"/>
+            <rect x="24" y="4" width="36" height="16" fill="#9aa6b4" stroke="#2a2e36"/>
+            <rect x="32" y="44" width="6" height="12" fill="#2a2e36"/>
+            <rect x="44" y="44" width="6" height="12" fill="#2a2e36"/>
+            <rect x="22" y="24" width="4" height="4" fill="#e3a83a"/>
+            <rect x="58" y="24" width="4" height="4" fill="#e3a83a"/>
+            <rect x="40" y="8" width="4" height="4" fill="#e3a83a"/>
+          </svg>
+        </div>
+        <div class="nm">FOUNDATIONS <span class="alt">&amp; FLOORS</span></div>
+        <p class="one">Build up. A real second story. A real watchtower.</p>
+        <div class="body">
+          <p>Adds a <strong>Z‑axis</strong> to the build system. Place a <em>floor tile</em> on top of any 4‑wall room — it becomes the ceiling of room 1 and the deck of room 2. Stairs / ladders connect them. Walkers can't climb without a Climber spawning at the door.</p>
+          <p>The killer use: <strong>elevated firing platforms</strong>. From a 2nd‑story window your range and sightline both extend, and melee zombies just paw at the wall below. The texture of a base run changes from "thicker walls" to "higher ground."</p>
+        </div>
+      </div>
+      <div class="right">
+        <div class="row"><span class="k">Z‑LIMIT</span><span class="v">3 floors</span></div>
+        <div class="row"><span class="k">RANGE BONUS</span><span class="v">+30% per level</span></div>
+        <div class="row"><span class="k">CLIMBER</span><span class="v">new enemy variant</span></div>
+        <div class="row"><span class="k">RENDER</span><span class="v">camera offset · roof fade</span></div>
+        <div class="row"><span class="k">REUSE</span><span class="v">walls.hp · pathfinding</span></div>
+        <div class="row"><span class="k">PAYOFF</span><span class="v">vertical base identity</span></div>
+      </div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="6" y="30" width="14" height="14" fill="#8a5a2a"/>
+          <rect x="24" y="22" width="14" height="22" fill="#a0a0a0"/>
+          <rect x="42" y="14" width="14" height="30" fill="#5e6a78"/>
+          <rect x="42" y="8" width="14" height="6" fill="#3a3f4a"/>
+          <text x="13" y="40" font-family="JetBrains Mono" font-size="6" fill="#0b0c0e" text-anchor="middle">I</text>
+          <text x="31" y="34" font-family="JetBrains Mono" font-size="6" fill="#0b0c0e" text-anchor="middle">II</text>
+          <text x="49" y="30" font-family="JetBrains Mono" font-size="6" fill="#e8e6df" text-anchor="middle">III</text>
+        </svg>
+      </div>
+      <div class="nm">TIER <span class="alt">UP</span></div>
+      <p class="one">Wood. Brick. Reinforced steel.</p>
+      <div class="body">
+        <p>Walls now have <strong>three material tiers</strong>. Wood (existing): cheap, 200 HP, burns. Brick: 5× scrap, 600 HP, no burn. Reinforced steel: rebar + welded plate, 1500 HP, sparks bullets. Tap a wall + hold <strong>U</strong> to upgrade in place.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">walls.hp</span><span class="chip">scrap econ</span><span class="chip">flamer DoT</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="8" y="8" width="48" height="32" fill="#1c1f25" stroke="#5fb6e8"/>
+          <line x1="8" y1="16" x2="56" y2="16" stroke="#5fb6e8" stroke-width="0.4" opacity="0.5"/>
+          <line x1="8" y1="24" x2="56" y2="24" stroke="#5fb6e8" stroke-width="0.4" opacity="0.5"/>
+          <line x1="8" y1="32" x2="56" y2="32" stroke="#5fb6e8" stroke-width="0.4" opacity="0.5"/>
+          <line x1="16" y1="8" x2="16" y2="40" stroke="#5fb6e8" stroke-width="0.4" opacity="0.5"/>
+          <line x1="24" y1="8" x2="24" y2="40" stroke="#5fb6e8" stroke-width="0.4" opacity="0.5"/>
+          <line x1="40" y1="8" x2="40" y2="40" stroke="#5fb6e8" stroke-width="0.4" opacity="0.5"/>
+          <rect x="16" y="16" width="24" height="16" fill="none" stroke="#d24b35" stroke-width="1.5"/>
+          <rect x="22" y="22" width="4" height="4" fill="#e3a83a"/>
+        </svg>
+      </div>
+      <div class="nm">BLUEPRINTS</div>
+      <p class="one">Save your base layout. Paste it next run.</p>
+      <div class="body">
+        <p>Hold <strong>B</strong> to capture a 16×16 area as a <em>blueprint</em>. Stored in your meta profile. New runs: hit B at any empty tile to <strong>ghost‑project</strong> the layout, then build pieces as you collect materials. Ends the punishment of "I have to plan the same fortress from scratch every time."</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">walls</span><span class="chip">meta profile</span><span class="chip">overlays</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·04</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="10" y="14" width="22" height="22" fill="#8a5a2a" stroke="#5a3a1a"/>
+          <rect x="14" y="18" width="6" height="6" fill="#2a2e36"/>
+          <rect x="22" y="18" width="6" height="6" fill="#2a2e36"/>
+          <rect x="18" y="28" width="6" height="8" fill="#2a2e36"/>
+          <line x1="36" y1="26" x2="50" y2="26" stroke="#d24b35" stroke-width="1.5" stroke-dasharray="2 2"/>
+          <polygon points="50,22 56,26 50,30" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">PREFABS</div>
+      <p class="one">A whole 4×4 shack. Drop‑placed. 60 seconds.</p>
+      <div class="body">
+        <p>Workbench unlocks <strong>pre‑fab modules</strong>: <em>guard shack</em> (4‑wall + door), <em>workshop addon</em>, <em>watchtower stub</em>. Costs more total scrap than building piece‑by‑piece, but goes up in one button press. Great for the first night when minutes matter.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">walls</span><span class="chip">scrap econ</span><span class="chip">workbench</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  CLUSTER B — ROOMS  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">B</div>
+    <div class="ttl">ROOMS</div>
+    <div class="sub">// functional interiors · what happens inside the walls</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">B·01</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="8" y="20" width="22" height="20" fill="#7e8a98" stroke="#5e6a78"/>
+          <circle cx="14" cy="28" r="2.5" fill="#0b0c0e"/>
+          <circle cx="24" cy="28" r="2.5" fill="#0b0c0e"/>
+          <circle cx="14" cy="36" r="2.5" fill="#0b0c0e"/>
+          <circle cx="24" cy="36" r="2.5" fill="#0b0c0e"/>
+          <rect x="10" y="14" width="18" height="4" fill="#5e6a78"/>
+          <rect x="36" y="22" width="20" height="14" rx="2" fill="#3a3f4a"/>
+          <path d="M40 22 Q42 14 44 22" stroke="#e3a83a" stroke-width="1.4" fill="none"/>
+          <path d="M46 22 Q48 14 50 22" stroke="#e3a83a" stroke-width="1.4" fill="none"/>
+        </svg>
+      </div>
+      <div class="nm">KITCHEN</div>
+      <p class="one">Raw cans heal 10. A hot meal heals 60.</p>
+      <div class="body">
+        <p>Build a <strong>cook station</strong> (range + counter, costs scrap + a found stovetop). Combine 2–3 raw ingredients (canned beans, jerky, herbs) into <strong>cooked meals</strong> with timed buffs: <em>stew</em> +stamina, <em>chili</em> +heat resist, <em>coffee</em> +sprint. The Garden feeds it.</p>
+        <p>Day phase gets a satisfying loop: forage, cook, buff, run.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">food (existing brief)</span><span class="chip">buffs</span><span class="chip">props.range</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">B·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="6" y="32" width="52" height="10" fill="#5a3a1a"/>
+          <rect x="6" y="30" width="52" height="3" fill="#3a2a10"/>
+          <path d="M12 30 Q12 22 14 22 Q14 30 14 30" fill="#8ec547"/>
+          <path d="M22 30 Q22 18 24 18 Q24 30 24 30" fill="#8ec547"/>
+          <circle cx="34" cy="22" r="3" fill="#d24b35"/>
+          <circle cx="44" cy="24" r="3" fill="#d24b35"/>
+          <path d="M52 30 Q52 22 54 22 Q54 30 54 30" fill="#8ec547"/>
+        </svg>
+      </div>
+      <div class="nm">GARDEN <span class="alt">PLOTS</span></div>
+      <p class="one">Plant seeds. Wait 3 days. Eat again.</p>
+      <div class="body">
+        <p>Tilled plot tile (costs scrap + a hoe). Drop a seed, water it once per day from a bucket or rain‑barrel, harvest after 3 in‑game days. Crops: <em>tomato</em> (heal), <em>chili</em> (buff fuel for kitchen), <em>poppy</em> (medical, infection resist).</p>
+        <p>Renewable food source means a player can <strong>commit to a base</strong> long‑term without starving — a missing piece for late‑game loops.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">food</span><span class="chip">weather (rain)</span><span class="chip">kitchen</span><span class="chip">day cycle</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">B·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="6" y="20" width="44" height="22" fill="#3a3f4a"/>
+          <rect x="6" y="16" width="44" height="6" fill="#5e6a78"/>
+          <polygon points="6,16 28,8 50,16" fill="#7e8a98"/>
+          <rect x="26" y="22" width="4" height="14" fill="#e8e6df"/>
+          <rect x="22" y="26" width="12" height="4" fill="#e8e6df"/>
+          <rect x="14" y="32" width="6" height="8" fill="#2a2e36"/>
+          <rect x="38" y="32" width="6" height="8" fill="#2a2e36"/>
+        </svg>
+      </div>
+      <div class="nm">GARAGE</div>
+      <p class="one">A roofed bay for the truck you finally got running.</p>
+      <div class="body">
+        <p>A 4×3 build piece — wide doorway, roof tile, slot for one vehicle (from the vehicles brief). Parked inside, the car <strong>refuels slowly</strong> from a generator and zombies can't damage it. Repair bench inside fixes bumper damage. Make the vehicle a real possession, not a one‑use husk.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">vehicles</span><span class="chip">power grid</span><span class="chip">walls</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">B·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="14" y="20" width="28" height="20" fill="#3a3f4a" stroke="#2a2e36"/>
+          <rect x="18" y="24" width="14" height="10" fill="#1c1f25"/>
+          <rect x="34" y="24" width="6" height="2" fill="#5fb6e8"/>
+          <rect x="34" y="28" width="6" height="2" fill="#5fb6e8"/>
+          <rect x="34" y="32" width="6" height="2" fill="#5fb6e8"/>
+          <line x1="28" y1="20" x2="28" y2="6" stroke="#7e8a98" stroke-width="1.5"/>
+          <line x1="22" y1="10" x2="34" y2="10" stroke="#7e8a98" stroke-width="0.8"/>
+          <line x1="24" y1="14" x2="32" y2="14" stroke="#7e8a98" stroke-width="0.8"/>
+        </svg>
+      </div>
+      <div class="nm">RADIO <span class="alt">ROOM</span></div>
+      <p class="one">A wired desk that talks to the rest of the world.</p>
+      <div class="body">
+        <p>Build the rig + antenna mast. Once powered, three new actions:</p>
+        <p><strong>1.</strong> Call a Trader to your base (once/day). <strong>2.</strong> Broadcast a survivor signal — slowly increases recruit spawn chance in nearby POIs. <strong>3.</strong> Tune in on a Blood Moon for early warning ("RED SKY in 18 hrs").</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">trader</span><span class="chip">survivors</span><span class="chip">blood moon</span><span class="chip">power grid</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  CLUSTER C — DEFENSE  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">C</div>
+    <div class="ttl">DEFENSE</div>
+    <div class="sub">// the perimeter · vision · keeping them out at 3 AM</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">C·01</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="64" viewBox="0 0 56 64">
+          <rect x="20" y="8" width="16" height="48" fill="#5e6a78"/>
+          <rect x="16" y="4" width="24" height="10" fill="#3a3f4a"/>
+          <polygon points="16,4 28,-2 40,4" fill="#3a3f4a"/>
+          <rect x="22" y="20" width="4" height="6" fill="#1c1f25"/>
+          <rect x="30" y="20" width="4" height="6" fill="#1c1f25"/>
+          <line x1="28" y1="14" x2="28" y2="56" stroke="#7e8a98" stroke-width="0.8"/>
+          <circle cx="28" cy="10" r="2" fill="#e3a83a"/>
+        </svg>
+      </div>
+      <div class="nm">WATCHTOWER</div>
+      <p class="one">Six tiles tall. You can see them coming.</p>
+      <div class="body">
+        <p>A dedicated build piece — small footprint, vertical. Climb the ladder to reach the deck, where your <strong>view radius doubles</strong> and you get a +20% accuracy halo for the Crossbow and Rifle. Place a <em>watch survivor</em> there from the squad system and they'll ping incoming hordes at 200 tiles.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">view radius</span><span class="chip">multi-floor</span><span class="chip">survivors</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">C·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="6" y="14" width="44" height="6" fill="#3a3f4a"/>
+          <path d="M6 20 L8 28 L12 24 L16 30 L20 22 L24 30 L28 24 L32 30 L36 22 L40 30 L44 24 L48 28 L50 20" fill="#1c1f25" stroke="#7e8a98"/>
+          <polygon points="14,22 16,28 18,22" fill="#dadada"/>
+          <polygon points="26,22 28,28 30,22" fill="#dadada"/>
+          <polygon points="38,22 40,28 42,22" fill="#dadada"/>
+        </svg>
+      </div>
+      <div class="nm">MOAT <span class="alt">&amp; PITS</span></div>
+      <p class="one">A trench full of spikes is just very good wall.</p>
+      <div class="body">
+        <p>Dig terrain (new verb: shovel tool) to drop tiles by one level. Trenched tiles slow walkers to 40% and deal 30 dmg/sec. Spike them with sharpened rebar for +60 dmg on entry. <strong>Tanks ignore</strong> trenches — they just walk through, but the slow gives you time.</p>
+        <p>Pairs beautifully with Foundations: dig the moat, then build the wall on the inside lip.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">terrain (new)</span><span class="chip">traps</span><span class="chip">scrap (rebar)</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·03</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="48" height="48" viewBox="0 0 48 48">
+          <rect x="8" y="22" width="32" height="4" fill="#3a3f4a"/>
+          <circle cx="24" cy="24" r="8" fill="#e3a83a" opacity="0.3"/>
+          <circle cx="24" cy="24" r="4" fill="#e3a83a"/>
+          <path d="M24 8 Q26 16 24 24" stroke="#e3a83a" stroke-width="1" fill="none" opacity="0.6"/>
+          <path d="M24 40 Q22 32 24 24" stroke="#e3a83a" stroke-width="1" fill="none" opacity="0.6"/>
+          <path d="M40 24 Q32 22 24 24" stroke="#e3a83a" stroke-width="1" fill="none" opacity="0.6"/>
+          <path d="M8 24 Q16 26 24 24" stroke="#e3a83a" stroke-width="1" fill="none" opacity="0.6"/>
+        </svg>
+      </div>
+      <div class="nm">NOISE <span class="alt">BOX</span></div>
+      <p class="one">A speaker on a stick. Bait them anywhere but here.</p>
+      <div class="body">
+        <p>Place at any distance from base. Tap a hotkey to <strong>blare a 200‑tile aggro pull</strong> for 30 seconds; zombies route toward it instead of you. Runs on a battery (3 uses). Reverses the usual problem: instead of hiding from a horde, you're orchestrating one.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">aggro</span><span class="chip">batteries</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="8" y="8" width="40" height="22" fill="#1c1f25" stroke="#3a3f4a"/>
+          <line x1="28" y1="8" x2="28" y2="30" stroke="#3a3f4a" stroke-width="0.6"/>
+          <line x1="8" y1="19" x2="48" y2="19" stroke="#3a3f4a" stroke-width="0.6"/>
+          <circle cx="18" cy="13" r="2" fill="#d24b35"/>
+          <circle cx="38" cy="13" r="2" fill="#d24b35"/>
+          <circle cx="18" cy="24" r="2" fill="#7a7e88"/>
+          <circle cx="38" cy="24" r="2" fill="#d24b35"/>
+          <rect x="22" y="34" width="12" height="8" fill="#3a3f4a"/>
+        </svg>
+      </div>
+      <div class="nm">CAMERAS <span class="alt">/ CCTV</span></div>
+      <p class="one">Four feeds. One screen. The map fills in itself.</p>
+      <div class="body">
+        <p>Mount a camera (powered prop) anywhere within 80 tiles of base. Returns a small permanent reveal in the fog of war + a live feed on a monitor at base. Slot up to 4 monitors for a security wall. Late‑game vision tool — see a horde forming before it leaves the treeline.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">power grid</span><span class="chip">fog of war</span><span class="chip">minimap</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  CLUSTER D — STRATEGY  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">D</div>
+    <div class="ttl">STRATEGY</div>
+    <div class="sub">// meta‑level base rules · time, decay, relocation</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">D·01</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="6" y="20" width="14" height="14" fill="#d24b35"/>
+          <rect x="26" y="14" width="14" height="20" fill="#e3a83a"/>
+          <rect x="46" y="24" width="14" height="14" fill="#5fb6e8"/>
+          <line x1="13" y1="20" x2="33" y2="20" stroke="#7a7e88" stroke-width="1" stroke-dasharray="2 2"/>
+          <line x1="33" y1="28" x2="53" y2="28" stroke="#7a7e88" stroke-width="1" stroke-dasharray="2 2"/>
+          <text x="13" y="42" font-family="JetBrains Mono" font-size="6" fill="#7a7e88" text-anchor="middle">A</text>
+          <text x="33" y="42" font-family="JetBrains Mono" font-size="6" fill="#7a7e88" text-anchor="middle">B</text>
+          <text x="53" y="42" font-family="JetBrains Mono" font-size="6" fill="#7a7e88" text-anchor="middle">C</text>
+        </svg>
+      </div>
+      <div class="nm">SAFEHOUSE <span class="alt">NETWORK</span></div>
+      <p class="one">Three bases. A road between. Loot routes.</p>
+      <div class="body">
+        <p>Allow <strong>up to three claimed bases</strong> at once — each marked on the map with a flag. Inventory and the weapon wall are <strong>per‑base</strong>: stash supplies wherever you find them. <strong>Fast‑travel</strong> between flags during the <em>day only</em>, costs 30s of in‑game time per hex.</p>
+        <p>Turns the 32k map from a single‑pin run into a route. A swamp outpost, a downtown clinic, a highland barn — all yours.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">map flags</span><span class="chip">inventory</span><span class="chip">day cycle</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">D·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="8" y="14" width="40" height="24" fill="#5e6a78"/>
+          <rect x="8" y="14" width="40" height="6" fill="#3a3f4a"/>
+          <polygon points="14,14 18,8 24,14" fill="#3a3f4a"/>
+          <polygon points="32,14 36,6 42,14" fill="#3a3f4a"/>
+          <line x1="14" y1="20" x2="20" y2="38" stroke="#1c1f25" stroke-width="0.6"/>
+          <line x1="30" y1="22" x2="34" y2="38" stroke="#1c1f25" stroke-width="0.6"/>
+          <circle cx="22" cy="28" r="1.5" fill="#1c1f25"/>
+          <circle cx="38" cy="32" r="1.5" fill="#1c1f25"/>
+          <text x="28" y="46" font-family="JetBrains Mono" font-size="6" fill="#d24b35" text-anchor="middle">62% COND</text>
+        </svg>
+      </div>
+      <div class="nm">DECAY <span class="alt">&amp; UPKEEP</span></div>
+      <p class="one">Walls weather. Rain rots wood. Nothing is forever.</p>
+      <div class="body">
+        <p>Each wall has a hidden <em>condition</em> that drops 1–3% per day (faster under rain/blizzard). At 50% it visibly degrades; at 0% it's just rubble blocking a tile. <strong>Repair</strong> with scrap at a workbench in <em>seconds</em>, but you have to remember.</p>
+        <p>Gives the day phase a quiet routine: walk the perimeter, patch the soft spots. Bases that get neglected fall.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">walls.hp</span><span class="chip">weather</span><span class="chip">scrap econ</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="20" y="20" width="16" height="14" fill="#7e8a98"/>
+          <polygon points="20,20 28,12 36,20" fill="#5e6a78"/>
+          <circle cx="8" cy="18" r="3" fill="#8ec547"/>
+          <circle cx="6" cy="32" r="3" fill="#8ec547"/>
+          <circle cx="14" cy="40" r="3" fill="#8ec547"/>
+          <circle cx="48" cy="22" r="3" fill="#8ec547"/>
+          <circle cx="50" cy="36" r="3" fill="#8ec547"/>
+          <circle cx="42" cy="42" r="3" fill="#8ec547"/>
+          <path d="M11 21 L18 24" stroke="#d24b35" stroke-width="0.6"/>
+          <path d="M45 24 L36 26" stroke="#d24b35" stroke-width="0.6"/>
+        </svg>
+      </div>
+      <div class="nm">RAID <span class="alt">NIGHT</span></div>
+      <p class="one">Every 4th night, they come <em>for you</em>.</p>
+      <div class="body">
+        <p>Standard nights spawn around the player. <strong>Raid Nights</strong> spawn a directional horde — 60+ walkers, 2 mini‑bosses — that pathfinds straight to your nearest claimed base. Announced at dusk. Designed for the perk Engineer + power grid + traps payoff.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">spawn director</span><span class="chip">map flags</span><span class="chip">night phase</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·04</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="6" y="18" width="44" height="18" fill="#e3a83a"/>
+          <rect x="10" y="14" width="40" height="6" fill="#c08a2a"/>
+          <rect x="14" y="22" width="6" height="6" fill="#1c1f25"/>
+          <rect x="24" y="22" width="6" height="6" fill="#1c1f25"/>
+          <rect x="34" y="22" width="6" height="6" fill="#1c1f25"/>
+          <circle cx="16" cy="38" r="4" fill="#0b0c0e"/>
+          <circle cx="42" cy="38" r="4" fill="#0b0c0e"/>
+          <rect x="50" y="22" width="8" height="14" fill="#5e6a78"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="alt">RV</span></div>
+      <p class="one">A base on wheels. Park where the run goes.</p>
+      <div class="body">
+        <p>One unique vehicle — find as a wreck in the highland, repair with rare parts. Holds <strong>one bed + one workbench + 30 inventory slots</strong>. Park it in any biome and it counts as a claimed safehouse with weak walls (HP 400, flammable). Mobile but vulnerable. Pure trade‑off.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">vehicles</span><span class="chip">map flags</span><span class="chip">inventory</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  CLUSTER E — LIFE  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">E</div>
+    <div class="ttl">LIFE</div>
+    <div class="sub">// the parts that make it feel like a home, not a fort</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">E·01</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="6" y="38" width="52" height="4" fill="#5a3a1a"/>
+          <rect x="14" y="26" width="10" height="12" fill="#d9b35a"/>
+          <text x="19" y="36" font-family="Bebas Neue" font-size="9" fill="#5a3a1a" text-anchor="middle">★</text>
+          <rect x="28" y="22" width="8" height="16" fill="#d9b35a"/>
+          <text x="32" y="34" font-family="Bebas Neue" font-size="7" fill="#5a3a1a" text-anchor="middle">★</text>
+          <rect x="40" y="30" width="10" height="8" fill="#d9b35a"/>
+          <path d="M32 22 L34 18 L36 22 Z" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">TROPHY <span class="gold">ROOM</span></div>
+      <p class="one">Mount the head of the Tank that almost got you.</p>
+      <div class="body">
+        <p>Boss kills drop a <strong>trophy</strong> — a Brood Mother's egg sac, a Charger's horn, a Tank's plate of skull. Mount on a wall plinth at base. Hover to see <em>day killed, weapon used, time alive</em>. Pure narrative payoff, costs nothing to maintain.</p>
+        <p>The trophy room is the part of the run that <strong>survives death</strong>: meta‑saved between runs, stamped with the seed they came from.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">bosses</span><span class="chip">death screen</span><span class="chip">meta profile</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">E·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="6" y="6" width="52" height="36" fill="#3a2a1a"/>
+          <rect x="4" y="22" width="56" height="2" fill="#d24b35" opacity="0.6"/>
+          <circle cx="20" cy="22" r="14" fill="#1c1f25"/>
+          <path d="M14 20 Q20 14 26 20" stroke="#e3a83a" stroke-width="0.8" fill="none" opacity="0.5"/>
+          <circle cx="20" cy="22" r="2" fill="#e3a83a"/>
+          <rect x="36" y="14" width="20" height="2" fill="#e8e6df" opacity="0.6"/>
+          <rect x="36" y="20" width="14" height="2" fill="#e8e6df" opacity="0.4"/>
+          <rect x="36" y="26" width="22" height="2" fill="#e8e6df" opacity="0.4"/>
+        </svg>
+      </div>
+      <div class="nm">CAMPFIRE <span class="alt">BONDING</span></div>
+      <p class="one">Sit. Wait. Listen to your squad.</p>
+      <div class="body">
+        <p>Build a campfire inside the base. At dusk, hold <strong>E</strong> on it with squad members present — a 90‑second cutscene plays where they swap procedurally generated stories ("Before this, I was a substitute teacher. I taught fourth grade. My class was..."). Survivors who bond gain <strong>+15% accuracy</strong> the next day.</p>
+        <p>Tiny system, enormous emotional return. The squad you lose actually <em>means</em> something.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">survivors</span><span class="chip">day cycle</span><span class="chip">cutscene</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">E·03</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="6" y="22" width="20" height="14" fill="#3a3f4a"/>
+          <rect x="6" y="20" width="20" height="3" fill="#5e6a78"/>
+          <rect x="9" y="25" width="6" height="6" fill="#1c1f25"/>
+          <rect x="17" y="25" width="6" height="6" fill="#1c1f25"/>
+          <rect x="30" y="22" width="20" height="14" fill="#3a3f4a"/>
+          <rect x="30" y="20" width="20" height="3" fill="#5e6a78"/>
+          <rect x="33" y="25" width="6" height="6" fill="#1c1f25"/>
+          <rect x="41" y="25" width="6" height="6" fill="#1c1f25"/>
+        </svg>
+      </div>
+      <div class="nm">SQUAD <span class="alt">QUARTERS</span></div>
+      <p class="one">Bunks. Footlockers. A place to lose them from.</p>
+      <div class="body">
+        <p>Bunk bed prop — each bed sleeps one squad member overnight, restoring their HP. Without a bunk they sleep on the floor (no recovery, –morale). Footlocker shows the loadout you've given them: <em>medic gets the AR, engineer gets the wrench.</em></p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">survivors</span><span class="chip">food &amp; rest</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">E·04</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="6" y="6" width="52" height="36" fill="#3a2a1a"/>
+          <rect x="10" y="10" width="16" height="12" fill="#e8e6df" transform="rotate(-5 18 16)"/>
+          <rect x="30" y="8" width="18" height="14" fill="#d9b35a" transform="rotate(3 39 15)"/>
+          <rect x="14" y="26" width="20" height="12" fill="#e8e6df" transform="rotate(2 24 32)"/>
+          <rect x="36" y="26" width="16" height="12" fill="#5fb6e8" transform="rotate(-4 44 32)"/>
+          <circle cx="18" cy="16" r="2" fill="#0b0c0e"/>
+          <circle cx="40" cy="14" r="2" fill="#0b0c0e"/>
+          <text x="44" y="34" font-family="Bebas Neue" font-size="6" fill="#0b0c0e">DAY 12</text>
+        </svg>
+      </div>
+      <div class="nm">CORK <span class="alt">BOARD</span></div>
+      <p class="one">Snapshots, lore scraps, hand‑drawn maps.</p>
+      <div class="body">
+        <p>A wall prop with 12 pin slots. Pin <strong>journals</strong> (from the lore brief), <strong>screenshots</strong> the game auto‑takes at boss kills and milestones, and <strong>hand‑drawn maps</strong> you can sketch at the workbench. Personal scrapbook of the run, visible the next time you load.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">journals/lore</span><span class="chip">screenshots</span><span class="chip">meta profile</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  FOOTER  ─────────── -->
+<footer class="footer">
+  <div>
+    <h3>WHAT NEXT</h3>
+    <p>Three briefs deep now — Expansion, Arsenal, Homestead. The home‑base cards stack particularly well: <strong style="color:var(--accent)">A·01 Foundations</strong> unlocks <strong style="color:var(--accent)">C·01 Watchtower</strong>, <strong style="color:var(--accent)">D·02 Decay</strong> gives the day phase a reason to exist, and <strong style="color:var(--accent)">E·02 Campfire</strong> finally pays off the Survivors system from brief one.</p>
+    <p>Tell me which cluster matters most and we'll spec or prototype from there. A "build a real base" arc could be A·01 + A·02 + C·01 + D·02 in one push — that's a whole patch's worth.</p>
+    <ol>
+      <li>react to the cards — strike any that don't speak to you</li>
+      <li>flag the ones to pursue, in priority order</li>
+      <li>i'll spec or prototype them, your call which</li>
+    </ol>
+  </div>
+  <div class="stamp">
+    <div class="big">HOMESTEAD</div>
+    <div class="small">REV A · PITCH ONLY</div>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>

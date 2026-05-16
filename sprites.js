@@ -297,6 +297,26 @@
         ctx.fillRect(8, 2.5, 7, 1.5);
         break;
       }
+      case 'wall': {
+        // wood plank held forward — construction material
+        ctx.fillStyle = C.crate;
+        ctx.fillRect(6, -2.6, 14, 5.2);
+        ctx.fillStyle = C.crateHi;
+        ctx.fillRect(6, -2.6, 14, 1);
+        ctx.fillStyle = C.crateLo;
+        ctx.fillRect(6, 1.6, 14, 1);
+        // plank grain lines
+        ctx.fillStyle = C.crateLo;
+        ctx.fillRect(10, -2.2, 0.6, 4.4);
+        ctx.fillRect(15, -2.2, 0.6, 4.4);
+        // nails / fasteners
+        ctx.fillStyle = C.gunMetalHi;
+        ctx.fillRect(7.5, -1.6, 0.8, 0.8);
+        ctx.fillRect(7.5, 0.8, 0.8, 0.8);
+        ctx.fillRect(18, -1.6, 0.8, 0.8);
+        ctx.fillRect(18, 0.8, 0.8, 0.8);
+        break;
+      }
       // ---- Expansion weapons (delegated to ZExpand if loaded) ----
       case 'crossbow': if (typeof window.ZExpand !== 'undefined') return ZExpand.drawCrossbow(ctx); break;
       case 'flamer':   if (typeof window.ZExpand !== 'undefined') return ZExpand.drawFlamethrower(ctx); break;
@@ -1883,134 +1903,186 @@
     else if (type === 6) drawMountainDetail(ctx, x, y, size, tx, ty);
     else if (type === 7) drawPathDetail(ctx, x, y, size, tx, ty);
 
-    if (nL !== undefined) {
-      drawTerrainCorners(ctx, x, y, size, type, nL, nR, nU, nD, tx, ty);
-      drawBeachFoam     (ctx, x, y, size, type, nL, nR, nU, nD);
-    }
-  }
-
-  // Fills the L-corner where two adjacent neighbors agree on a different
-  // terrain type with a clean quarter-arc of that neighbor's color. Radius
-  // varies per corner so adjacent corners aren't carbon copies, but each
-  // arc is a single smooth canvas arc() — no jagged jitter.
-  function drawTerrainCorners(ctx, x, y, size, type, nL, nR, nU, nD, tx, ty) {
-    if (nL >= 0 && nU >= 0 && nL === nU && nL !== type) {
-      ctx.fillStyle = TERRAIN_BASE[nL] || TERRAIN_BASE[0];
-      cornerWedge(ctx, x, y, size * (0.40 + tileHash(tx, ty, 80) * 0.18), 'tl');
-    }
-    if (nR >= 0 && nU >= 0 && nR === nU && nR !== type) {
-      ctx.fillStyle = TERRAIN_BASE[nR] || TERRAIN_BASE[0];
-      cornerWedge(ctx, x + size, y, size * (0.40 + tileHash(tx, ty, 82) * 0.18), 'tr');
-    }
-    if (nL >= 0 && nD >= 0 && nL === nD && nL !== type) {
-      ctx.fillStyle = TERRAIN_BASE[nL] || TERRAIN_BASE[0];
-      cornerWedge(ctx, x, y + size, size * (0.40 + tileHash(tx, ty, 84) * 0.18), 'bl');
-    }
-    if (nR >= 0 && nD >= 0 && nR === nD && nR !== type) {
-      ctx.fillStyle = TERRAIN_BASE[nR] || TERRAIN_BASE[0];
-      cornerWedge(ctx, x + size, y + size, size * (0.40 + tileHash(tx, ty, 86) * 0.18), 'br');
-    }
-  }
-  function cornerWedge(ctx, x, y, r, which) {
-    ctx.beginPath();
-    if (which === 'tl') {
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + r, y);
-      ctx.arc(x + r, y + r, r, -Math.PI / 2, Math.PI, true);
-      ctx.lineTo(x, y);
-    } else if (which === 'tr') {
-      ctx.moveTo(x, y);
-      ctx.lineTo(x, y + r);
-      ctx.arc(x - r, y + r, r, 0, -Math.PI / 2, true);
-      ctx.lineTo(x, y);
-    } else if (which === 'bl') {
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + r, y);
-      ctx.arc(x + r, y - r, r, Math.PI / 2, Math.PI, false);
-      ctx.lineTo(x, y);
-    } else {
-      ctx.moveTo(x, y);
-      ctx.lineTo(x - r, y);
-      ctx.arc(x - r, y - r, r, Math.PI / 2, 0, true);
-      ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // Sand↔water seams get a thin foam band on the sand side. Painted only
-  // on sand tiles (the water side stays clean) so the result reads as a
-  // beach with surf rather than a generic dither.
-  function drawBeachFoam(ctx, x, y, size, type, nL, nR, nU, nD) {
-    if (type !== 2) return;
-    ctx.fillStyle = 'rgba(248,236,210,0.55)';
-    if (nL === 3 || nL === 4) ctx.fillRect(x,            y,            2,    size);
-    if (nR === 3 || nR === 4) ctx.fillRect(x + size - 2, y,            2,    size);
-    if (nU === 3 || nU === 4) ctx.fillRect(x,            y,            size, 2);
-    if (nD === 3 || nD === 4) ctx.fillRect(x,            y + size - 2, size, 2);
+    // Transitions are baked into the per-pixel base pass (paintChunkTerrainBase)
+    // so the seam between two terrain types resolves to exactly 50/50 on
+    // both sides. Nothing to overlay here at boundaries.
   }
 
   // Whole-chunk base paint. One ImageData write fills every pixel with
-  // TERRAIN_BASE[tile_type] plus a smooth bilinear-noise tint, where the
-  // noise samples are precomputed at every tile *corner*. Because the four
-  // tiles sharing a corner all read the same noise value there, adjacent
-  // same-type tiles transition smoothly — the grid lattice disappears in
-  // homogeneous regions. Type seams stay sharp (the base color step is
-  // discrete) but no longer "snap" to the lattice in solid-color areas.
-  function paintChunkTerrainBase(ctx, chunk, chunkSize, tileSize) {
+  //   * TERRAIN_BASE[type]      — looked up at sub-tile resolution
+  //   * a smooth bilinear-noise tint (large-patch color drift)
+  //   * an analytical lerp toward differing cardinal neighbors at cell scale
+  //   * a hillshade term from the continuous warped elevation gradient.
+  //
+  // Sub-tile sampling is render-only: classification + elevation are sampled
+  // at 1/visStride of a gameplay tile (8 px cells for the default 40 px tile),
+  // so the visible coastline stairstep collapses by ~5x. The 40 px gameplay
+  // grid still drives collision / nav / POI placement — visual cells can
+  // disagree with their tile by up to a tile-width, but the eye sees a
+  // meandering shoreline that follows the warped iso-contour exactly.
+  //
+  // `neighborOf` is unused under the sub-tile path (the halo around the chunk
+  // samples the classifier directly) but kept in the signature for backwards
+  // compatibility with any external callers.
+  function paintChunkTerrainBase(ctx, chunk, chunkSize, tileSize, neighborOf) {
     const cs = chunkSize, ts = tileSize, tpc = cs / ts;
-    const terrain = chunk.terrain;
     const img = ctx.createImageData(cs, cs);
     const data = img.data;
     const baseTx = chunk.cx * tpc;
     const baseTy = chunk.cy * tpc;
+    // World context — sprites.js loads before world.js, but these are resolved
+    // at call time so the classifier and elevation function are in scope.
+    const seed = (typeof World !== 'undefined' && World) ? World.seed : 1;
+    const region = (typeof World !== 'undefined' && World) ? World.region : null;
+    const classify = (typeof classifyTerrain === 'function') ? classifyTerrain : null;
+    const elevAt   = (typeof elevationAt    === 'function') ? elevationAt   : null;
 
-    // Smoothstep-bilerped value noise at each tile corner. Two octaves
-    // with wavelengths of ~5 and ~14 tiles, so each patch of similar tint
-    // covers a meadow-sized area (200-560px) instead of jittering per
-    // tile. Continuous across chunks (the hash is indexed by world coord).
+    // --- Sub-tile sampling grid. 1 cell = ts/visStride px = 8 px by default.
+    // 1-cell halo around the chunk so cell-edge blends + central-difference
+    // gradients read past the chunk boundary without a special case.
+    const visStride = 5;
+    const cellPx = ts / visStride;       // 8
+    const vpc = tpc * visStride;          // 100 cells per chunk side
+    const gw = vpc + 2;                   // grid width with halo
+    const cellClass = new Uint8Array(gw * gw);
+    const cellElev  = new Float32Array(gw * gw);
+    for (let gy = 0; gy < gw; gy++) {
+      for (let gx = 0; gx < gw; gx++) {
+        const ftx = baseTx + (gx - 1 + 0.5) / visStride;
+        const fty = baseTy + (gy - 1 + 0.5) / visStride;
+        cellClass[gy * gw + gx] = classify ? classify(seed, region, ftx, fty) : 0;
+        cellElev[gy * gw + gx]  = elevAt   ? elevAt(seed, region, ftx, fty)   : 0;
+      }
+    }
+
+    // --- Low-freq tint noise on the gameplay-tile corner grid. Two octaves
+    // with wavelengths of ~5 and ~14 tiles → patches of similar tint cover a
+    // meadow-sized area (200-560px) instead of jittering per cell.
     const stride = tpc + 1;
     const cornerN = new Float32Array(stride * stride);
     for (let cy = 0; cy <= tpc; cy++) {
       for (let cx = 0; cx <= tpc; cx++) {
         const wx = baseTx + cx, wy = baseTy + cy;
-        const o1 = smoothValueNoise(wx * 0.18, wy * 0.18, 601); // ~5 tile wavelength
-        const o2 = smoothValueNoise(wx * 0.07, wy * 0.07, 603); // ~14 tile wavelength
+        const o1 = smoothValueNoise(wx * 0.18, wy * 0.18, 601);
+        const o2 = smoothValueNoise(wx * 0.07, wy * 0.07, 603);
         cornerN[cy * stride + cx] = o1 * 0.55 + o2 * 0.45;
       }
     }
 
-    for (let py = 0; py < cs; py++) {
-      const lyF = py / ts;
-      const tileY = lyF >= tpc ? tpc - 1 : lyF | 0;
-      const fy = lyF - tileY;
-      const ifsy = 1 - fy;
-      const cornRow0 = tileY * stride;
-      const cornRow1 = cornRow0 + stride;
-      const terrRow = tileY * tpc;
-      for (let px = 0; px < cs; px++) {
-        const lxF = px / ts;
-        const tileX = lxF >= tpc ? tpc - 1 : lxF | 0;
-        const fx = lxF - tileX;
-        const ifsx = 1 - fx;
-        const t = terrain[terrRow + tileX];
+    // --- Hillshade. Sun lit from the upper-left so highlights fall on north-
+    // and west-facing slopes; matches the existing mountain-detail highlight.
+    // GAIN is tuned so the steepest cell-scale slope on a hillside produces a
+    // few dozen units of RGB shift — enough to give hills volume without
+    // crushing the underlying terrain color on flat ground.
+    const sunDx = -0.7071, sunDy = -0.7071;
+    const HILLSHADE_GAIN = 1100;
+    const DEPTH = 0.55;       // cross-boundary blend depth, fraction of a cell
+
+    for (let cellY = 0; cellY < vpc; cellY++) {
+      for (let cellX = 0; cellX < vpc; cellX++) {
+        const gIdx = (cellY + 1) * gw + (cellX + 1);
+        const t = cellClass[gIdx];
         const rgb = TERRAIN_BASE_RGB[t] || TERRAIN_BASE_RGB[0];
-        const n00 = cornerN[cornRow0 + tileX];
-        const n10 = cornerN[cornRow0 + tileX + 1];
-        const n01 = cornerN[cornRow1 + tileX];
-        const n11 = cornerN[cornRow1 + tileX + 1];
-        const ntop = n00 * ifsx + n10 * fx;
-        const nbot = n01 * ifsx + n11 * fx;
-        const n = ntop * ifsy + nbot * fy;
-        const delta = ((n - 0.5) * 2 * (TERRAIN_TINT_RANGE[t] || 10)) | 0;
-        const i = (py * cs + px) << 2;
-        let r = rgb[0] + delta; if (r < 0) r = 0; else if (r > 255) r = 255;
-        let g = rgb[1] + delta; if (g < 0) g = 0; else if (g > 255) g = 255;
-        let b = rgb[2] + delta; if (b < 0) b = 0; else if (b > 255) b = 255;
-        data[i]     = r;
-        data[i + 1] = g;
-        data[i + 2] = b;
-        data[i + 3] = 255;
+        const tintRange = TERRAIN_TINT_RANGE[t] || 10;
+        // 4 cardinal neighbors at cell scale (halo covers the chunk edge).
+        const nU = cellClass[gIdx - gw];
+        const nD = cellClass[gIdx + gw];
+        const nL = cellClass[gIdx - 1];
+        const nR = cellClass[gIdx + 1];
+        const rgbU = nU !== t ? TERRAIN_BASE_RGB[nU] : null;
+        const rgbD = nD !== t ? TERRAIN_BASE_RGB[nD] : null;
+        const rgbL = nL !== t ? TERRAIN_BASE_RGB[nL] : null;
+        const rgbR = nR !== t ? TERRAIN_BASE_RGB[nR] : null;
+        const hasNeighbor = rgbU || rgbD || rgbL || rgbR;
+
+        // Central-difference gradient of the continuous warped elevation.
+        // Spans 2 cells (one on each side) so the result is the per-cell
+        // slope. Held constant across the cell's 8x8 pixels — the underlying
+        // field is smooth enough that the granularity is invisible against
+        // pixel-scale tint noise + tile-scale color drift.
+        const eR = cellElev[gIdx + 1];
+        const eL = cellElev[gIdx - 1];
+        const eD = cellElev[gIdx + gw];
+        const eU = cellElev[gIdx - gw];
+        const gradX = (eR - eL) * 0.5;
+        const gradY = (eD - eU) * 0.5;
+        const shade = (-(gradX * sunDx + gradY * sunDy) * HILLSHADE_GAIN) | 0;
+
+        const px0 = cellX * cellPx;
+        const py0 = cellY * cellPx;
+        for (let dy = 0; dy < cellPx; dy++) {
+          const py = py0 + dy;
+          const tCornerY = py / ts;
+          const tcy = Math.floor(tCornerY);
+          const fyT = tCornerY - tcy;
+          const ifsyT = 1 - fyT;
+          const cfy = dy / cellPx;
+          const cifsy = 1 - cfy;
+          for (let dx = 0; dx < cellPx; dx++) {
+            const px = px0 + dx;
+            const tCornerX = px / ts;
+            const tcx = Math.floor(tCornerX);
+            const fxT = tCornerX - tcx;
+            const ifsxT = 1 - fxT;
+            const n00 = cornerN[tcy * stride + tcx];
+            const n10 = cornerN[tcy * stride + tcx + 1];
+            const n01 = cornerN[(tcy + 1) * stride + tcx];
+            const n11 = cornerN[(tcy + 1) * stride + tcx + 1];
+            const ntop = n00 * ifsxT + n10 * fxT;
+            const nbot = n01 * ifsxT + n11 * fxT;
+            const n = ntop * ifsyT + nbot * fyT;
+            const delta = ((n - 0.5) * 2 * tintRange) | 0;
+
+            let r = rgb[0], g = rgb[1], b = rgb[2];
+            if (hasNeighbor) {
+              // Same cross-boundary blend as before, now at cell scale: each
+              // edge contributes w = (1 - distFromEdge/DEPTH) * 0.5, capped at
+              // 0.5 (single edge → exactly 50/50 at seam). max-not-sum keeps
+              // L-corners from over-darkening.
+              const cfx = dx / cellPx;
+              const cifsx = 1 - cfx;
+              let total = 0, mR = 0, mG = 0, mB = 0, maxW = 0;
+              if (rgbU && cfy < DEPTH) {
+                const w = (1 - cfy / DEPTH) * 0.5;
+                if (w > maxW) maxW = w;
+                total += w; mR += rgbU[0] * w; mG += rgbU[1] * w; mB += rgbU[2] * w;
+              }
+              if (rgbD && cifsy < DEPTH) {
+                const w = (1 - cifsy / DEPTH) * 0.5;
+                if (w > maxW) maxW = w;
+                total += w; mR += rgbD[0] * w; mG += rgbD[1] * w; mB += rgbD[2] * w;
+              }
+              if (rgbL && cfx < DEPTH) {
+                const w = (1 - cfx / DEPTH) * 0.5;
+                if (w > maxW) maxW = w;
+                total += w; mR += rgbL[0] * w; mG += rgbL[1] * w; mB += rgbL[2] * w;
+              }
+              if (rgbR && cifsx < DEPTH) {
+                const w = (1 - cifsx / DEPTH) * 0.5;
+                if (w > maxW) maxW = w;
+                total += w; mR += rgbR[0] * w; mG += rgbR[1] * w; mB += rgbR[2] * w;
+              }
+              if (total > 0) {
+                const k = maxW / total;
+                r = r * (1 - maxW) + mR * k;
+                g = g * (1 - maxW) + mG * k;
+                b = b * (1 - maxW) + mB * k;
+              }
+            }
+
+            r += delta + shade;
+            g += delta + shade;
+            b += delta + shade;
+            if (r < 0) r = 0; else if (r > 255) r = 255;
+            if (g < 0) g = 0; else if (g > 255) g = 255;
+            if (b < 0) b = 0; else if (b > 255) b = 255;
+            const i = (py * cs + px) << 2;
+            data[i]     = r | 0;
+            data[i + 1] = g | 0;
+            data[i + 2] = b | 0;
+            data[i + 3] = 255;
+          }
+        }
       }
     }
     ctx.putImageData(img, 0, 0);

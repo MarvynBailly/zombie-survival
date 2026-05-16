@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Outbreak — Bosses Brainstorm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="brainstorm.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="header">
+  <div class="top">
+    <span class="dot"></span>
+    <span>FIELD BRIEF · APEX TRACK</span>
+    <span class="spacer"></span>
+    <span>FILE <span class="x">BOS-001</span></span>
+    <span>·</span>
+    <span>REV A</span>
+    <span>·</span>
+    <span>DAY <span class="x">∞</span></span>
+  </div>
+  <h1>BOSSES <span class="slash">/</span> <span class="bleed">BRAINSTORM</span></h1>
+  <div class="lede">
+    <div class="cell"><div class="l">DIRECTIONS</div><div class="v">20</div></div>
+    <div class="cell"><div class="l">CLUSTERS</div><div class="v">05</div></div>
+    <div class="cell"><div class="l">FOCUS</div><div class="v">APEX<span class="unit">encounters</span></div></div>
+    <div class="cell"><div class="l">SCOPE</div><div class="v">M → XL</div></div>
+  </div>
+</header>
+
+<div class="intro">
+  <div class="body">
+    <p>The bestiary has one true boss — <strong>the Centipede</strong> — and one mini‑boss in the Brood Mother. Everything else in the roster is a specialist walker variant. There's no apex layer above the horde, and no fight you tell stories about.</p>
+    <p>This brief adds <strong class="acc">19 boss directions plus 1 meta system</strong>, spread across five clusters: <strong>World Bosses</strong> (the immobile set‑pieces), <strong>Human Bosses</strong> (named antagonists who run factions), <strong>Hunts</strong> (mobile bosses who track <em>you</em>), <strong>Mechanic Bosses</strong> (encounters defined by an unusual rule), and <strong>Meta</strong> (how bosses fit into the run loop).</p>
+    <p>Each card hooks into existing systems — the bestiary draw pipeline, the spawn director, POI variants. Pick the ones that excite you and we'll spec.</p>
+  </div>
+  <aside class="legend">
+    <h4>LEGEND</h4>
+    <div class="row"><span class="key">COMPLEXITY</span><span class="tag s">S</span><span class="tag m">M</span><span class="tag l">L</span><span class="tag xl">XL</span></div>
+    <div class="row"><span class="key">IMPACT</span><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip"></span><span class="pip"></span></div></div>
+    <div class="row"><span class="key">HOOKS</span><span style="color:var(--fg-dim)">existing system the idea plugs into</span></div>
+    <div class="row" style="margin-top:14px;border-top:1px dashed var(--border);padding-top:12px"><span class="key">STATUS</span><span style="color:var(--toxic)">all 20 unbuilt — pitch only</span></div>
+  </aside>
+</div>
+
+<!-- A — WORLD BOSSES -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">A</div>
+    <div class="ttl">WORLD BOSSES</div>
+    <div class="sub">// the set‑piece encounters · you go to them</div>
+  </div>
+  <div class="grid">
+
+    <div class="card feature">
+      <div class="num">A·01</div>
+      <div class="meta"><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span></div><span class="tag xl">XL</span></div>
+      <div class="left">
+        <div class="ico">
+          <svg class="ic" width="84" height="80" viewBox="0 0 84 80">
+            <ellipse cx="42" cy="74" rx="34" ry="4" fill="#0b0c0e" opacity="0.6"/>
+            <rect x="20" y="20" width="44" height="54" fill="#4a3024"/>
+            <path d="M20 20 Q26 6 42 6 Q58 6 64 20 Z" fill="#5a3a20"/>
+            <circle cx="32" cy="14" r="2" fill="#d24b35"/>
+            <circle cx="42" cy="10" r="2" fill="#d24b35"/>
+            <circle cx="52" cy="14" r="2" fill="#d24b35"/>
+            <path d="M14 36 Q6 40 12 50 L24 46 Z" fill="#4a3024"/>
+            <path d="M70 36 Q78 40 72 50 L60 46 Z" fill="#4a3024"/>
+            <path d="M28 40 Q30 50 36 48" stroke="#d24b35" stroke-width="1.6" fill="none"/>
+            <path d="M48 40 Q50 50 56 48" stroke="#d24b35" stroke-width="1.6" fill="none"/>
+            <rect x="36" y="56" width="12" height="14" fill="#3a2010"/>
+            <circle cx="42" cy="62" r="2.5" fill="#e3a83a"/>
+          </svg>
+        </div>
+        <div class="nm">THE <span class="alt">COLOSSUS</span></div>
+        <p class="one">A skyscraper of fused infected. It doesn't move much. It doesn't need to.</p>
+        <div class="body">
+          <p>One per region, anchored to a unique landmark POI (the airport, the stadium). Six stories of meshed corpses, four primary <strong>weak points</strong> (eye clusters at 3 elevations, a glowing heart in the lower torso). Each weak point is a discrete <em>phase</em>: pop the eyes to expose the heart, kill the heart to drop the giant.</p>
+          <p>It generates a slow <strong>20‑tile horde aura</strong> — regular walkers crawl out of its body every 10s. The encounter is "siege a building." Mythic loot table; killing it permanently changes the regional spawn rate by ‑15%.</p>
+        </div>
+      </div>
+      <div class="right">
+        <div class="row"><span class="k">HP</span><span class="v">4 phases · 800 each</span></div>
+        <div class="row"><span class="k">SIZE</span><span class="v">6×4 tiles</span></div>
+        <div class="row"><span class="k">AURA</span><span class="v">spawns walkers · 20 tile</span></div>
+        <div class="row"><span class="k">LOOT</span><span class="v">mythic · regional perk</span></div>
+        <div class="row"><span class="k">PERSIST</span><span class="v">dead forever in this seed</span></div>
+        <div class="row"><span class="k">REUSE</span><span class="v">bestiary draw · spawn dir</span></div>
+      </div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·02</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="56" viewBox="0 0 64 56">
+          <rect x="6" y="6" width="52" height="44" fill="#3a2a1a" stroke="#5a3a20"/>
+          <circle cx="18" cy="20" r="4" fill="#d24b35"/>
+          <circle cx="32" cy="14" r="4" fill="#d24b35"/>
+          <circle cx="46" cy="20" r="4" fill="#d24b35"/>
+          <circle cx="18" cy="34" r="4" fill="#d24b35"/>
+          <circle cx="32" cy="42" r="4" fill="#d24b35"/>
+          <circle cx="46" cy="34" r="4" fill="#d24b35"/>
+          <circle cx="32" cy="28" r="6" fill="#4a3024" stroke="#d24b35" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="alt">NURSERY</span></div>
+      <p class="one">A wall of pulsing sacs. Each one is a Brood Mother in larval form.</p>
+      <div class="body">
+        <p>Immobile boss filling a 6×6 chamber inside an instanced dungeon. Six pulsing sacs around a central heart — each sac you ignore hatches a Brood Mother in 90s. Kill the heart first, but the heart's armored until 3+ sacs are dead. A timing puzzle.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">sewer dungeons</span><span class="chip">brood mother</span><span class="chip">timer mechanic</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·03</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <path d="M2 30 Q18 26 32 30 Q46 34 62 30" stroke="#5fb6e8" stroke-width="2" fill="none" opacity="0.5"/>
+          <ellipse cx="32" cy="32" rx="22" ry="6" fill="#1c3848"/>
+          <path d="M14 30 Q18 24 22 30" fill="#4a6332"/>
+          <path d="M42 30 Q46 24 50 30" fill="#4a6332"/>
+          <circle cx="22" cy="26" r="2" fill="#d24b35"/>
+          <circle cx="42" cy="26" r="2" fill="#d24b35"/>
+          <path d="M28 32 Q32 38 36 32" stroke="#e8e6df" stroke-width="1.5" fill="#5a3a20"/>
+          <path d="M8 38 Q14 36 16 38 M48 38 Q54 36 56 38" stroke="#4a6332" stroke-width="1.4" fill="none"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="ice">LEVIATHAN</span></div>
+      <p class="one">The biggest thing in the swamp doesn't fit on land.</p>
+      <div class="body">
+        <p>Aquatic boss anchored to a large swamp / coastal lake. Fight from boat or pier — the boss circles, surfaces to lunge, dives. Three‑phase pattern that ends with a beach attempt where it briefly drags itself onto shore. Drops a unique speargun. Reuses Swimmer (Enemies B·02) art language.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">water terrain</span><span class="chip">swimmers</span><span class="chip">pier POI</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="64" viewBox="0 0 56 64">
+          <path d="M28 4 L40 22 L36 50 L20 50 L16 22 Z" fill="#4a3024"/>
+          <path d="M28 4 L34 16 L28 22 L22 16 Z" fill="#5a3a20"/>
+          <circle cx="28" cy="32" r="6" fill="#d24b35"/>
+          <circle cx="28" cy="32" r="3" fill="#e3a83a"/>
+          <path d="M16 50 L12 60 M40 50 L44 60" stroke="#4a3024" stroke-width="3"/>
+          <path d="M16 26 L8 30 M40 26 L48 30" stroke="#5a3a20" stroke-width="2"/>
+          <circle cx="8" cy="30" r="2" fill="#5a3a20"/>
+          <circle cx="48" cy="30" r="2" fill="#5a3a20"/>
+        </svg>
+      </div>
+      <div class="nm">WITNESS <span class="alt">TREE</span></div>
+      <p class="one">A forest "tree" that's been watching. It doesn't move. It calls.</p>
+      <div class="body">
+        <p>Forest‑biome boss. Looks like a massive twisted tree until you approach within 20 tiles — eye opens, root‑arms uncoil. <strong>Cannot move</strong>, but its 30‑tile aura summons a continuous trickle of Thorn Husks (Enemies D·04) and Bloaters. You break it by burning the eye. Pair with rain‑weather days for a fair fight.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">forest biome</span><span class="chip">thorn husk</span><span class="chip">weather</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- B — HUMAN BOSSES -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">B</div>
+    <div class="ttl">HUMAN BOSSES</div>
+    <div class="sub">// named antagonists · the ones who lead the camps</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">B·01</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <circle cx="32" cy="14" r="6" fill="#7a4a2a"/>
+          <rect x="28" y="20" width="8" height="20" fill="#3a3024"/>
+          <rect x="20" y="22" width="24" height="6" fill="#5e6a78"/>
+          <rect x="16" y="14" width="32" height="4" fill="#d24b35"/>
+          <polygon points="32,8 30,2 34,2" fill="#e3a83a"/>
+          <rect x="42" y="26" width="14" height="4" fill="#1c1f25"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="alt">WARLORD</span></div>
+      <p class="one">The Raiders have a king. He has a body count.</p>
+      <div class="body">
+        <p>Endgame human boss. Spawns at the largest Raider camp once you've killed three smaller camps (the news travels). Heavy armor (eats AP rounds), <strong>three lieutenants</strong> as adds, refuses to flee. His camp is the fight. Drops a named heavy machinegun + the deed to his camp (it becomes a safehouse candidate).</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">raiders</span><span class="chip">faction state</span><span class="chip">named weapons</span><span class="chip">safehouse</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">B·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <polygon points="32,4 42,18 32,30 22,18" fill="#3a2010"/>
+          <circle cx="32" cy="16" r="3" fill="#d24b35"/>
+          <rect x="22" y="22" width="20" height="20" fill="#3a2010"/>
+          <path d="M22 28 L42 28" stroke="#d24b35" stroke-width="0.6" stroke-dasharray="2 1"/>
+          <path d="M14 36 L22 36 L20 42 M50 36 L42 36 L44 42" stroke="#3a2010" stroke-width="2"/>
+          <circle cx="32" cy="24" r="1.5" fill="#e3a83a"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="alt">PROPHET</span></div>
+      <p class="one">Leader of the Cult. Channels the infection.</p>
+      <div class="body">
+        <p>Fought in an underground altar chamber surrounded by chanting cultists. He casts <strong>three "miracles"</strong> on cooldown — <em>turn a corpse into a Charger</em>, <em>infect the player +20%</em>, <em>silent shockwave that ragdolls you 4 tiles</em>. Kill the chanters first to break the cycle, then engage him directly. Drops a unique infection antidote schematic.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">cultists</span><span class="chip">infection %</span><span class="chip">altar POI</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">B·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <circle cx="28" cy="14" r="6" fill="#e8e6df"/>
+          <rect x="22" y="20" width="12" height="20" fill="#e8e6df"/>
+          <path d="M28 6 Q30 2 28 0" stroke="#8ec547" stroke-width="2.5" fill="none"/>
+          <rect x="14" y="24" width="6" height="14" fill="#e8e6df"/>
+          <rect x="36" y="24" width="6" height="14" fill="#e8e6df"/>
+          <rect x="34" y="26" width="10" height="3" fill="#7a7e88"/>
+          <circle cx="42" cy="27" r="1" fill="#d24b35"/>
+          <circle cx="26" cy="13" r="1" fill="#0b0c0e"/>
+          <circle cx="30" cy="13" r="1" fill="#0b0c0e"/>
+        </svg>
+      </div>
+      <div class="nm">PATIENT <span class="glow">ZERO</span></div>
+      <p class="one">In the lab coat. With the clipboard. Half infected.</p>
+      <div class="body">
+        <p>Found inside the Hospital POI's surgical theater. Half‑turned scientist who designed the infection. Fights with a <strong>syringe gun</strong> (instant +30% Infection on hit) and summons three of his own failed experiments — named one‑offs you can't find anywhere else. Reading his journals before the fight unlocks dialog options that skip phase 2.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">hospital POI</span><span class="chip">infection %</span><span class="chip">journals</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">B·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <circle cx="28" cy="14" r="5" fill="#3a4024"/>
+          <rect x="22" y="20" width="12" height="20" fill="#3a4024"/>
+          <rect x="20" y="6" width="16" height="4" fill="#3a4024"/>
+          <rect x="22" y="22" width="12" height="2" fill="#e3a83a"/>
+          <rect x="22" y="26" width="12" height="2" fill="#e3a83a"/>
+          <rect x="22" y="30" width="12" height="2" fill="#e3a83a"/>
+          <rect x="36" y="24" width="14" height="4" fill="#1c1f25"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="alt">GENERAL</span></div>
+      <p class="one">Rogue military. Owns the airport. Calls in air strikes.</p>
+      <div class="body">
+        <p>Fought at the airport (Map B·04). Goes down in a <strong>3‑phase</strong> arena fight — runway, control tower, hangar. Each phase he summons a different asset: <em>squad of riflemen</em>, <em>auto‑turret deployment</em>, <em>helicopter strafing run</em>. Kill him and the airport becomes the run's extraction site.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">airport POI</span><span class="chip">turrets</span><span class="chip">extraction</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- C — HUNTS -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">C</div>
+    <div class="ttl">HUNTS</div>
+    <div class="sub">// mobile bosses · they find you · you track them back</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">C·01</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <circle cx="32" cy="14" r="5" fill="#e8e6df" opacity="0.4"/>
+          <rect x="28" y="18" width="8" height="18" fill="#e8e6df" opacity="0.4"/>
+          <circle cx="30" cy="13" r="1.2" fill="#d24b35"/>
+          <circle cx="34" cy="13" r="1.2" fill="#d24b35"/>
+          <path d="M16 36 L20 36 M44 36 L48 36" stroke="#e8e6df" stroke-width="0.4" opacity="0.4"/>
+          <path d="M6 22 Q12 16 18 22 M46 22 Q52 16 58 22" stroke="#d24b35" stroke-width="0.4" fill="none" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="alt">WHITE STALKER</span></div>
+      <p class="one">A Stalker that hunts the hunter.</p>
+      <div class="body">
+        <p>Once you kill 10 regular Stalkers, the White Stalker appears as a permanent nemesis in your save. It <em>tracks you</em> across the map — you'll see its footprints on dust tiles, hear a distinct chitter when it's within 8 tiles. <strong>It only attacks when you're at &lt;50% HP.</strong> Survive 3 encounters to "kill" it; drops a unique invisibility cloak (limited‑use stealth tool).</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">stalker</span><span class="chip">save state</span><span class="chip">stealth (Crossbow)</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">C·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <ellipse cx="32" cy="34" rx="20" ry="6" fill="#0b0c0e" opacity="0.4"/>
+          <rect x="22" y="22" width="20" height="14" fill="#5a3a20"/>
+          <path d="M22 22 L8 16 M22 28 L8 24" stroke="#5a3a20" stroke-width="3"/>
+          <rect x="38" y="24" width="10" height="8" fill="#5a3a20"/>
+          <circle cx="46" cy="28" r="1.5" fill="#d24b35"/>
+          <circle cx="46" cy="28" r="0.5" fill="#e3a83a"/>
+          <polygon points="24,22 28,16 32,22" fill="#3a2010"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="alt">OLD CHARGER</span></div>
+      <p class="one">Three times the size. Twice the speed. One name.</p>
+      <div class="body">
+        <p>Elite Charger. Roams a single biome on a fixed daily route — players who study its pattern can ambush it. Re‑uses standard Charger AI but with a <strong>"unstoppable dash"</strong> animation that breaks fences and tree props in its path. Drops a unique helmet (–50% knockback resistance).</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">charger</span><span class="chip">daily patrol</span><span class="chip">destructible terrain</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <circle cx="28" cy="12" r="5" fill="#5a1a14"/>
+          <rect x="22" y="18" width="12" height="16" fill="#5a1a14"/>
+          <circle cx="14" cy="36" r="2" fill="#5a1a14"/>
+          <circle cx="20" cy="42" r="2" fill="#5a1a14"/>
+          <circle cx="28" cy="44" r="2" fill="#5a1a14"/>
+          <circle cx="36" cy="42" r="2" fill="#5a1a14"/>
+          <circle cx="42" cy="36" r="2" fill="#5a1a14"/>
+          <path d="M28 34 L18 44 M28 34 L38 44" stroke="#5a1a14" stroke-width="0.4" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="alt">BLEEDER</span></div>
+      <p class="one">Drops blood. Leave it alone, follow the trail.</p>
+      <div class="body">
+        <p>Wounded mini‑boss who flees on sight. Drops a <strong>visible blood trail</strong> tile for ~30 minutes after encounter. Follow the trail across the map; it leads to a fixed lair tile (~5 zones away) where it makes a stand alongside a unique Brood Mother variant. Loot is mythic‑tier. Story: you choose to hunt or not.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">trail tiles</span><span class="chip">flee AI</span><span class="chip">brood mother</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <circle cx="28" cy="10" r="5" fill="#3a3024"/>
+          <rect x="22" y="14" width="12" height="22" fill="#3a3024"/>
+          <path d="M10 18 L20 22 L18 30" stroke="#7a7e88" stroke-width="2" fill="none"/>
+          <path d="M46 18 L36 22 L38 30" stroke="#7a7e88" stroke-width="2" fill="none"/>
+          <polygon points="10,18 4,14 12,14" fill="#dadada"/>
+          <polygon points="46,18 52,14 44,14" fill="#dadada"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="alt">WANDERER</span></div>
+      <p class="one">A Reaper with a name. He shows up to weddings.</p>
+      <div class="body">
+        <p>Elite Reaper variant. Appears at <strong>special events</strong> — a Trader visit (3% chance), a Care Package drop, your survivor Campfire bond night. Always there to spoil a good moment. Two‑arm grapple chain ignores most cover. Drops his scythe — a unique long‑melee.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">reaper</span><span class="chip">events (trader, drops)</span><span class="chip">named weapons</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- D — MECHANIC BOSSES -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">D</div>
+    <div class="ttl">MECHANICS</div>
+    <div class="sub">// bosses defined by an unusual rule · puzzles, not dps races</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">D·01</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <circle cx="32" cy="14" r="5" fill="#3a3024"/>
+          <rect x="28" y="18" width="8" height="14" fill="#3a3024"/>
+          <circle cx="16" cy="30" r="3" fill="#4a6332"/>
+          <circle cx="48" cy="30" r="3" fill="#4a6332"/>
+          <circle cx="22" cy="38" r="3" fill="#4a6332"/>
+          <circle cx="42" cy="38" r="3" fill="#4a6332"/>
+          <line x1="30" y1="22" x2="16" y2="30" stroke="#e3a83a" stroke-width="0.6" stroke-dasharray="1 1"/>
+          <line x1="34" y1="22" x2="48" y2="30" stroke="#e3a83a" stroke-width="0.6" stroke-dasharray="1 1"/>
+          <line x1="30" y1="28" x2="22" y2="38" stroke="#e3a83a" stroke-width="0.6" stroke-dasharray="1 1"/>
+          <line x1="34" y1="28" x2="42" y2="38" stroke="#e3a83a" stroke-width="0.6" stroke-dasharray="1 1"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="alt">PUPPETEER</span></div>
+      <p class="one">Controls every walker within 30 tiles like marionettes.</p>
+      <div class="body">
+        <p>Mid‑sized humanoid boss who himself only deals minor damage — but every walker in a 30‑tile radius becomes <strong>directly controlled</strong> by him, moving in unnatural patterns (synchronized lunges, defensive rings around him, perfect flanking). Kill him and every walker in radius collapses dead. Kill the walkers first and he's defenseless — slowly. Cluster‑heavy spawns in his arena make the second path painful.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">walker AI override</span><span class="chip">aoe death</span><span class="chip">spawn radius</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">D·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="20" y="10" width="24" height="28" fill="#e8e6df" opacity="0.3" stroke="#5fb6e8"/>
+          <circle cx="32" cy="20" r="4" fill="#4a6332"/>
+          <rect x="28" y="24" width="8" height="12" fill="#4a6332"/>
+          <path d="M48 24 L60 30 L48 36" stroke="#d24b35" stroke-width="1.5" fill="none"/>
+          <path d="M16 24 L4 30 L16 36" stroke="#d24b35" stroke-width="1.5" fill="none"/>
+          <circle cx="60" cy="30" r="2" fill="#d24b35"/>
+          <circle cx="4" cy="30" r="2" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="ice">MIRROR</span></div>
+      <p class="one">Damage you deal, it deals back to you. Within seconds.</p>
+      <div class="body">
+        <p>Reflective shell. Every bullet that hits it leaves the same damage as a <strong>delayed return projectile</strong> — a glowing red orb that floats toward your last position 4 seconds later. Survival mechanic: keep moving, dodge your own reflections, time your fire. Anti‑DPS — heavy weapons get punished. Crossbow and slow trigger discipline win.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">projectile system</span><span class="chip">player position cache</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <circle cx="20" cy="22" r="5" fill="#4a6332" opacity="0.8"/>
+          <circle cx="28" cy="22" r="5" fill="#4a6332" opacity="0.5"/>
+          <circle cx="36" cy="22" r="5" fill="#4a6332" opacity="0.2"/>
+          <line x1="14" y1="22" x2="48" y2="22" stroke="#5fb6e8" stroke-width="0.4" stroke-dasharray="2 2"/>
+          <circle cx="42" cy="22" r="2" fill="#5fb6e8" opacity="0.4"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="ice">PHASE</span></div>
+      <p class="one">Two layers of reality. Catch it in the right one.</p>
+      <div class="body">
+        <p>Boss exists on a 2‑second cycle alternating between two visual states — solid and ghost. <strong>Bullets only land on solid frames</strong>; melee only lands on ghost frames (it can't dodge a swing it can't see). Track the cadence, alternate your toolkit. Spawns in the metro tunnels.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">ice wraith (phase code)</span><span class="chip">metro tunnels</span><span class="chip">damage gating</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·04</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <circle cx="14" cy="14" r="2" fill="#4a6332"/>
+          <circle cx="22" cy="10" r="2" fill="#4a6332"/>
+          <circle cx="30" cy="14" r="2" fill="#4a6332"/>
+          <circle cx="38" cy="10" r="2" fill="#4a6332"/>
+          <circle cx="14" cy="24" r="2" fill="#4a6332"/>
+          <circle cx="22" cy="28" r="2" fill="#4a6332"/>
+          <circle cx="30" cy="24" r="2" fill="#4a6332"/>
+          <circle cx="38" cy="28" r="2" fill="#4a6332"/>
+          <circle cx="14" cy="38" r="2" fill="#4a6332"/>
+          <circle cx="22" cy="42" r="2" fill="#4a6332"/>
+          <circle cx="30" cy="38" r="2" fill="#4a6332"/>
+          <circle cx="38" cy="42" r="2" fill="#4a6332"/>
+          <circle cx="46" cy="24" r="3" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">HIVEMIND</div>
+      <p class="one">No single body. Twelve linked walkers acting as one.</p>
+      <div class="body">
+        <p>Twelve specially‑tagged walkers spawn in a tight pack. They share a <strong>single HP pool</strong> and move with perfect coordination. Hit one, the pool drops; the others move <em>identically</em> to evade your line of fire (they're all "the boss"). Kill the pool and all twelve drop simultaneously.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">walker tagging</span><span class="chip">shared HP</span><span class="chip">flocking AI</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- E — META -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">E</div>
+    <div class="ttl">META</div>
+    <div class="sub">// how bosses fit into the run · the architecture, not the fight</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">E·01</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="6" y="6" width="52" height="36" fill="#1c1f25" stroke="#3a3f4a"/>
+          <text x="32" y="20" font-family="Bebas Neue" font-size="11" fill="#d9b35a" text-anchor="middle" letter-spacing="3">ARGOS</text>
+          <text x="32" y="30" font-family="JetBrains Mono" font-size="6" fill="#b0afa7" text-anchor="middle">"the watcher"</text>
+          <line x1="14" y1="34" x2="50" y2="34" stroke="#d24b35" stroke-width="0.6"/>
+          <text x="32" y="40" font-family="JetBrains Mono" font-size="5" fill="#7a7e88" text-anchor="middle">DAY 4 · SWAMP · ALIVE</text>
+        </svg>
+      </div>
+      <div class="nm">NAMED <span class="gold">BOSSES</span></div>
+      <p class="one">Every boss instance has a name. The world remembers them.</p>
+      <div class="body">
+        <p>When a boss spawns for the first time in a seed, the game rolls a <strong>name + title + one trait</strong> from procedural tables (<em>"Argos, the Watcher · regenerates"</em>). Their name shows on the encounter banner, in the death screen, and in the Trophy Room (Homestead E·01). The trait is a real combat modifier — slight, but real.</p>
+        <p>Tiny system, huge identity payoff per run. The Brood Mother in your save isn't just "a Brood Mother" — it's <em>Margery, the Mother of Worms</em>.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">trophy room</span><span class="chip">death screen</span><span class="chip">save state</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">E·02</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="6" y="6" width="52" height="36" fill="#1c1f25" stroke="#3a3f4a"/>
+          <circle cx="32" cy="24" r="14" fill="none" stroke="#d24b35" stroke-width="1.5" stroke-dasharray="3 2"/>
+          <circle cx="32" cy="24" r="8" fill="#3a2010"/>
+          <rect x="30" y="22" width="4" height="4" fill="#d24b35"/>
+          <rect x="20" y="18" width="3" height="6" fill="#5e6a78"/>
+          <rect x="42" y="18" width="3" height="6" fill="#5e6a78"/>
+          <rect x="20" y="26" width="3" height="6" fill="#5e6a78"/>
+          <rect x="42" y="26" width="3" height="6" fill="#5e6a78"/>
+        </svg>
+      </div>
+      <div class="nm">ARENAS <span class="alt">&amp; PHASES</span></div>
+      <p class="one">A boss isn't an HP bar — it's a room with rules.</p>
+      <div class="body">
+        <p>Standardized boss arena system: every boss POI generates a <strong>walled circular arena</strong> (no escape during the fight) with <em>arena features</em> drawn from a pool: spawners, barrels, cover pillars, a fuel pool, climbable rooftops. Each boss specifies which features its arena uses.</p>
+        <p>Also defines <strong>phase transitions</strong> as a shared system: at 66% / 33% HP a boss can trigger an arena change (lights cut, barrels ignite, walls drop). One framework, every boss benefits.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">POI gen</span><span class="chip">phase state machine</span><span class="chip">barrels / pillars</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">E·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="6" y="8" width="44" height="32" fill="#1c1f25" stroke="#3a3f4a"/>
+          <circle cx="16" cy="20" r="3" fill="#5fb6e8"/>
+          <text x="16" y="32" font-family="JetBrains Mono" font-size="5" fill="#5fb6e8" text-anchor="middle">EZ</text>
+          <circle cx="28" cy="20" r="3" fill="#e3a83a"/>
+          <text x="28" y="32" font-family="JetBrains Mono" font-size="5" fill="#e3a83a" text-anchor="middle">MED</text>
+          <circle cx="40" cy="20" r="3" fill="#d24b35"/>
+          <text x="40" y="32" font-family="JetBrains Mono" font-size="5" fill="#d24b35" text-anchor="middle">XS</text>
+        </svg>
+      </div>
+      <div class="nm">SCALED <span class="alt">VARIANTS</span></div>
+      <p class="one">Same boss, three tiers. Loot scales with risk.</p>
+      <div class="body">
+        <p>Every boss has <strong>3 difficulty variants</strong> tied to region tier — Hatchling (50% HP, basic moveset), Adult (baseline), Apex (1.5× HP + extra mechanic). The player sees the tier as a visual cue (size, color). Adult drops the named weapon, Apex drops the named weapon with a mythic trait.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">region tier</span><span class="chip">named weapons</span><span class="chip">scaling tables</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">E·04</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <rect x="14" y="14" width="28" height="6" fill="#d9b35a"/>
+          <rect x="20" y="20" width="16" height="18" fill="#3a2010"/>
+          <rect x="16" y="6" width="24" height="10" fill="#3a2010"/>
+          <circle cx="28" cy="28" r="3" fill="#d24b35"/>
+          <text x="28" y="13" font-family="JetBrains Mono" font-size="5" fill="#d9b35a" text-anchor="middle">★ KILL ★</text>
+        </svg>
+      </div>
+      <div class="nm">BOSS <span class="gold">JOURNALS</span></div>
+      <p class="one">Every kill writes itself into a permanent book.</p>
+      <div class="body">
+        <p>After each boss kill, an entry is automatically written into a <strong>bestiary journal</strong> at the meta level: boss's rolled name, day killed, weapon used, time alive, attempts. Browse it from the menu screen. Slow accumulation; over many runs you're building a personal field guide. Pairs cleanly with the Cork Board prop.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">named bosses</span><span class="chip">meta profile</span><span class="chip">cork board</span></div>
+    </div>
+
+  </div>
+</section>
+
+<footer class="footer">
+  <div>
+    <h3>WHAT NEXT</h3>
+    <p>If you can only build one thing in this brief, build <strong style="color:var(--accent)">E·02 Arenas &amp; Phases</strong> first — every individual boss after that gets faster, cheaper, and better. Then <strong style="color:var(--accent)">E·01 Named Bosses</strong> for nearly zero engineering cost and an outsized identity return.</p>
+    <p>For pure content: <strong style="color:var(--accent)">A·01 The Colossus</strong> is the trailer shot. <strong style="color:var(--accent)">C·01 White Stalker</strong> is the personal nemesis that gives a single playthrough a through‑line.</p>
+    <ol>
+      <li>strike anything that doesn't fit</li>
+      <li>flag 2–3 to prototype</li>
+      <li>i'll spec each as a fight breakdown</li>
+    </ol>
+  </div>
+  <div class="stamp">
+    <div class="big">APEX</div>
+    <div class="small">REV A · PITCH ONLY</div>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,904 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Outbreak — Arsenal Brainstorm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:        #0b0c0e;
+  --ink-2:      #07080a;
+  --panel:      #14161a;
+  --panel2:     #1c1f25;
+  --panel3:     #24272f;
+  --border:     #2a2e36;
+  --border-hi:  #3a3f4a;
+  --fg:         #e8e6df;
+  --fg-dim:     #b0afa7;
+  --muted:      #7a7e88;
+  --muted-2:    #555964;
+  --accent:     #d24b35;
+  --accent-deep:#8a2a1a;
+  --accent-hi:  #ec6448;
+  --toxic:      #8ec547;
+  --warn:       #e3a83a;
+  --info:       #5fb6e8;
+  --danger:     #c83232;
+  --gold:       #d9b35a;
+  --f-display:  "Bebas Neue", Impact, sans-serif;
+  --f-body:     "Manrope", "Helvetica Neue", Helvetica, sans-serif;
+  --f-mono:     "JetBrains Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--ink-2);
+  color: var(--fg);
+  font-family: var(--f-body);
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  background:
+    radial-gradient(ellipse at 20% -10%, rgba(210,75,53,0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 100%, rgba(217,179,90,0.05) 0%, transparent 50%),
+    var(--ink-2);
+  min-height: 100vh;
+  padding: 56px 0 80px;
+}
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+
+/* ─────────────────────────  HEADER  ───────────────────────── */
+.header { border-bottom: 1px solid var(--border); padding-bottom: 28px; margin-bottom: 36px; }
+.header .top {
+  display: flex; align-items: center; gap: 14px;
+  font-family: var(--f-mono);
+  font-size: 11px; letter-spacing: 4px;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+.header .top .x { color: var(--accent); }
+.header .top .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 12px var(--accent); animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.header .top .spacer { flex: 1; }
+.header h1 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: clamp(56px, 9vw, 132px);
+  letter-spacing: 8px;
+  line-height: 0.88;
+  color: var(--fg);
+}
+.header h1 .bleed { color: var(--accent); }
+.header h1 .slash { color: var(--muted-2); font-weight: 400; padding: 0 6px; }
+.header .lede {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 0;
+  margin-top: 28px;
+  border-top: 1px solid var(--border);
+}
+.header .lede .cell {
+  padding: 14px 18px 4px 0;
+  border-right: 1px solid var(--border);
+}
+.header .lede .cell:last-child { border-right: none; }
+.header .lede .l {
+  font-family: var(--f-mono);
+  font-size: 9px; letter-spacing: 3px;
+  color: var(--muted);
+}
+.header .lede .v {
+  font-family: var(--f-display);
+  font-size: 32px; letter-spacing: 2px;
+  margin-top: 4px;
+  color: var(--fg);
+}
+.header .lede .v .unit { font-size: 13px; color: var(--muted); letter-spacing: 1px; margin-left: 4px; }
+
+/* ─────────────────────────  INTRO  ───────────────────────── */
+.intro {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 32px;
+  margin: 8px 0 56px;
+}
+.intro .body { font-size: 15px; line-height: 1.65; color: var(--fg-dim); max-width: 64ch; text-wrap: pretty; }
+.intro .body p { margin: 0 0 12px; }
+.intro .body strong { color: var(--fg); font-weight: 600; }
+.intro .body .acc { color: var(--accent); }
+.intro .legend {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  padding: 18px 20px;
+  align-self: start;
+}
+.intro .legend h4 {
+  margin: 0 0 14px;
+  font-family: var(--f-display);
+  font-size: 14px; letter-spacing: 3px;
+  color: var(--muted);
+}
+.intro .legend .row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--fg-dim);
+  letter-spacing: 0.5px;
+}
+.intro .legend .row .key { font-size: 10px; color: var(--muted); width: 78px; letter-spacing: 2px; }
+.intro .legend .pips { display: flex; gap: 3px; }
+.intro .legend .pip { width: 10px; height: 10px; background: var(--border); }
+.intro .legend .pip.on { background: var(--warn); }
+.intro .legend .tag {
+  display: inline-block;
+  font-family: var(--f-mono);
+  font-size: 9px; letter-spacing: 2px;
+  padding: 2px 6px;
+  border: 1px solid;
+  border-radius: 2px;
+}
+.tag.s { color: var(--toxic); border-color: rgba(142,197,71,0.45); }
+.tag.m { color: var(--warn);  border-color: rgba(227,168,58,0.45); }
+.tag.l { color: var(--accent);border-color: rgba(210,75,53,0.5); }
+.tag.xl { color: var(--info);  border-color: rgba(95,182,232,0.45); }
+
+/* ─────────────────────────  SECTIONS  ───────────────────────── */
+section.cluster { margin-bottom: 60px; }
+section.cluster .sec-head {
+  display: flex; align-items: baseline; gap: 14px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px; margin-bottom: 24px;
+}
+section.cluster .sec-head .idx {
+  font-family: var(--f-display);
+  font-size: 64px; letter-spacing: 0;
+  color: var(--accent);
+  line-height: 0.7;
+}
+section.cluster .sec-head .ttl {
+  font-family: var(--f-display);
+  font-size: 38px; letter-spacing: 5px;
+  color: var(--fg);
+  line-height: 1;
+}
+section.cluster .sec-head .sub {
+  font-family: var(--f-mono);
+  font-size: 11px; letter-spacing: 2px;
+  color: var(--muted);
+  flex: 1;
+  text-align: right;
+  align-self: end;
+  padding-bottom: 4px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 16px;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--border-hi);
+  padding: 20px 20px 18px;
+  position: relative;
+  display: flex; flex-direction: column;
+  transition: border-top-color 0.2s, transform 0.1s;
+}
+.card:hover { border-top-color: var(--accent); transform: translateY(-2px); }
+.card .num {
+  position: absolute; top: -1px; right: -1px;
+  font-family: var(--f-mono);
+  font-size: 10px; letter-spacing: 2px;
+  color: var(--muted);
+  background: var(--ink);
+  border: 1px solid var(--border);
+  border-top: none; border-right: none;
+  padding: 3px 8px 4px;
+}
+.card .nm {
+  font-family: var(--f-display);
+  font-size: 26px; letter-spacing: 3px;
+  color: var(--fg);
+  line-height: 1;
+  margin: 0 0 4px;
+}
+.card .nm .alt { color: var(--accent); }
+.card .nm .glow { color: var(--toxic); }
+.card .nm .gold { color: var(--gold); }
+.card .one {
+  font-family: var(--f-body);
+  font-size: 12px; letter-spacing: 0.3px;
+  color: var(--accent-hi);
+  margin: 0 0 14px;
+  text-transform: none;
+}
+.card .body { font-size: 13px; line-height: 1.6; color: var(--fg-dim); text-wrap: pretty; }
+.card .body p { margin: 0 0 10px; }
+.card .hooks {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+  display: flex; align-items: center;
+  gap: 10px;
+  font-family: var(--f-mono);
+  font-size: 10px; letter-spacing: 1px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+.card .hooks .lbl { color: var(--muted-2); letter-spacing: 2px; }
+.card .hooks .chip {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  color: var(--fg-dim);
+  border-radius: 2px;
+}
+.card .meta {
+  position: absolute; top: 12px; right: 38px;
+  display: flex; gap: 4px;
+  align-items: center;
+}
+.card .meta .pips { display: flex; gap: 2px; }
+.card .meta .pip { width: 8px; height: 8px; background: var(--border); }
+.card .meta .pip.on { background: var(--warn); }
+.card .ico {
+  width: 64px; height: 48px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  display: flex; align-items: center; justify-content: center;
+}
+.card .stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  margin: 6px 0 12px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.card .stats .k { color: var(--muted-2); letter-spacing: 2px; }
+.card .stats .v { color: var(--fg-dim); text-align: right; }
+.card .stats .bar { display: flex; gap: 2px; justify-content: flex-end; }
+.card .stats .bar .seg { width: 8px; height: 5px; background: var(--border); }
+.card .stats .bar .seg.on { background: var(--accent); }
+.card .stats .bar .seg.warn { background: var(--warn); }
+.card .stats .bar .seg.tox { background: var(--toxic); }
+
+/* span helpers */
+.s-4 { grid-column: span 4; }
+.s-5 { grid-column: span 5; }
+.s-6 { grid-column: span 6; }
+.s-7 { grid-column: span 7; }
+.s-8 { grid-column: span 8; }
+.s-12 { grid-column: span 12; }
+
+@media (max-width: 980px) {
+  .s-4, .s-5, .s-6, .s-7, .s-8 { grid-column: span 12; }
+  .intro { grid-template-columns: 1fr; }
+  .header .lede { grid-template-columns: 1fr 1fr; }
+  .header .lede .cell:nth-child(2) { border-right: none; }
+}
+
+/* hero feature card */
+.feature {
+  background:
+    linear-gradient(135deg, rgba(210,75,53,0.12) 0%, transparent 60%),
+    var(--panel);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  padding: 28px 32px;
+  grid-column: span 12;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 32px;
+  align-items: center;
+}
+.feature .num { color: var(--accent); }
+.feature .nm { font-size: 44px; letter-spacing: 4px; }
+.feature .body { font-size: 14px; }
+.feature .ico { width: 84px; height: 60px; }
+.feature .right { font-family: var(--f-mono); font-size: 11px; color: var(--muted); letter-spacing: 1px; line-height: 1.9; }
+.feature .right .row { display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding: 6px 0; }
+.feature .right .row:last-child { border-bottom: none; }
+.feature .right .row .k { color: var(--muted-2); letter-spacing: 3px; font-size: 9px; }
+.feature .right .row .v { color: var(--fg-dim); }
+
+/* footer */
+.footer {
+  margin-top: 56px;
+  padding: 28px 0 0;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
+}
+.footer h3 {
+  font-family: var(--f-display);
+  font-size: 24px; letter-spacing: 4px;
+  margin: 0 0 12px; color: var(--fg);
+}
+.footer p { font-size: 13px; color: var(--fg-dim); line-height: 1.65; margin: 0 0 10px; max-width: 60ch; }
+.footer ol {
+  margin: 0; padding: 0 0 0 18px;
+  font-family: var(--f-mono);
+  font-size: 11px; letter-spacing: 0.5px;
+  color: var(--muted);
+  line-height: 1.9;
+}
+.footer ol li::marker { color: var(--accent); }
+.footer .stamp {
+  border: 2px dashed var(--accent-deep);
+  padding: 18px 22px;
+  align-self: start;
+  text-align: center;
+  transform: rotate(-2deg);
+  color: var(--accent);
+}
+.footer .stamp .big {
+  font-family: var(--f-display);
+  font-size: 28px; letter-spacing: 4px;
+}
+.footer .stamp .small {
+  font-family: var(--f-mono);
+  font-size: 10px; letter-spacing: 2px;
+  color: var(--accent-hi);
+  margin-top: 4px;
+}
+
+svg.ic { display: block; }
+.bleed { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ───────────  HEADER  ─────────── -->
+<header class="header">
+  <div class="top">
+    <span class="dot"></span>
+    <span>FIELD BRIEF · ARMORY TRACK</span>
+    <span class="spacer"></span>
+    <span>FILE <span class="x">ARM-001</span></span>
+    <span>·</span>
+    <span>REV A</span>
+    <span>·</span>
+    <span>DAY <span class="x">∞</span></span>
+  </div>
+  <h1>ARSENAL <span class="slash">/</span> <span class="bleed">BRAINSTORM</span></h1>
+  <div class="lede">
+    <div class="cell"><div class="l">DIRECTIONS</div><div class="v">20</div></div>
+    <div class="cell"><div class="l">CLUSTERS</div><div class="v">05</div></div>
+    <div class="cell"><div class="l">FOCUS</div><div class="v">WEAPONS<span class="unit">only</span></div></div>
+    <div class="cell"><div class="l">SCOPE</div><div class="v">S → XL</div></div>
+  </div>
+</header>
+
+<!-- ───────────  INTRO  ─────────── -->
+<div class="intro">
+  <div class="body">
+    <p>Round two — this time the lens is <strong class="acc">guns, blades, and what comes out of them</strong>. Pistol, rifle, shotgun, crossbow, flamer and minigun already exist; this brief is the next 20 things that hang off that rack.</p>
+    <p>Ideas are split across <strong>five clusters</strong>: new firearms, melee, attachments, ammo types, and the meta around weapons (skill, durability, named drops). Nothing repeats the first brief — these are <em>all weapon directions</em>.</p>
+    <p>Same rules as before: each card is self‑contained, complexity tagged, and lists which existing system it leans on. Tell me which to spec or prototype.</p>
+  </div>
+  <aside class="legend">
+    <h4>LEGEND</h4>
+    <div class="row"><span class="key">COMPLEXITY</span><span class="tag s">S</span><span class="tag m">M</span><span class="tag l">L</span><span class="tag xl">XL</span></div>
+    <div class="row"><span class="key">IMPACT</span><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip"></span><span class="pip"></span></div></div>
+    <div class="row"><span class="key">HOOKS</span><span style="color:var(--fg-dim)">existing system the idea plugs into</span></div>
+    <div class="row" style="margin-top:14px;border-top:1px dashed var(--border);padding-top:12px"><span class="key">STATUS</span><span style="color:var(--toxic)">all 20 unbuilt — pitch only</span></div>
+  </aside>
+</div>
+
+<!-- ───────────  CLUSTER A — ARSENAL  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">A</div>
+    <div class="ttl">ARSENAL</div>
+    <div class="sub">// new firearms · the loud end of the rack</div>
+  </div>
+  <div class="grid">
+
+    <!-- HERO: Railgun -->
+    <div class="card feature">
+      <div class="num">A·01</div>
+      <div class="meta"><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span></div><span class="tag xl">XL</span></div>
+      <div class="left">
+        <div class="ico">
+          <svg class="ic" width="72" height="40" viewBox="0 0 72 40">
+            <rect x="8" y="18" width="48" height="6" fill="#3a3f4a"/>
+            <rect x="4" y="16" width="6" height="10" fill="#5e6a78"/>
+            <rect x="56" y="14" width="10" height="14" fill="#5e6a78"/>
+            <rect x="18" y="22" width="8" height="10" fill="#2a2e36"/>
+            <rect x="38" y="14" width="3" height="14" fill="#5fb6e8"/>
+            <rect x="42" y="14" width="3" height="14" fill="#5fb6e8"/>
+            <circle cx="60" cy="21" r="3" fill="#5fb6e8" opacity="0.7"/>
+            <line x1="64" y1="21" x2="70" y2="21" stroke="#5fb6e8" stroke-width="1.5" opacity="0.6"/>
+          </svg>
+        </div>
+        <div class="nm">THE <span class="alt">RAILGUN</span></div>
+        <p class="one">Hold to charge. Release to vaporize a line.</p>
+        <div class="body">
+          <p>A two‑second charge‑up mounted on a tripod or shouldered (slower while moving). On release: a hitscan beam that <strong>pierces every enemy</strong> in a straight line for the full length of the screen. Headshots one‑tap up to Heavy tier; staggers a Tank.</p>
+          <p>Ammo is <strong>capacitor cells</strong> — Mythic‑chest only, 6 per pickup. The risk is the charge animation: you're rooted, glowing, and audible. Miss a Spitter and you eat acid.</p>
+        </div>
+      </div>
+      <div class="right">
+        <div class="row"><span class="k">DAMAGE</span><span class="v">800 piercing</span></div>
+        <div class="row"><span class="k">CHARGE</span><span class="v">2.0 s · cancellable</span></div>
+        <div class="row"><span class="k">AMMO</span><span class="v">capacitor cell · 6/box</span></div>
+        <div class="row"><span class="k">SOURCE</span><span class="v">mythic chest · 0.5%</span></div>
+        <div class="row"><span class="k">SOUND</span><span class="v">audible map‑wide</span></div>
+        <div class="row"><span class="k">PAYOFF</span><span class="v">a sniper for crowds</span></div>
+      </div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·02</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <rect x="6" y="14" width="32" height="6" fill="#3a3f4a"/>
+          <circle cx="38" cy="17" r="6" fill="#5e6a78" stroke="#2a2e36"/>
+          <circle cx="38" cy="17" r="3" fill="#0b0c0e"/>
+          <rect x="14" y="20" width="6" height="9" fill="#2a2e36"/>
+          <path d="M45 17 Q50 8 54 14" stroke="#e3a83a" stroke-width="1.5" fill="none" stroke-dasharray="2 2"/>
+        </svg>
+      </div>
+      <div class="nm">GRENADE <span class="alt">LAUNCHER</span></div>
+      <p class="one">Lob 40mm arcs into a pile of walkers.</p>
+      <div class="body">
+        <p>Arcing projectile — aim with a faint dotted trajectory. <strong>4‑round break‑action</strong>, ~3s reload per shell. Detonation does a 4‑tile radius. Two ammo families: <strong>HE</strong> (damage), <strong>Smoke</strong> (breaks line‑of‑sight, drops aggro).</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">explosions</span><span class="chip">aggro</span><span class="chip">barrels</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·03</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <rect x="8" y="14" width="28" height="8" fill="#e3a83a"/>
+          <rect x="36" y="11" width="6" height="14" fill="#7e8a98"/>
+          <rect x="42" y="15" width="8" height="2" fill="#7a7e88"/>
+          <rect x="14" y="22" width="5" height="7" fill="#8a5a2a"/>
+          <line x1="44" y1="17" x2="52" y2="17" stroke="#fff" stroke-width="0.6" opacity="0.4"/>
+        </svg>
+      </div>
+      <div class="nm">NAIL GUN</div>
+      <p class="one">Scrap‑powered. Pins corpses where they fall.</p>
+      <div class="body">
+        <p>Cheap, fast, weak. Each hit pins the target to whatever's behind it for 4 seconds — so a stunned Tank against a wall is yours. Ammo is just <strong>scrap</strong> (the new resource from the other brief), bridging gunner and engineer playstyles.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">scrap econ</span><span class="chip">stagger</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <rect x="6" y="14" width="22" height="6" fill="#2a2e36"/>
+          <rect x="28" y="11" width="6" height="12" fill="#5fb6e8"/>
+          <path d="M34 17 L40 14 L42 20 L48 17 L46 12 L52 18" stroke="#5fb6e8" stroke-width="1.6" fill="none"/>
+          <circle cx="52" cy="18" r="1.5" fill="#5fb6e8"/>
+          <rect x="14" y="20" width="5" height="8" fill="#5e6a78"/>
+        </svg>
+      </div>
+      <div class="nm">CHAIN <span class="alt">TASER</span></div>
+      <p class="one">One bolt. Up to five zombies. Twitching.</p>
+      <div class="body">
+        <p>Fires a single electric arc that <strong>chains to 4 nearest enemies</strong> within 5 tiles of the previous link. Heavy stagger, mid damage. Drinks battery cells (rare loot). Perfect against dense, low‑HP packs — useless on a lone Tank.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">stagger</span><span class="chip">batteries</span><span class="chip">spawn density</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  CLUSTER B — BLADES & BLUNT  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">B</div>
+    <div class="ttl">BLADES &amp; BLUNT</div>
+    <div class="sub">// melee · the silent option · close enough to smell them</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">B·01</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <rect x="6" y="15" width="42" height="2.5" fill="#dadada"/>
+          <rect x="48" y="14" width="4" height="5" fill="#7a7e88"/>
+          <rect x="52" y="13" width="2" height="7" fill="#3a3f4a"/>
+          <rect x="50" y="11" width="6" height="2" fill="#e3a83a"/>
+          <line x1="6" y1="14" x2="46" y2="14" stroke="#fff" stroke-width="0.4" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="nm">KATANA</div>
+      <p class="one">No ammo. No noise. One clean arc.</p>
+      <div class="body">
+        <p>Wide horizontal swing hits up to <strong>3 enemies in a 90° cone</strong>. High base damage, silent (no aggro pull from neighbors), but only Steel & Mythic chest drops. <strong>Charged swing</strong> (hold attack 1.2s) executes any non‑boss zombie below 40% HP — finisher animation, half‑second i‑frames.</p>
+        <p>Pairs with the Scout perk lane: silent boots + silent steel = a corridor of dead walkers and no one ever knew.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">aggro</span><span class="chip">stealth</span><span class="chip">chest tiers</span><span class="chip">durability</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">B·02</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <rect x="8" y="14" width="34" height="3" fill="#8a5a2a"/>
+          <rect x="40" y="8" width="12" height="16" fill="#5e6a78" stroke="#2a2e36"/>
+          <rect x="38" y="10" width="2" height="12" fill="#3a3f4a"/>
+          <rect x="52" y="10" width="2" height="12" fill="#3a3f4a"/>
+        </svg>
+      </div>
+      <div class="nm">SLEDGEHAMMER</div>
+      <p class="one">Knockback. And it breaks weak walls — yours or theirs.</p>
+      <div class="body">
+        <p>Slow swing, huge damage, <strong>2‑tile knockback</strong> on hit. Resets crowd pressure when you're cornered. Also doubles as a <strong>terrain tool</strong> — three hits on a wood wall and it's rubble. Use against barricaded POIs, or against your own base when you change layouts.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">walls.hp</span><span class="chip">knockback</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">B·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <rect x="8" y="14" width="14" height="8" fill="#e3a83a"/>
+          <rect x="22" y="15" width="22" height="6" fill="#5e6a78"/>
+          <polygon points="44,15 50,17 44,19" fill="#5e6a78"/>
+          <line x1="22" y1="15" x2="44" y2="15" stroke="#0b0c0e" stroke-width="0.8" stroke-dasharray="2 1"/>
+          <line x1="22" y1="21" x2="44" y2="21" stroke="#0b0c0e" stroke-width="0.8" stroke-dasharray="2 1"/>
+          <rect x="10" y="22" width="3" height="7" fill="#8a5a2a"/>
+        </svg>
+      </div>
+      <div class="nm">CHAINSAW</div>
+      <p class="one">Pull the cord. Burn the fuel. Wade in.</p>
+      <div class="body">
+        <p>Hold trigger to spin — continuous DoT on whatever it touches, <strong>ignores armor</strong>. Drinks <em>fuel</em> at 1 unit/sec (same fuel that runs the power grid and vehicles). When fuel hits zero it's a dull club. Idle noise pulls aggro from the entire screen.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">fuel econ</span><span class="chip">aggro radius</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">B·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="40" height="40" viewBox="0 0 40 40">
+          <path d="M20 4 L34 10 L34 26 Q34 33 20 36 Q6 33 6 26 L6 10 Z" fill="#5e6a78" stroke="#2a2e36"/>
+          <rect x="18" y="14" width="4" height="14" fill="#0b0c0e"/>
+          <rect x="14" y="18" width="12" height="3" fill="#0b0c0e"/>
+        </svg>
+      </div>
+      <div class="nm">RIOT SHIELD</div>
+      <p class="one">Offhand slot. Eats damage from the front 180°.</p>
+      <div class="body">
+        <p>Equip in the new <strong>offhand</strong> slot alongside any one‑hand weapon (pistol, machete). Blocks 100% of frontal melee, 60% of frontal ranged, until it breaks (300 HP). <strong>Shield bash</strong> on right‑click: knockback + stagger, 8s cooldown. You can't sprint with it raised.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">offhand slot (new)</span><span class="chip">durability</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  CLUSTER C — MODS  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">C</div>
+    <div class="ttl">MODS</div>
+    <div class="sub">// attachments · weapons as platforms, not products</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">C·01</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <rect x="14" y="13" width="14" height="8" fill="#2a2e36"/>
+          <circle cx="14" cy="17" r="3" fill="#5fb6e8" opacity="0.6"/>
+          <circle cx="28" cy="17" r="4" fill="#5fb6e8"/>
+          <circle cx="28" cy="17" r="2.5" fill="#0b0c0e"/>
+          <line x1="26" y1="17" x2="30" y2="17" stroke="#d24b35" stroke-width="0.8"/>
+          <line x1="28" y1="15" x2="28" y2="19" stroke="#d24b35" stroke-width="0.8"/>
+          <rect x="32" y="14" width="18" height="6" fill="#3a3f4a"/>
+        </svg>
+      </div>
+      <div class="nm">SCOPES <span class="alt">&amp; SIGHTS</span></div>
+      <p class="one">Red‑dot. 4× scope. Thermal. Pick your problem.</p>
+      <div class="body">
+        <p>Three sight tiers, each attachable to rifle / crossbow / railgun. <strong>Red‑dot</strong> halves hipfire spread. <strong>4× scope</strong> doubles effective range, narrows view cone (you see less around you — real cost). <strong>Thermal</strong> outlines zombies through fog and smoke; useless on Tanks (cold) — that's the wrinkle.</p>
+        <p>Drops as a flat attachment item. Drag onto a weapon in inventory to apply. One sight per gun.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">view radius</span><span class="chip">fog/weather</span><span class="chip">inventory</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">C·02</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <rect x="8" y="15" width="22" height="6" fill="#3a3f4a"/>
+          <rect x="30" y="13" width="14" height="10" rx="2" fill="#1c1f25" stroke="#2a2e36"/>
+          <circle cx="44" cy="18" r="2" fill="#0b0c0e"/>
+          <text x="32" y="20" font-family="JetBrains Mono" font-size="5" fill="#7a7e88">SLNT</text>
+        </svg>
+      </div>
+      <div class="nm">SUPPRESSORS</div>
+      <p class="one">A muzzle device that buys you 4 more seconds.</p>
+      <div class="body">
+        <p>Cuts the weapon's aggro radius to <strong>20%</strong>. Costs you 15% damage and adds a small spread penalty. Critical for night runs and sewer dungeons. Wears out after 200 rounds — they're disposable, like real ones.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">aggro radius</span><span class="chip">durability</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·03</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="40" height="40" viewBox="0 0 40 40">
+          <rect x="8" y="6" width="14" height="14" fill="#7e8a98"/>
+          <rect x="6" y="8" width="2" height="10" fill="#5e6a78"/>
+          <rect x="22" y="8" width="2" height="10" fill="#5e6a78"/>
+          <circle cx="26" cy="26" r="8" fill="#7e8a98" stroke="#5e6a78"/>
+          <circle cx="26" cy="26" r="3" fill="#3a3f4a"/>
+          <line x1="26" y1="18" x2="26" y2="22" stroke="#5e6a78" stroke-width="1"/>
+          <line x1="26" y1="30" x2="26" y2="34" stroke="#5e6a78" stroke-width="1"/>
+        </svg>
+      </div>
+      <div class="nm">DRUM <span class="alt">MAGS</span></div>
+      <p class="one">Double the bullets. Half the reload speed.</p>
+      <div class="body">
+        <p>Capacity 2×. Reload time 1.6×. Fits SMG, AR, shotgun, minigun. Great for fixed defenses (turret feed, hold‑a‑hallway plays); bad for ambush runs. <strong>Quickdraw</strong> mag is the opposite — 0.6× capacity, 0.5× reload — same slot.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">reload</span><span class="chip">turrets</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·04</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <rect x="8" y="14" width="26" height="6" fill="#3a3f4a"/>
+          <rect x="20" y="20" width="6" height="6" fill="#e3a83a"/>
+          <path d="M26 23 L50 17 L50 29 Z" fill="#e3a83a" opacity="0.25"/>
+          <line x1="14" y1="22" x2="18" y2="22" stroke="#d24b35" stroke-width="0.6"/>
+          <line x1="14" y1="24" x2="18" y2="24" stroke="#d24b35" stroke-width="0.6"/>
+        </svg>
+      </div>
+      <div class="nm">UNDERBARREL</div>
+      <p class="one">Flashlight, laser, or a second muzzle.</p>
+      <div class="body">
+        <p>Three options for the under‑slot. <strong>Tac‑light</strong> projects a 5‑tile cone of vision at night; blinds Shamblers (1s stagger). <strong>Laser sight</strong> –30% hipfire spread, but draws aggro from anything that sees the dot. <strong>Foregrip</strong>: –20% recoil for the heavy guns.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">night vision</span><span class="chip">aggro</span><span class="chip">recoil</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  CLUSTER D — AMMUNITION  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">D</div>
+    <div class="ttl">AMMUNITION</div>
+    <div class="sub">// rounds · same gun, different problem solved</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">D·01</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <rect x="10" y="13" width="6" height="11" fill="#d24b35"/>
+          <polygon points="16,13 22,16 16,19 16,24" fill="#e3a83a"/>
+          <rect x="22" y="14" width="3" height="9" fill="#3a3f4a"/>
+          <path d="M28 18 Q32 12 36 18 Q40 22 44 16 Q46 22 50 18" stroke="#d24b35" stroke-width="1.4" fill="none"/>
+          <path d="M28 22 Q32 16 36 22" stroke="#e3a83a" stroke-width="1" fill="none" opacity="0.6"/>
+        </svg>
+      </div>
+      <div class="nm">INCENDIARY <span class="alt">ROUNDS</span></div>
+      <p class="one">Every bullet a tiny flamer tick.</p>
+      <div class="body">
+        <p>Slot into pistol, AR, shotgun. On hit: a 4‑second burn DoT (1.5 dmg/tick) plus a 1‑tile ground patch that lingers 2s. Stacks with the Flamethrower's existing DoT. <strong>Useless in rainstorms</strong> — pairs the ammo system with the weather idea cleanly.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">DoT</span><span class="chip">weather (rain)</span><span class="chip">ammo types</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">D·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <rect x="10" y="14" width="5" height="9" fill="#3a3f4a"/>
+          <polygon points="15,14 21,18 15,23" fill="#dadada"/>
+          <circle cx="28" cy="18" r="3" fill="#7a7e88" opacity="0.7"/>
+          <circle cx="38" cy="18" r="3" fill="#7a7e88" opacity="0.5"/>
+          <circle cx="48" cy="18" r="3" fill="#7a7e88" opacity="0.3"/>
+          <line x1="21" y1="18" x2="52" y2="18" stroke="#dadada" stroke-width="0.6" stroke-dasharray="2 2"/>
+        </svg>
+      </div>
+      <div class="nm">ARMOR‑PIERCING</div>
+      <p class="one">One bullet, three corpses behind it.</p>
+      <div class="body">
+        <p>Pierces up to <strong>3 targets</strong> in a line, full damage on the first, 70% / 40% behind. Cuts straight through a Tank's armor stat — the only reliable counter besides explosives. Strongly themed to rifle / sniper play.</p>
+        <p>Rare blue‑tip ammo crates spawn near military POIs (locker rooms, crashed APCs).</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">armor stat</span><span class="chip">military POIs</span><span class="chip">tank counter</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="40" height="40" viewBox="0 0 40 40">
+          <circle cx="20" cy="20" r="10" fill="#e3a83a" opacity="0.25"/>
+          <circle cx="20" cy="20" r="6" fill="#d24b35"/>
+          <polygon points="20,8 22,18 30,16 24,22 28,30 20,24 12,30 16,22 10,16 18,18" fill="#e3a83a"/>
+        </svg>
+      </div>
+      <div class="nm">EXPLOSIVE <span class="alt">ROUNDS</span></div>
+      <p class="one">A grenade where the bullet hits.</p>
+      <div class="body">
+        <p>Each shot detonates a small AoE on impact (1.5‑tile radius, 50% of bullet damage as splash). Friendly fire on. Will pop barrels, of course. Rarest tier — 4 rounds per pickup, mythic chests only.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">aoe</span><span class="chip">barrels</span><span class="chip">friendly fire</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="40" height="40" viewBox="0 0 40 40">
+          <rect x="6" y="10" width="28" height="20" fill="#3a3f4a" stroke="#2a2e36"/>
+          <rect x="10" y="14" width="6" height="12" fill="#1c1f25"/>
+          <circle cx="22" cy="18" r="2" fill="#e3a83a"/>
+          <rect x="26" y="16" width="6" height="2" fill="#5fb6e8"/>
+          <rect x="20" y="24" width="12" height="2" fill="#7a7e88"/>
+        </svg>
+      </div>
+      <div class="nm">AMMO <span class="alt">PRESS</span></div>
+      <p class="one">Workbench upgrade — print your own rounds.</p>
+      <div class="body">
+        <p>A craftable add‑on to the workbench. Convert scrap + spent casings (a new pickup zombies sometimes drop after firefights) into rounds. <strong>Standard</strong> ammo is cheap; the exotic types above cost 5× and need a rare component (capacitors, thermite, white phosphorus jars from labs).</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">workbench</span><span class="chip">scrap econ</span><span class="chip">pickups</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  CLUSTER E — META  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">E</div>
+    <div class="ttl">META</div>
+    <div class="sub">// the gun outside the run · mastery · names · the wall</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">E·01</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <rect x="8" y="14" width="34" height="6" fill="#d9b35a"/>
+          <rect x="42" y="11" width="6" height="12" fill="#d9b35a"/>
+          <rect x="14" y="20" width="5" height="7" fill="#7a5a2a"/>
+          <path d="M22 17 L24 13 L26 17 L28 13 L30 17" stroke="#fff" stroke-width="0.6" fill="none" opacity="0.6"/>
+          <text x="18" y="10" font-family="Bebas Neue" font-size="6" fill="#d9b35a" letter-spacing="1">★ NAMED</text>
+        </svg>
+      </div>
+      <div class="nm">NAMED <span class="gold">WEAPONS</span></div>
+      <p class="one">"The Widowmaker." "Old Reliable." "Coyote."</p>
+      <div class="body">
+        <p>Mythic‑chest tier drops are <strong>uniquely named</strong> instances of a base weapon, each with one rolled <em>trait</em> from a pool: <em>+25% headshot crit</em>, <em>ricochets once</em>, <em>reloads while holstered</em>, <em>refunds 1 bullet on kill</em>. Names persist in the death screen — "killed by a horde, holding <em>The Widowmaker</em>."</p>
+        <p>Cheap to author (drop a trait table, a name table); huge identity payoff per run.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">chest tiers</span><span class="chip">death screen</span><span class="chip">leaderboard</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">E·02</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <circle cx="14" cy="16" r="3" fill="#d24b35"/>
+          <circle cx="28" cy="10" r="3" fill="#d24b35"/>
+          <circle cx="28" cy="22" r="3" fill="#7a7e88"/>
+          <circle cx="42" cy="16" r="3" fill="#7a7e88"/>
+          <line x1="14" y1="16" x2="28" y2="10" stroke="#d24b35" stroke-width="1"/>
+          <line x1="14" y1="16" x2="28" y2="22" stroke="#3a3f4a" stroke-width="1"/>
+          <line x1="28" y1="10" x2="42" y2="16" stroke="#3a3f4a" stroke-width="1"/>
+        </svg>
+      </div>
+      <div class="nm">WEAPON MASTERY</div>
+      <p class="one">Each gun earns its own tiny perk tree.</p>
+      <div class="body">
+        <p>Per‑weapon kill counter. Every 50 kills with the pistol unlocks a node on its <strong>3‑node mastery</strong> — recoil cut, mag +2, exec finisher. Same for every weapon class. Encourages the player to commit to a build rather than pad‑swapping.</p>
+        <p>Survives death only if you're holding the gun when you die — light meta progression with stakes.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">kill counter</span><span class="chip">perks</span><span class="chip">death penalty</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">E·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <rect x="8" y="14" width="28" height="6" fill="#3a3f4a"/>
+          <rect x="36" y="11" width="6" height="12" fill="#5e6a78"/>
+          <path d="M18 12 L22 18 L18 24" stroke="#d24b35" stroke-width="1.4" fill="none"/>
+          <circle cx="22" cy="22" r="1" fill="#d24b35"/>
+          <text x="44" y="20" font-family="JetBrains Mono" font-size="5" fill="#d24b35">JAM</text>
+        </svg>
+      </div>
+      <div class="nm">JAMS <span class="alt">&amp; WEAR</span></div>
+      <p class="one">A condition meter. A panic clear‑and‑rack.</p>
+      <div class="body">
+        <p>Every shot wears the weapon. At 30% condition, jam chance rises sharply. <strong>Jam</strong> = next trigger pull just clicks; tap R twice to clear (1.5s). At 0% the weapon is junk — strip it for parts at a workbench. Adds texture; not punitive (only firearms, not melee).</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">workbench</span><span class="chip">condition stat</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">E·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="40" viewBox="0 0 56 40">
+          <rect x="4" y="4" width="48" height="32" fill="#1c1f25" stroke="#3a3f4a"/>
+          <rect x="8" y="9" width="18" height="3" fill="#5e6a78"/>
+          <rect x="30" y="9" width="18" height="3" fill="#5e6a78"/>
+          <rect x="8" y="17" width="14" height="3" fill="#5e6a78"/>
+          <rect x="26" y="17" width="22" height="3" fill="#5e6a78"/>
+          <rect x="8" y="25" width="22" height="3" fill="#5e6a78"/>
+          <rect x="34" y="25" width="14" height="3" fill="#d9b35a"/>
+          <rect x="8" y="32" width="18" height="3" fill="#5e6a78"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="alt">WALL</span></div>
+      <p class="one">A base prop where every gun you've ever found hangs.</p>
+      <div class="body">
+        <p>Craft a <strong>Weapon Wall</strong> at your safehouse. Any firearm you've picked up gets a slot. Click to instantly swap your loadout to that weapon, ammo included. Lets a long run actually use the arsenal it's hoarded — and turns your base into a trophy room.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">base building</span><span class="chip">inventory</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  FOOTER  ─────────── -->
+<footer class="footer">
+  <div>
+    <h3>WHAT NEXT</h3>
+    <p>Same drill as last time. None of this is committed — pick the cards that excite you and we'll spec them. A satisfying first pass might string a few together: <strong style="color:var(--accent)">A·01 Railgun</strong> needs <strong style="color:var(--accent)">D·05 Ammo Press</strong> to be more than a one‑shot toy; <strong style="color:var(--accent)">E·01 Named Weapons</strong> shines once <strong style="color:var(--accent)">E·02 Mastery</strong> gives you a reason to commit.</p>
+    <p>If one of these screams <em>prototype me first</em>, say which — I'll mock it visually in the existing UI palette before any code lands in the engine.</p>
+    <ol>
+      <li>react to the cards — strike any that don't speak to you</li>
+      <li>flag the ones to pursue, in priority order</li>
+      <li>i'll spec or prototype them, your call which</li>
+    </ol>
+  </div>
+  <div class="stamp">
+    <div class="big">ARMORY</div>
+    <div class="small">REV A · PITCH ONLY</div>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>

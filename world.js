@@ -179,12 +179,36 @@ function fbm2D(seed, x, y, octaves) {
   return sum / norm;
 }
 
+// Domain-warp the sample coord. A second, low-frequency noise displaces each
+// sample by up to ~wAmp tiles before lookup, so iso-contours of the warped
+// field meander like real coastlines instead of tracing smooth fbm contours.
+// Shared by classifyTerrain and elevationAt so the hillshade gradient lines
+// up with the classification boundaries.
+function _warpedSample(seed, region, tx, ty) {
+  const r = region || DEFAULT_REGION;
+  const wf = r.elevFreq * 0.5;
+  const wAmp = 6;
+  const wx = (fbm2D((seed ^ 0xa1f3d291) >>> 0, tx * wf, ty * wf, 2) - 0.5) * wAmp;
+  const wy = (fbm2D((seed ^ 0x5b2c9d77) >>> 0, tx * wf, ty * wf, 2) - 0.5) * wAmp;
+  return [tx + wx, ty + wy];
+}
+
+// Continuous warped elevation in [0,1]. Exposed so the renderer can take a
+// gradient for hillshading at sub-tile resolution.
+function elevationAt(seed, region, tx, ty) {
+  const r = region || DEFAULT_REGION;
+  const s = _warpedSample(seed, region, tx, ty);
+  return fbm2D(seed, s[0] * r.elevFreq, s[1] * r.elevFreq, 4);
+}
+
 // Decide terrain type at a world tile coordinate (tx, ty in tile units).
 // Pure function of (seed, region, tx, ty). The spawn-safe override is applied
 // by the caller so this remains stable for previews / minimap sampling.
 function classifyTerrain(seed, region, tx, ty) {
   const r = region || DEFAULT_REGION;
-  const elev = fbm2D(seed, tx * r.elevFreq, ty * r.elevFreq, 4);
+  const s = _warpedSample(seed, region, tx, ty);
+  const sx = s[0], sy = s[1];
+  const elev = fbm2D(seed, sx * r.elevFreq, sy * r.elevFreq, 4);
   if (elev < r.deepWater)    return TERRAIN.DEEP_WATER;
   if (elev < r.shallowWater) return TERRAIN.SHALLOW_WATER;
   if (elev < r.sand)         return TERRAIN.SAND;
@@ -192,7 +216,7 @@ function classifyTerrain(seed, region, tx, ty) {
   if (elev > r.hill)         return TERRAIN.HILL;
   // Mid-elevation: forest where moisture is high.
   const moist = fbm2D((seed ^ 0x6D2B79F5) >>> 0,
-                       tx * r.moistFreq, ty * r.moistFreq, 3);
+                       sx * r.moistFreq, sy * r.moistFreq, 3);
   if (moist > r.forestMoist) return TERRAIN.FOREST;
   return TERRAIN.GRASS;
 }
@@ -512,7 +536,7 @@ function pickChestTier(rng, lootTier) {
 // interior and exterior doors are 2 tiles (80px) wide so the flow field
 // retains an unblocked NAV cell after the 22px wall inflate.
 
-const ROOM_KINDS = ['bedroom', 'kitchen', 'living', 'storage', 'hall', 'workshop', 'bath'];
+const ROOM_KINDS = ['bedroom', 'kitchen', 'living', 'storage', 'hall', 'workshop', 'bath', 'office'];
 const ROOM_LOOT_BIAS = {
   bedroom:  1.0,
   kitchen:  0.6,
@@ -521,6 +545,7 @@ const ROOM_LOOT_BIAS = {
   workshop: 1.1,
   bath:     0.3,
   hall:     0.1,
+  office:   0.9,
 };
 
 // Recursive BSP. Returns a flat list of room rects (tileW/tileH inclusive of
@@ -590,7 +615,13 @@ function _carveDoor(doorMap, axis, posA, posB) {
 // Pick a coherent kind set for a building based on its overall function:
 // 'home' (bedroom/kitchen/living), 'depot' (storage/workshop), 'farmhouse'.
 function _pickRoomKind(rng, theme, idx, total) {
-  if (theme === 'depot')    return idx === 0 ? 'storage'  : (rng() < 0.7 ? 'storage' : 'workshop');
+  if (theme === 'depot') {
+    if (idx === 0) return 'storage';
+    const r = rng();
+    return r < 0.55 ? 'storage'
+         : r < 0.80 ? 'workshop'
+         :            'office';
+  }
   if (theme === 'farmhouse')return idx === 0 ? 'storage'  : rpick(rng, ['kitchen', 'bedroom', 'living', 'workshop']);
   // home
   if (total <= 1) return 'living';
@@ -612,6 +643,25 @@ function _placeFurniture(sinks, rng, room, kind, wallStyle, floorStyle, poi, loo
   // furniture would awkwardly block doors).
   const pick = () => ({ tx: x0 + rint(rng, 0, rw), ty: y0 + rint(rng, 0, rh) });
 
+  // ZProps furniture helper: place a prop with pixel-space bounds (w, h)
+  // centered on the tile at (tx, ty). Clamps so the prop never crosses the
+  // inner playable rect's edges (so it doesn't bleed into walls/doors).
+  // tileSpanW/H is how many tiles wide/tall the prop occupies; require the
+  // room to have that much room before placing. Returns whether placed.
+  const propAt = (tx, ty, w, h, kind, opts) => {
+    const spanW = Math.max(1, Math.ceil(w / TILE_SIZE));
+    const spanH = Math.max(1, Math.ceil(h / TILE_SIZE));
+    if (rw < spanW || rh < spanH) return false;
+    // Clamp top-left tile so the prop's tile span stays inside x0..x1, y0..y1.
+    const txc = Math.min(Math.max(tx, x0), x1 - spanW + 1);
+    const tyc = Math.min(Math.max(ty, y0), y1 - spanH + 1);
+    // Pixel-space top-left, centering within the spanned tiles.
+    const px = txc * TILE_SIZE + (spanW * TILE_SIZE - w) / 2;
+    const py = tyc * TILE_SIZE + (spanH * TILE_SIZE - h) / 2;
+    sinks.kindObstacle(px, py, w, h, kind, opts);
+    return true;
+  };
+
   if (kind === 'bedroom') {
     // 1-2 beds against a wall
     const bedCount = rh >= 4 ? rint(rng, 1, 3) : 1;
@@ -625,6 +675,9 @@ function _placeFurniture(sinks, rng, room, kind, wallStyle, floorStyle, poi, loo
       sinks.tile(tx, ty, 'bed');
     }
     if (rng() < 0.6) { const p = pick(); sinks.tile(p.tx, p.ty, 'dresser'); }
+    // ZProps: nightstand (38x48) + occasional wardrobe (70x84)
+    if (rng() < 0.5) { const p = pick(); propAt(p.tx, p.ty, 38, 48, 'nightstand', { hp: 25 }); }
+    if (rng() < 0.35) { const p = pick(); propAt(p.tx, p.ty, 70, 84, 'wardrobe', { hp: 60 }); }
   } else if (kind === 'kitchen') {
     // Counters along one edge
     const horizontal = rng() < 0.5;
@@ -637,6 +690,12 @@ function _placeFurniture(sinks, rng, room, kind, wallStyle, floorStyle, poi, loo
     }
     if (rng() < 0.8) { const p = pick(); sinks.tile(p.tx, p.ty, 'stove'); }
     if (rng() < 0.6) { const p = pick(); sinks.tile(p.tx, p.ty, 'table'); }
+    // ZProps: fridge (56x80) + island (130x64) for big kitchens + chair (32x40)
+    if (rng() < 0.8) { const p = pick(); propAt(p.tx, p.ty, 56, 80, 'fridge', { hp: 70 }); }
+    if (rng() < 0.35 && rw >= 4 && rh >= 2) { const p = pick(); propAt(p.tx, p.ty, 130, 64, 'island', { hp: 90 }); }
+    for (let i = 0; i < rint(rng, 0, 3); i++) {
+      const p = pick(); propAt(p.tx, p.ty, 32, 40, 'chair', { hp: 15 });
+    }
   } else if (kind === 'living') {
     // Sofa + table + rug
     if (rng() < 0.85) { const p = pick(); sinks.tile(p.tx, p.ty, 'sofa'); }
@@ -645,6 +704,12 @@ function _placeFurniture(sinks, rng, room, kind, wallStyle, floorStyle, poi, loo
     for (let i = 0; i < rint(rng, 0, 3); i++) {
       const p = pick(); sinks.decorTile(p.tx, p.ty, 'rug');
     }
+    // ZProps: armchair, coffee table, bookshelf, tvstand, potted plant
+    if (rng() < 0.7)  { const p = pick(); propAt(p.tx, p.ty, 56, 56, 'armchair', { hp: 35 }); }
+    if (rng() < 0.55) { const p = pick(); propAt(p.tx, p.ty, 80, 48, 'coffee', { hp: 25 }); }
+    if (rng() < 0.5)  { const p = pick(); propAt(p.tx, p.ty, 100, 40, 'bookshelf', { hp: 50 }); }
+    if (rng() < 0.45) { const p = pick(); propAt(p.tx, p.ty, 92, 40, 'tvstand', { hp: 30 }); }
+    if (rng() < 0.55) { const p = pick(); propAt(p.tx, p.ty, 50, 50, 'plant', { hp: 15 }); }
   } else if (kind === 'storage' || kind === 'workshop') {
     // Crates + shelves; workshop adds a workbench
     const items = kind === 'workshop' ? rint(rng, 2, 5) : rint(rng, 3, 7);
@@ -659,9 +724,31 @@ function _placeFurniture(sinks, rng, room, kind, wallStyle, floorStyle, poi, loo
     if (kind === 'workshop' && rng() < 0.85) {
       const p = pick(); sinks.tile(p.tx, p.ty, 'workbench');
     }
+    // ZProps: filing cabinet + occasional cooler in storage rooms
+    if (rng() < 0.4) { const p = pick(); propAt(p.tx, p.ty, 50, 84, 'cabinet', { hp: 55 }); }
+    if (kind === 'storage' && rng() < 0.25) {
+      const p = pick(); propAt(p.tx, p.ty, 38, 70, 'cooler', { hp: 30 });
+    }
   } else if (kind === 'bath') {
     if (rng() < 0.9) { const p = pick(); sinks.tile(p.tx, p.ty, 'bathtub'); }
     if (rng() < 0.7) { const p = pick(); sinks.tile(p.tx, p.ty, 'sink'); }
+    // ZProps: toilet
+    if (rng() < 0.85) { const p = pick(); propAt(p.tx, p.ty, 44, 56, 'toilet', { hp: 25 }); }
+  } else if (kind === 'office') {
+    // ZProps office: desk + chair + cabinets + copier + whiteboard + cooler
+    if (rng() < 0.9)  { const p = pick(); propAt(p.tx, p.ty, 130, 60, 'desk', { hp: 50 }); }
+    if (rng() < 0.85) { const p = pick(); propAt(p.tx, p.ty, 48, 56, 'ochair', { hp: 20 }); }
+    const cabCount = rint(rng, 1, 3);
+    for (let i = 0; i < cabCount; i++) {
+      const p = pick(); propAt(p.tx, p.ty, 50, 84, 'cabinet', { hp: 55 });
+    }
+    if (rng() < 0.5)  { const p = pick(); propAt(p.tx, p.ty, 86, 76, 'copier', { hp: 60 }); }
+    if (rng() < 0.6)  { const p = pick(); propAt(p.tx, p.ty, 100, 28, 'whiteboard', { hp: 30 }); }
+    if (rng() < 0.5)  { const p = pick(); propAt(p.tx, p.ty, 38, 70, 'cooler', { hp: 30 }); }
+    // Occasional ambient hazard inside larger offices
+    if (rng() < 0.2 && rw >= 3 && rh >= 3) {
+      const p = pick(); propAt(p.tx, p.ty, 40, 56, 'ebox', { hp: 20 });
+    }
   }
 
   // Chest placement: spread across rooms by lootRoll
@@ -824,6 +911,14 @@ function emitCottage(poi, rng, sinks) {
   }
   // Outside campfire decor (above the building so it doesn't blocks doors).
   if (rng() < 0.7) sinks.decorTile(otx + 1 + rint(rng, 0, 5), oty - 2, 'campfire');
+  // Small hive-sac infestation interior (rare — 20%).
+  if (rng() < 0.2) {
+    const baseX = poi.centerX + rrange(rng, -60, 60);
+    const baseY = poi.centerY + rrange(rng, -60, 60);
+    for (let i = 0; i < rint(rng, 2, 4); i++) {
+      sinks.garrison('hivesac', baseX + rrange(rng, -40, 40), baseY + rrange(rng, -40, 40));
+    }
+  }
 }
 
 function emitCampsite(poi, rng, sinks) {
@@ -883,6 +978,20 @@ function emitHouse(poi, rng, sinks) {
     const vty = oty + poi.tileH + 1;
     sinks.obstacle(vtx * TILE_SIZE, vty * TILE_SIZE, TILE_SIZE * 2, TILE_SIZE, 'vehicle');
   }
+  // Curb decor: mailbox, potted plants, the occasional bush — visible flavor
+  // along the front of the house.
+  if (rng() < 0.7) {
+    sinks.kindObstacle((otx - 1) * TILE_SIZE + 4, (oty + poi.tileH) * TILE_SIZE, 38, 60, 'mailbox',
+      { hp: 25 });
+  }
+  for (let i = 0; i < rint(rng, 0, 3); i++) {
+    const tx = otx + rint(rng, 0, poi.tileW);
+    const ty = oty + poi.tileH + 1;
+    const r = rng();
+    if (r < 0.5)      sinks.kindObstacle(tx * TILE_SIZE, ty * TILE_SIZE, 50, 50, 'plant', { hp: 15 });
+    else if (r < 0.9) sinks.kindObstacle(tx * TILE_SIZE - 10, ty * TILE_SIZE, 70, 56, 'bush', { hp: 10, shootThrough: true });
+    else              sinks.kindObstacle(tx * TILE_SIZE - 20, ty * TILE_SIZE + 4, 120, 32, 'bench', { hp: 40 });
+  }
 }
 
 function emitGasStation(poi, rng, sinks) {
@@ -931,6 +1040,37 @@ function emitGasStation(poi, rng, sinks) {
       poi.centerX + rrange(rng, -160, 160),
       poi.centerY + rrange(rng, -100, 100));
   }
+  // Checkpoint dressing at the apron entrance: a sandbag line and (rarely) a
+  // jersey barrier flanking the pumps.
+  if (rng() < 0.6) {
+    sinks.kindObstacle((otx + 7) * TILE_SIZE, (oty + poi.tileH - 1) * TILE_SIZE, 132, 48, 'Sandbags',
+      { hp: 140 });
+  }
+  if (rng() < 0.35) {
+    sinks.kindObstacle((otx + poi.tileW - 5) * TILE_SIZE, (oty + 0) * TILE_SIZE - 16, 132, 28, 'Jersey',
+      { hp: 220 });
+  }
+  // Trash can near the booth + fire hydrant on the curb (outdoor flavor).
+  if (rng() < 0.5) {
+    sinks.kindObstacle((otx + 5) * TILE_SIZE + 2, (oty + poi.tileH - 1) * TILE_SIZE + 2, 36, 36, 'trash',
+      { hp: 20 });
+  }
+  if (rng() < 0.4) {
+    sinks.kindObstacle((otx + poi.tileW - 1) * TILE_SIZE - 30, (oty + 2) * TILE_SIZE + 6, 28, 28, 'hydrant',
+      { hp: 40 });
+  }
+  // Backup generator behind the pumps — explodes like a barrel when shot.
+  if (rng() < 0.55) {
+    sinks.kindObstacle((otx + 4) * TILE_SIZE, (oty + 1) * TILE_SIZE, 70, 60, 'generator',
+      { hp: 80, explodes: true, explodeR: 90 });
+  }
+  // Occasional shrieker loitering by the road — its horde call triggers as
+  // the player rolls through.
+  if (rng() < 0.18) {
+    sinks.garrison('shrieker',
+      poi.centerX + rrange(rng, -180, 180),
+      poi.centerY + rrange(rng, 80, 160));
+  }
 }
 
 function emitWarehouse(poi, rng, sinks) {
@@ -963,9 +1103,55 @@ function emitWarehouse(poi, rng, sinks) {
   sinks.kindObstacle((yardTx + 4) * TILE_SIZE, yardTy * TILE_SIZE, 108, 56, 'Dumpster', { hp: 180 });
   sinks.kindObstacle((yardTx + 8) * TILE_SIZE, yardTy * TILE_SIZE, 128, 72, 'Container',
     { indestructible: true, alt: rng() < 0.5 });
-  if (rng() < 0.55) {
+  const hasToxic = rng() < 0.55;
+  if (hasToxic) {
     sinks.kindObstacle((yardTx + 13) * TILE_SIZE, yardTy * TILE_SIZE, 36, 36, 'ToxicDrum',
       { hp: 30, explodes: true, explodeR: 100, leavesPuddle: true });
+  }
+  // Jersey-barrier perimeter line along the yard's outer edge and a sandbag
+  // emplacement near the container — reads as a hasty checkpoint.
+  const yardOuterTy = yardTy + 2;
+  sinks.kindObstacle((yardTx + 2) * TILE_SIZE, yardOuterTy * TILE_SIZE, 132, 28, 'Jersey',
+    { hp: 220 });
+  sinks.kindObstacle((yardTx + 7) * TILE_SIZE, yardOuterTy * TILE_SIZE, 132, 28, 'Jersey',
+    { hp: 220 });
+  if (rng() < 0.7) {
+    sinks.kindObstacle((yardTx + 11) * TILE_SIZE, (yardOuterTy + 1) * TILE_SIZE, 132, 48, 'Sandbags',
+      { hp: 140 });
+  }
+  // Outdoor service decor: ebox + fire hydrant along the yard.
+  if (rng() < 0.65) {
+    sinks.kindObstacle((yardTx + 6) * TILE_SIZE, (yardTy + 1) * TILE_SIZE + 10, 40, 56, 'ebox',
+      { hp: 20 });
+  }
+  if (rng() < 0.5) {
+    sinks.kindObstacle((yardTx + 9) * TILE_SIZE + 6, (yardTy + 1) * TILE_SIZE + 6, 28, 28, 'hydrant',
+      { hp: 40 });
+  }
+  // Stationary bestiary: industrial-themed hazards.
+  //  - INFECTION CLUSTER (cluster, 28r): rare anchor in the yard.
+  //  - BLOATER (bloater, 22r): only when the toxic drum dressing is present
+  //    so the gas aura reads as an environmental hazard.
+  //  - HIVE SAC (hivesac, 18r): small clutch tucked behind the container.
+  if (rng() < 0.25) {
+    sinks.garrison('cluster',
+      (yardTx + 5) * TILE_SIZE + rrange(rng, -40, 40),
+      yardTy * TILE_SIZE + 50 + rrange(rng, -20, 20));
+  }
+  if (hasToxic && rng() < 0.7) {
+    sinks.garrison('bloater',
+      (yardTx + 13) * TILE_SIZE + rrange(rng, -30, 30),
+      (yardTy + 1) * TILE_SIZE + rrange(rng, -10, 30));
+  }
+  if (rng() < 0.4) {
+    const sacCount = rint(rng, 2, 4);
+    const baseX = (yardTx + 10) * TILE_SIZE;
+    const baseY = (yardTy + 2) * TILE_SIZE;
+    for (let i = 0; i < sacCount; i++) {
+      sinks.garrison('hivesac',
+        baseX + rrange(rng, -40, 40),
+        baseY + rrange(rng, -30, 30));
+    }
   }
 }
 
@@ -1016,6 +1202,40 @@ function emitTown(poi, rng, sinks) {
   for (let i = 0; i < 3; i++) {
     const tx = otx + 2 + rint(rng, 0, poi.tileW - 5);
     sinks.obstacle(tx * TILE_SIZE, (oty + 9) * TILE_SIZE, TILE_SIZE * 2, TILE_SIZE, 'vehicle');
+  }
+
+  // Street furniture along the roads — park benches, trash, mailboxes,
+  // hydrants, electrical boxes. Placed on the row just outside each road so
+  // they don't block the road itself.
+  const streetTiles = [
+    { tx: otx + 4,  ty: roadY1 - 1 },
+    { tx: otx + 11, ty: roadY1 + 2 },
+    { tx: otx + 18, ty: roadY1 - 1 },
+    { tx: otx + 5,  ty: roadY2 - 1 },
+    { tx: otx + 13, ty: roadY2 + 2 },
+    { tx: otx + 20, ty: roadY2 - 1 },
+  ];
+  for (const s of streetTiles) {
+    if (rng() < 0.35) continue;
+    const r = rng();
+    if      (r < 0.25) sinks.kindObstacle(s.tx * TILE_SIZE - 20, s.ty * TILE_SIZE + 4, 120, 32, 'bench',   { hp: 40 });
+    else if (r < 0.45) sinks.kindObstacle(s.tx * TILE_SIZE + 2,  s.ty * TILE_SIZE + 2, 36,  36, 'trash',   { hp: 20 });
+    else if (r < 0.65) sinks.kindObstacle(s.tx * TILE_SIZE + 1,  s.ty * TILE_SIZE,     38,  60, 'mailbox', { hp: 25 });
+    else if (r < 0.85) sinks.kindObstacle(s.tx * TILE_SIZE + 6,  s.ty * TILE_SIZE + 6, 28,  28, 'hydrant', { hp: 40 });
+    else               sinks.kindObstacle(s.tx * TILE_SIZE,      s.ty * TILE_SIZE - 8, 40,  56, 'ebox',    { hp: 20 });
+  }
+  // Town square fountain — landmark in the middle of the road cross.
+  if (rng() < 0.7) {
+    sinks.kindObstacle((otx + 14) * TILE_SIZE - 4, (oty + 8) * TILE_SIZE + 12, 88, 88, 'fountain',
+      { indestructible: true });
+  }
+
+  // A shrieker on one of the roads — its horde call gives towns a "stay
+  // moving" feel. Rare.
+  if (rng() < 0.35) {
+    sinks.garrison('shrieker',
+      (otx + Math.floor(poi.tileW / 2)) * TILE_SIZE + rrange(rng, -120, 120),
+      roadY1 * TILE_SIZE + 20 + rrange(rng, -20, 20));
   }
 
   // Heavy garrison — 6-10 mix incl. a tank
@@ -1095,6 +1315,55 @@ function emitCity(poi, rng, sinks) {
       poi.centerX + rrange(rng, -500, 500),
       poi.centerY + rrange(rng, -460, 460));
   }
+
+  // City street furniture: park benches, mailboxes, bus stops, trash cans,
+  // electrical boxes, fire hydrants. Sprinkled along the grid lines.
+  const cityProps = [
+    { kind: 'bench',   w: 120, h: 32, hp: 40 },
+    { kind: 'trash',   w: 36,  h: 36, hp: 20 },
+    { kind: 'mailbox', w: 38,  h: 60, hp: 25 },
+    { kind: 'hydrant', w: 28,  h: 28, hp: 40 },
+    { kind: 'ebox',    w: 40,  h: 56, hp: 20 },
+    { kind: 'bus',     w: 100, h: 60, hp: 60 },
+    { kind: 'plant',   w: 50,  h: 50, hp: 15 },
+  ];
+  for (let i = 0; i < rint(rng, 8, 14); i++) {
+    const tx = otx + rint(rng, 0, poi.tileW);
+    const ty = oty + rint(rng, 0, poi.tileH);
+    const p = cityProps[rint(rng, 0, cityProps.length)];
+    sinks.kindObstacle(tx * TILE_SIZE, ty * TILE_SIZE, p.w, p.h, p.kind,
+      p.kind === 'bus' ? { hp: p.hp, shootThrough: true } : { hp: p.hp });
+  }
+  // Walkable manholes scattered through the streets (decor — doesn't block).
+  for (let i = 0; i < rint(rng, 2, 5); i++) {
+    const tx = otx + rint(rng, 0, poi.tileW);
+    const ty = oty + rint(rng, 0, poi.tileH);
+    sinks.kindObstacle(tx * TILE_SIZE, ty * TILE_SIZE, 50, 50, 'manhole',
+      { walkable: true, shootThrough: true });
+  }
+  // Backup generator at the city's edge (industrial flavor, explosive).
+  if (rng() < 0.5) {
+    sinks.kindObstacle((otx + 1) * TILE_SIZE, (oty + poi.tileH - 2) * TILE_SIZE, 70, 60, 'generator',
+      { hp: 80, explodes: true, explodeR: 90 });
+  }
+  // Vending machine + shopping cart pair near a corner (urban flavor).
+  if (rng() < 0.6) {
+    sinks.kindObstacle((otx + 2) * TILE_SIZE, (oty + 2) * TILE_SIZE, 60, 96, 'vending', { hp: 80 });
+    sinks.kindObstacle((otx + 3) * TILE_SIZE + 4, (oty + 4) * TILE_SIZE, 44, 50, 'cart', { hp: 25 });
+  }
+  // Stationary bestiary in the city: a couple of shriekers on the road grid
+  // (denser pop → bigger horde calls), and an occasional cluster nestled
+  // between buildings.
+  for (let i = 0; i < rint(rng, 1, 3); i++) {
+    sinks.garrison('shrieker',
+      poi.centerX + rrange(rng, -450, 450),
+      poi.centerY + rrange(rng, -400, 400));
+  }
+  if (rng() < 0.4) {
+    sinks.garrison('cluster',
+      poi.centerX + rrange(rng, -380, 380),
+      poi.centerY + rrange(rng, -360, 360));
+  }
 }
 
 // ---------- Terrain-flavored POIs ----------
@@ -1160,6 +1429,17 @@ function emitLumberCamp(poi, rng, sinks) {
       poi.centerX + rrange(rng, -160, 160),
       poi.centerY + rrange(rng, -130, 130));
   }
+  // Forest infestation: small cluster of hive sacs in a clearing.
+  if (rng() < 0.5) {
+    const baseX = poi.centerX + rrange(rng, -180, 180);
+    const baseY = poi.centerY + rrange(rng, -150, 150);
+    const sacCount = rint(rng, 2, 5);
+    for (let i = 0; i < sacCount; i++) {
+      sinks.garrison('hivesac',
+        baseX + rrange(rng, -50, 50),
+        baseY + rrange(rng, -50, 50));
+    }
+  }
 }
 
 function emitMiningOutpost(poi, rng, sinks) {
@@ -1187,6 +1467,12 @@ function emitMiningOutpost(poi, rng, sinks) {
     sinks.garrison(rng() < 0.2 ? 'tank' : 'walker',
       poi.centerX + rrange(rng, -160, 160),
       poi.centerY + rrange(rng, -120, 120));
+  }
+  // Mining tunnels are a likely cluster anchor — rare but heavy.
+  if (rng() < 0.2) {
+    sinks.garrison('cluster',
+      poi.centerX + rrange(rng, -140, 140),
+      poi.centerY + rrange(rng, -100, 100));
   }
 }
 

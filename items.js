@@ -1,0 +1,201 @@
+'use strict';
+
+// ---------- Item registry ----------
+// Every non-ammo collectible in the world is an entry here. Categories drive
+// inventory grouping + use semantics:
+//   material  — passive resource, used at workbenches (no right-click use)
+//   consumable — right-click in the inventory to apply effect (use())
+//   tool      — placeable / activatable item (used via a hotbar slot)
+//   quest     — narrative only; can't be used, just collected
+// stackMax 1 = unstackable (each fills one slot).
+
+const ITEMS = {
+  // ----- materials -----
+  scrap: {
+    id: 'scrap', name: 'Scrap', category: 'material',
+    stackMax: 999, tint: '#a8a59c',
+    desc: 'Salvaged metal, wire, plastic. Spent at workbenches.',
+  },
+
+  // ----- consumables -----
+  bandage: {
+    id: 'bandage', name: 'Bandage', category: 'consumable',
+    stackMax: 10, tint: '#e8e6df',
+    desc: 'Restores 25 HP. Right-click to apply.',
+    use(p) {
+      if (p.hp >= p.maxHp) return false;
+      p.hp = Math.min(p.maxHp, p.hp + 25);
+      setNotice('+25 HP (bandage)', 1.2);
+      return true;
+    },
+  },
+  antibiotic: {
+    id: 'antibiotic', name: 'Antibiotic', category: 'consumable',
+    stackMax: 5, tint: '#7fc8ff',
+    desc: 'Rare meds. Will purge infection — and may have other uses later.',
+    use(p) {
+      // Placeholder until F4/infection wires up. For now: full heal.
+      if (p.hp >= p.maxHp) return false;
+      p.hp = p.maxHp;
+      setNotice('Antibiotic · fully healed', 1.5);
+      return true;
+    },
+  },
+};
+
+// ---------- Inventory state helpers ----------
+// Game.player.inventory shape (set in resetRun):
+//   { capacity: 24, slots: [ {id, count} | null ] × capacity }
+// Slots preserve ordering for stable UI. addItem fills the lowest non-full
+// stack of the same id first, then the lowest empty slot.
+const INVENTORY_CAPACITY = 24;
+
+function makeInventory() {
+  return {
+    capacity: INVENTORY_CAPACITY,
+    slots: Array.from({ length: INVENTORY_CAPACITY }, () => null),
+  };
+}
+
+function itemCount(inv, id) {
+  let n = 0;
+  for (const s of inv.slots) if (s && s.id === id) n += s.count;
+  return n;
+}
+
+// Add up to `count` of an item to the inventory. Returns the leftover that
+// did not fit (0 = success). Caller is responsible for handling overflow
+// (e.g. dropping a pickup on the ground).
+function addItem(inv, id, count) {
+  const def = ITEMS[id];
+  if (!def) { console.warn('addItem: unknown item', id); return count; }
+  let remaining = count | 0;
+  if (remaining <= 0) return 0;
+  // 1. Top up existing partial stacks.
+  for (let i = 0; i < inv.slots.length && remaining > 0; i++) {
+    const s = inv.slots[i];
+    if (!s || s.id !== id) continue;
+    const room = def.stackMax - s.count;
+    if (room <= 0) continue;
+    const take = Math.min(room, remaining);
+    s.count += take;
+    remaining -= take;
+  }
+  // 2. Fill empty slots.
+  for (let i = 0; i < inv.slots.length && remaining > 0; i++) {
+    if (inv.slots[i]) continue;
+    const take = Math.min(def.stackMax, remaining);
+    inv.slots[i] = { id, count: take };
+    remaining -= take;
+  }
+  return remaining;
+}
+
+// Remove up to `count` of an item. Returns the number actually removed.
+function removeItem(inv, id, count) {
+  let need = count | 0;
+  if (need <= 0) return 0;
+  let removed = 0;
+  for (let i = inv.slots.length - 1; i >= 0 && need > 0; i--) {
+    const s = inv.slots[i];
+    if (!s || s.id !== id) continue;
+    const take = Math.min(s.count, need);
+    s.count -= take; removed += take; need -= take;
+    if (s.count <= 0) inv.slots[i] = null;
+  }
+  return removed;
+}
+
+function hasItem(inv, id, count) {
+  return itemCount(inv, id) >= (count | 0);
+}
+
+// Try to consume a consumable from the inventory. Returns true on success.
+function useItem(inv, slotIndex) {
+  const s = inv.slots[slotIndex];
+  if (!s) return false;
+  const def = ITEMS[s.id];
+  if (!def || def.category !== 'consumable' || !def.use) return false;
+  const ok = def.use(Game.player);
+  if (ok) {
+    s.count -= 1;
+    if (s.count <= 0) inv.slots[slotIndex] = null;
+    Audio.sfx.pickup();
+  }
+  return ok;
+}
+
+// ---------- Procedural item icons ----------
+// Mirrors the weapon-slot-icon caching pattern in render.js so the
+// inventory UI can show consistent thumbnails without external assets.
+const __itemIconCache = {};
+function getItemIcon(id) {
+  if (__itemIconCache[id]) return __itemIconCache[id];
+  const c = document.createElement('canvas');
+  c.width = 48; c.height = 48;
+  const cx = c.getContext('2d');
+  cx.imageSmoothingEnabled = false;
+  drawItemIconShape(cx, id, 48);
+  __itemIconCache[id] = c.toDataURL();
+  return __itemIconCache[id];
+}
+function drawItemIconShape(ctx, id, size) {
+  // All icons drawn in a 48×48 box, top-left origin.
+  const cx = size / 2, cy = size / 2;
+  if (id === 'scrap') {
+    // bent metal scraps, two overlapping plates
+    ctx.fillStyle = '#43464d';
+    ctx.fillRect(cx - 14, cy - 4, 24, 12);
+    ctx.fillStyle = '#7e858f';
+    ctx.fillRect(cx - 13, cy - 3, 22, 4);
+    ctx.fillStyle = '#a3a4ac';
+    ctx.fillRect(cx - 13, cy - 3, 22, 1);
+    // small rivets
+    ctx.fillStyle = '#0b0c0e';
+    ctx.fillRect(cx - 10, cy - 1, 1, 1);
+    ctx.fillRect(cx + 6, cy - 1, 1, 1);
+    // wire kink
+    ctx.strokeStyle = '#c64a36';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 16, cy - 10);
+    ctx.lineTo(cx - 8, cy - 6);
+    ctx.lineTo(cx - 4, cy - 12);
+    ctx.lineTo(cx + 10, cy - 8);
+    ctx.stroke();
+  } else if (id === 'bandage') {
+    // gauze roll: cream rectangle with red cross
+    ctx.fillStyle = '#8a877c';
+    ctx.fillRect(cx - 12, cy - 9, 24, 18);
+    ctx.fillStyle = '#ece7d7';
+    ctx.fillRect(cx - 11, cy - 8, 22, 16);
+    ctx.fillStyle = '#d8d4c4';
+    ctx.fillRect(cx - 11, cy + 2, 22, 1);
+    ctx.fillRect(cx - 11, cy - 4, 22, 1);
+    ctx.fillStyle = '#d24b35';
+    ctx.fillRect(cx - 2, cy - 6, 4, 12);
+    ctx.fillRect(cx - 6, cy - 2, 12, 4);
+  } else if (id === 'antibiotic') {
+    // pill bottle: blue cap, cream body
+    ctx.fillStyle = '#43464d';
+    ctx.fillRect(cx - 8, cy - 10, 16, 4);
+    ctx.fillStyle = '#5fb6e8';
+    ctx.fillRect(cx - 7, cy - 10, 14, 3);
+    ctx.fillStyle = '#8a877c';
+    ctx.fillRect(cx - 9, cy - 6, 18, 16);
+    ctx.fillStyle = '#ece7d7';
+    ctx.fillRect(cx - 8, cy - 5, 16, 14);
+    ctx.fillStyle = '#d24b35';
+    ctx.fillRect(cx - 5, cy - 1, 10, 2);
+    ctx.fillStyle = '#7a7e88';
+    ctx.font = 'bold 6px monospace';
+    ctx.fillText('Rx', cx - 5, cy + 7);
+  } else {
+    // unknown/fallback — gray box with a question mark
+    ctx.fillStyle = '#3a3f4a';
+    ctx.fillRect(cx - 10, cy - 10, 20, 20);
+    ctx.fillStyle = '#7a7e88';
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText('?', cx - 4, cy + 5);
+  }
+}

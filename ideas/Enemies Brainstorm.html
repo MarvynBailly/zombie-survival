@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Outbreak — Enemies Brainstorm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="brainstorm.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="header">
+  <div class="top">
+    <span class="dot"></span>
+    <span>FIELD BRIEF · BESTIARY TRACK</span>
+    <span class="spacer"></span>
+    <span>FILE <span class="x">BST-001</span></span>
+    <span>·</span>
+    <span>REV A</span>
+    <span>·</span>
+    <span>DAY <span class="x">∞</span></span>
+  </div>
+  <h1>ENEMIES <span class="slash">/</span> <span class="bleed">BRAINSTORM</span></h1>
+  <div class="lede">
+    <div class="cell"><div class="l">DIRECTIONS</div><div class="v">20</div></div>
+    <div class="cell"><div class="l">CLUSTERS</div><div class="v">05</div></div>
+    <div class="cell"><div class="l">FOCUS</div><div class="v">FOES<span class="unit">only</span></div></div>
+    <div class="cell"><div class="l">SCOPE</div><div class="v">S → XL</div></div>
+  </div>
+</header>
+
+<div class="intro">
+  <div class="body">
+    <p>The bestiary today is 14 specialists strong — Cluster, Hivesac, Shrieker, Brood Mother, Necromancer, Charger, Reaper, Stalker, Bloater, Frost Walker, Mimic, Centipede, Hatchling, Twins — all wired around <strong>the walker</strong> as the baseline silhouette.</p>
+    <p>This brief widens the threat surface in a different direction: <strong class="acc">not just more variants of "dead person"</strong>. There are <strong>humans</strong> who hate you, <strong>mutations</strong> that don't read as walkers at all, <strong>horde behaviors</strong> that change how groups feel, <strong>biome predators</strong> that own a single terrain, and the <strong>living wildlife</strong> the infection has corrupted.</p>
+    <p>Each card hooks into existing AI (aggro, pathfinding, spawn director). None duplicate the current bestiary. Pick which to spec.</p>
+  </div>
+  <aside class="legend">
+    <h4>LEGEND</h4>
+    <div class="row"><span class="key">COMPLEXITY</span><span class="tag s">S</span><span class="tag m">M</span><span class="tag l">L</span><span class="tag xl">XL</span></div>
+    <div class="row"><span class="key">IMPACT</span><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip"></span><span class="pip"></span></div></div>
+    <div class="row"><span class="key">HOOKS</span><span style="color:var(--fg-dim)">existing system the idea plugs into</span></div>
+    <div class="row" style="margin-top:14px;border-top:1px dashed var(--border);padding-top:12px"><span class="key">STATUS</span><span style="color:var(--toxic)">all 20 unbuilt — pitch only</span></div>
+  </aside>
+</div>
+
+<!-- A — HUMANS -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">A</div>
+    <div class="ttl">HUMANS</div>
+    <div class="sub">// the other survivors · the ones who shoot back</div>
+  </div>
+  <div class="grid">
+
+    <div class="card feature">
+      <div class="num">A·01</div>
+      <div class="meta"><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span></div><span class="tag l">L</span></div>
+      <div class="left">
+        <div class="ico">
+          <svg class="ic" width="84" height="60" viewBox="0 0 84 60">
+            <circle cx="22" cy="20" r="6" fill="#7a4a2a"/>
+            <rect x="18" y="26" width="10" height="16" fill="#5a3a20"/>
+            <rect x="14" y="32" width="16" height="3" fill="#3a3024"/>
+            <rect x="16" y="36" width="12" height="3" fill="#d24b35"/>
+            <circle cx="55" cy="22" r="6" fill="#7a4a2a"/>
+            <rect x="50" y="28" width="10" height="14" fill="#3a3024"/>
+            <rect x="48" y="14" width="14" height="6" fill="#5e6a78"/>
+            <rect x="60" y="30" width="14" height="4" fill="#1c1f25"/>
+            <rect x="72" y="28" width="4" height="8" fill="#1c1f25"/>
+          </svg>
+        </div>
+        <div class="nm">THE <span class="alt">RAIDERS</span></div>
+        <p class="one">A faction of survivors who decided you're easier than walkers.</p>
+        <div class="body">
+          <p>A new <strong>raider faction</strong>: armed humans organized into 4–8 person camps that spawn at fenced POIs (gas stations, lumber camps, the outer edge of cities). They patrol, set ambushes on roads, and <em>actively hunt</em> any player they've spotted within the last in‑game day.</p>
+          <p>Crucially, they fight zombies too — walk into a 3‑way engagement and the bullets are real. Their loot drops are <em>tier‑locked weapons</em> (the iron‑chest stuff, but on a living target). Killing a camp gives you the camp.</p>
+        </div>
+      </div>
+      <div class="right">
+        <div class="row"><span class="k">CAMP SIZE</span><span class="v">4–8 raiders</span></div>
+        <div class="row"><span class="k">PATROL</span><span class="v">2‑hex radius from camp</span></div>
+        <div class="row"><span class="k">MEMORY</span><span class="v">24 in‑game hours</span></div>
+        <div class="row"><span class="k">FIGHTS</span><span class="v">player + zombies</span></div>
+        <div class="row"><span class="k">LOOT</span><span class="v">iron‑tier weapons</span></div>
+        <div class="row"><span class="k">REUSE</span><span class="v">POIs, AI, aggro, factions</span></div>
+      </div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·02</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="40" viewBox="0 0 56 40">
+          <circle cx="20" cy="14" r="5" fill="#7a4a2a"/>
+          <rect x="16" y="19" width="8" height="12" fill="#5a3a20"/>
+          <rect x="22" y="22" width="8" height="6" fill="#8a5a2a"/>
+          <path d="M30 28 L46 18" stroke="#7a7e88" stroke-width="1" stroke-dasharray="2 1"/>
+          <polygon points="44,16 50,14 46,22" fill="#7a7e88"/>
+        </svg>
+      </div>
+      <div class="nm">LOOTERS</div>
+      <p class="one">Won't fight. Will sprint past you with what you wanted.</p>
+      <div class="body">
+        <p>Cowardly NPCs who spawn near chests at the same time you do — they grab loot and bolt for the world edge. <strong>Catch and kill</strong> to get their pack; let them escape and the chest's already empty. Adds urgency to looting without changing combat math.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">chests</span><span class="chip">flee AI</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="40" viewBox="0 0 56 40">
+          <polygon points="28,4 36,18 28,32 20,18" fill="#5a3a1a"/>
+          <circle cx="28" cy="14" r="4" fill="#0b0c0e"/>
+          <circle cx="28" cy="14" r="2" fill="#d24b35"/>
+          <rect x="14" y="32" width="6" height="6" fill="#3a2a10"/>
+          <rect x="22" y="32" width="6" height="6" fill="#3a2a10"/>
+          <rect x="30" y="32" width="6" height="6" fill="#3a2a10"/>
+          <rect x="38" y="32" width="6" height="6" fill="#3a2a10"/>
+        </svg>
+      </div>
+      <div class="nm">CULTISTS</div>
+      <p class="one">They worship the infected. They want to <em>be</em> them.</p>
+      <div class="body">
+        <p>Robed humans who don't shoot — they <strong>charge</strong> with crude blades, ignore zombies entirely (zombies ignore them back, mostly), and <em>deliberately</em> inject themselves with infection on low HP, turning into a Charger‑class walker mid‑fight. Found around makeshift altar POIs in forest biomes.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">infection %</span><span class="chip">factions</span><span class="chip">POI variant</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="40" viewBox="0 0 56 40">
+          <circle cx="28" cy="14" r="5" fill="#3a3024"/>
+          <rect x="22" y="19" width="12" height="14" fill="#3a3024"/>
+          <rect x="24" y="22" width="8" height="4" fill="#d24b35"/>
+          <rect x="34" y="20" width="14" height="4" fill="#5e6a78"/>
+          <circle cx="48" cy="22" r="3" fill="#5fb6e8" opacity="0.7"/>
+          <line x1="48" y1="22" x2="56" y2="22" stroke="#d24b35" stroke-width="0.6" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="nm">THE BOUNTY</div>
+      <p class="one">One named human. One scope. He has your last seed.</p>
+      <div class="body">
+        <p>A single elite NPC who spawns once per run, at a random distance. He has a <strong>name</strong>, a <strong>rifle</strong>, and a <strong>line of fire</strong> on you any time you're in open terrain. Kills are visible as a red dot blinking on the compass. He breaks contact, repositions, and comes back. Adds a slow‑burn antagonist.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">compass</span><span class="chip">named NPCs</span><span class="chip">long‑range AI</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- B — MUTATIONS -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">B</div>
+    <div class="ttl">MUTATIONS</div>
+    <div class="sub">// infected variants that don't look like walkers</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">B·01</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="20" y="6" width="24" height="14" rx="2" fill="#5e6a78"/>
+          <rect x="14" y="20" width="36" height="22" fill="#5e6a78"/>
+          <rect x="10" y="22" width="8" height="14" fill="#7a9a55"/>
+          <rect x="46" y="22" width="8" height="14" fill="#7a9a55"/>
+          <rect x="18" y="42" width="8" height="6" fill="#5e6a78"/>
+          <rect x="38" y="42" width="8" height="6" fill="#5e6a78"/>
+          <rect x="24" y="14" width="4" height="3" fill="#d24b35"/>
+          <rect x="36" y="14" width="4" height="3" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">JUGGERNAUT</div>
+      <p class="one">A Tank wrapped in scavenged riot armor.</p>
+      <div class="body">
+        <p>Massive infected covered in welded scrap plate. <strong>Bullets ricochet</strong> off the front 180°; only the back is soft. Slow turn rate is its tell — kite, get behind it, dump rounds. Pairs with Armor‑Piercing ammo from the Arsenal brief. Spawns near warehouse / city POIs.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">armor stat</span><span class="chip">AP ammo</span><span class="chip">warehouse POI</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">B·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <path d="M4 30 Q12 22 20 30 Q28 38 36 30 Q44 22 52 30 Q60 38 64 30" stroke="#5fb6e8" stroke-width="1.5" fill="none" opacity="0.6"/>
+          <ellipse cx="32" cy="24" rx="14" ry="5" fill="#4a6332"/>
+          <circle cx="20" cy="22" r="2" fill="#3a3024"/>
+          <rect x="18" y="20" width="2" height="2" fill="#d24b35"/>
+          <path d="M44 24 Q52 26 48 32" stroke="#4a6332" stroke-width="2" fill="none"/>
+        </svg>
+      </div>
+      <div class="nm">SWIMMERS</div>
+      <p class="one">Water tiles aren't safe anymore.</p>
+      <div class="body">
+        <p>Aquatic infected that live in <strong>water tiles</strong> — invisible until you enter, then surface and lunge. Fishing dock POIs become genuinely dangerous. Can also cross water to reach you, which a normal walker can't. Burns easy with the flamethrower if you can reach the shore.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">water terrain</span><span class="chip">fishing dock POI</span><span class="chip">ambush AI</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">B·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <ellipse cx="28" cy="38" rx="18" ry="4" fill="#2a2010"/>
+          <path d="M16 36 Q28 24 40 36" stroke="#3a2a10" stroke-width="1.5" fill="#5a3a1a"/>
+          <rect x="20" y="32" width="4" height="6" fill="#4a6332"/>
+          <rect x="32" y="32" width="4" height="6" fill="#4a6332"/>
+          <path d="M14 38 L8 32 M42 38 L48 32" stroke="#3a2a10" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="nm">BURROWERS</div>
+      <p class="one">A dust plume. Then teeth from beneath.</p>
+      <div class="body">
+        <p>Travel underground, telegraphed by a moving <strong>dust mound</strong> tile. Surface beneath the player for an unblockable bite, then submerge again on a 6s cooldown. Visible only mid‑bite — that's your window. Concentrated in desert / wasteland regions.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">terrain (dust)</span><span class="chip">positional tells</span><span class="chip">biome variant</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">B·04</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <path d="M16 38 Q24 18 36 12" stroke="#4a6332" stroke-width="2" fill="none" stroke-dasharray="2 2"/>
+          <circle cx="36" cy="12" r="4" fill="#4a6332"/>
+          <rect x="32" y="16" width="8" height="10" fill="#3a3024"/>
+          <path d="M28 18 Q24 22 28 26 L34 24 Z" fill="#4a6332"/>
+          <path d="M40 18 Q44 22 40 26 L34 24 Z" fill="#4a6332"/>
+          <ellipse cx="20" cy="40" rx="8" ry="2" fill="#0b0c0e" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="nm">LEAPERS</div>
+      <p class="one">Your fence is decoration.</p>
+      <div class="body">
+        <p>Spider‑like crawlers that <strong>jump over single‑tile walls</strong> and 2‑tile gaps. Forces 2‑high construction in the late game. Visible recoil animation before each leap — that's the parry window with a melee weapon.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">walls / fences</span><span class="chip">multi‑floor build</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- C — HORDE BEHAVIOR -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">C</div>
+    <div class="ttl">HORDE BEHAVIOR</div>
+    <div class="sub">// how groups think · what changes when there's a lot of them</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">C·01</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <circle cx="32" cy="24" r="3" fill="#e8e6df"/>
+          <circle cx="14" cy="14" r="2.5" fill="#4a6332"/>
+          <circle cx="20" cy="34" r="2.5" fill="#4a6332"/>
+          <circle cx="50" cy="14" r="2.5" fill="#4a6332"/>
+          <circle cx="46" cy="36" r="2.5" fill="#4a6332"/>
+          <path d="M14 14 Q20 8 32 24" stroke="#d24b35" stroke-width="0.6" stroke-dasharray="2 2" fill="none"/>
+          <path d="M50 14 Q44 8 32 24" stroke="#d24b35" stroke-width="0.6" stroke-dasharray="2 2" fill="none"/>
+          <path d="M20 34 Q26 38 32 24" stroke="#7a7e88" stroke-width="0.6" fill="none"/>
+          <path d="M46 36 Q40 38 32 24" stroke="#7a7e88" stroke-width="0.6" fill="none"/>
+        </svg>
+      </div>
+      <div class="nm">PACK <span class="alt">FLANKING</span></div>
+      <p class="one">Some of them go around.</p>
+      <div class="body">
+        <p>A behavior layer, not a new enemy. When a horde of 5+ walkers chases you, <strong>30% of them route to flanks</strong> instead of the direct line — using the existing pathfinder with a small lateral offset. Suddenly "back away while shooting" doesn't work, because two of them are behind you.</p>
+        <p>Costs nothing to add; transforms how every existing encounter reads.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">pathfinding</span><span class="chip">aggro</span><span class="chip">spawn director</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">C·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <circle cx="46" cy="22" r="3" fill="#4a6332"/>
+          <circle cx="42" cy="28" r="3" fill="#4a6332"/>
+          <circle cx="50" cy="28" r="3" fill="#4a6332"/>
+          <circle cx="38" cy="22" r="3" fill="#4a6332"/>
+          <circle cx="54" cy="22" r="3" fill="#4a6332"/>
+          <path d="M30 30 L4 30 M28 24 L8 24 M30 18 L6 18" stroke="#d24b35" stroke-width="1.5" opacity="0.6"/>
+          <rect x="4" y="32" width="20" height="3" fill="#8a5a2a"/>
+        </svg>
+      </div>
+      <div class="nm">STAMPEDE</div>
+      <p class="one">A horde at full sprint can break wood.</p>
+      <div class="body">
+        <p>Walkers in a tight group of 8+ within 4 tiles of each other build a hidden <strong>momentum stat</strong>. Once it caps, they sprint together at 1.6× speed and a <strong>collective ram</strong> deals wall damage on contact — tier‑1 wood walls cave in 2 hits. Brick still holds. Real reason to upgrade your perimeter.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">walls.hp</span><span class="chip">wall tiers</span><span class="chip">flocking AI</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <path d="M28 6 L34 18 L32 30 L36 42 L20 42 L24 30 L22 18 Z" fill="#3a3024"/>
+          <circle cx="24" cy="12" r="2" fill="#d24b35"/>
+          <circle cx="32" cy="12" r="2" fill="#d24b35"/>
+          <polygon points="20,22 14,18 18,28" fill="#3a3024"/>
+          <polygon points="36,22 42,18 38,28" fill="#3a3024"/>
+          <polygon points="26,42 24,48 30,48 30,42" fill="#0b0c0e"/>
+        </svg>
+      </div>
+      <div class="nm">APEX <span class="alt">PREDATOR</span></div>
+      <p class="one">A single very evolved zombie. 3 AM only.</p>
+      <div class="body">
+        <p>One <strong>fully sapient</strong> infected, distinct silhouette (taller, four arms, no rags). Spawns at 3 AM in the night cycle if you've been outside walls more than 6 in‑game hours. Hunts by sound, sees through fog, fakes a retreat. Drops a unique trinket only it carries.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">night phase</span><span class="chip">sound aggro</span><span class="chip">unique drops</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·04</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <circle cx="28" cy="24" r="14" fill="none" stroke="#d24b35" stroke-width="1" opacity="0.3"/>
+          <circle cx="28" cy="24" r="9" fill="none" stroke="#d24b35" stroke-width="1" opacity="0.5"/>
+          <circle cx="28" cy="24" r="4" fill="#d24b35"/>
+          <circle cx="12" cy="14" r="2" fill="#4a6332"/>
+          <circle cx="44" cy="14" r="2" fill="#4a6332"/>
+          <circle cx="12" cy="34" r="2" fill="#4a6332"/>
+          <circle cx="44" cy="34" r="2" fill="#4a6332"/>
+        </svg>
+      </div>
+      <div class="nm">SIRE CALL</div>
+      <p class="one">Killing the loudest one summons more.</p>
+      <div class="body">
+        <p>Every horde spawns with a hidden <strong>Sire</strong> — a normal‑looking walker tagged as the group's leader. Killing it triggers a 5‑tile screech that pulls 4 more walkers from the spawn director within 8 seconds. Choose carefully: pick off stragglers first, or behead the leader and brace.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">spawn director</span><span class="chip">tagging</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- D — ENVIRONMENT -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">D</div>
+    <div class="ttl">ENVIRONMENT</div>
+    <div class="sub">// terrain‑specific predators · one biome owns each</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">D·01</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="4" y="32" width="60" height="14" fill="#3a4024"/>
+          <path d="M8 32 Q14 26 20 32 M26 32 Q32 24 38 32 M44 32 Q50 28 56 32" stroke="#4a6332" stroke-width="1.4" fill="none"/>
+          <ellipse cx="32" cy="32" rx="8" ry="3" fill="#1c1f25"/>
+          <circle cx="28" cy="30" r="1.5" fill="#d24b35"/>
+          <circle cx="36" cy="30" r="1.5" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">SWAMP <span class="alt">LURKER</span></div>
+      <p class="one">Reeds. Then eyes. Then claws.</p>
+      <div class="body">
+        <p>Camouflaged among swamp grass tiles — appears as terrain decor until you step within 3 tiles, then rears up. <strong>Grab‑and‑drag</strong> attack: pulls you 4 tiles toward water, where Swimmers (B·02) live. The pairing is intentional. Drops swamp herbs (Garden seeds).</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">terrain decor</span><span class="chip">swamp biome</span><span class="chip">grab AI</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">D·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <ellipse cx="32" cy="24" rx="16" ry="20" fill="#7a7e88" opacity="0.4"/>
+          <ellipse cx="32" cy="24" rx="10" ry="14" fill="#5e6a78" opacity="0.6"/>
+          <circle cx="28" cy="20" r="2" fill="#5fb6e8"/>
+          <circle cx="36" cy="20" r="2" fill="#5fb6e8"/>
+          <path d="M22 32 Q28 36 24 40 M42 32 Q36 36 40 40" stroke="#5fb6e8" stroke-width="1" fill="none"/>
+        </svg>
+      </div>
+      <div class="nm">ICE <span class="ice">WRAITH</span></div>
+      <p class="one">A silhouette that ignores your walls.</p>
+      <div class="body">
+        <p>Tundra‑only. Semi‑transparent walker that can <strong>phase through one wall tile</strong> per 10 seconds — visible only as a soft blue blur during phase. Hits drain stamina, not HP. Fire weapons (existing Flamer DoT) ground it solid for the encounter.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">tundra biome</span><span class="chip">walls (phase)</span><span class="chip">flamer interaction</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <circle cx="28" cy="24" r="10" fill="#5a2a10"/>
+          <path d="M28 14 Q30 6 32 14 M28 14 Q26 6 24 14" fill="#d24b35"/>
+          <circle cx="24" cy="22" r="1.5" fill="#e3a83a"/>
+          <circle cx="32" cy="22" r="1.5" fill="#e3a83a"/>
+          <path d="M16 36 Q12 38 14 42 M40 36 Q44 38 42 42" stroke="#d24b35" stroke-width="1" fill="none"/>
+          <rect x="14" y="38" width="2" height="6" fill="#e3a83a" opacity="0.6"/>
+          <rect x="38" y="40" width="2" height="6" fill="#e3a83a" opacity="0.6"/>
+        </svg>
+      </div>
+      <div class="nm">EMBER <span class="alt">WALKER</span></div>
+      <p class="one">Sets a trail of grass fires as it moves.</p>
+      <div class="body">
+        <p>Desert / dry plains. Body's on fire — leaves a <strong>2‑second burning tile</strong> in its wake. Run zigzag and you trap yourself in your own flame maze. Direct counter to a rainstorm weather day (extinguishes the trail).</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">DoT tiles</span><span class="chip">weather (rain)</span><span class="chip">desert biome</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·04</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <path d="M28 6 L34 18 L42 12 L36 24 L46 28 L34 30 L36 42 L28 34 L20 42 L22 30 L10 28 L20 24 L14 12 L22 18 Z" fill="#3a4024"/>
+          <circle cx="26" cy="22" r="1.5" fill="#d24b35"/>
+          <circle cx="30" cy="22" r="1.5" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">THORN <span class="alt">HUSK</span></div>
+      <p class="one">Walks the forest looking like a thicket.</p>
+      <div class="body">
+        <p>Forest‑biome ambusher. Stationary, indistinguishable from a regular tree until the player closes within 2 tiles — then unfolds. <strong>Melee DoT</strong> on hit (thorn bleed). Disables the "trees are safe cover" instinct in a single bad encounter.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">forest decor</span><span class="chip">trees</span><span class="chip">bleed DoT</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- E — WILDLIFE -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">E</div>
+    <div class="ttl">WILDLIFE</div>
+    <div class="sub">// not zombies · everything else that wants to bite you</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">E·01</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <ellipse cx="20" cy="28" rx="10" ry="6" fill="#5a3a20"/>
+          <circle cx="12" cy="24" r="4" fill="#5a3a20"/>
+          <rect x="10" y="20" width="2" height="3" fill="#5a3a20"/>
+          <rect x="13" y="20" width="2" height="3" fill="#5a3a20"/>
+          <circle cx="11" cy="24" r="0.7" fill="#d24b35"/>
+          <rect x="26" y="28" width="3" height="6" fill="#5a3a20"/>
+          <ellipse cx="44" cy="30" rx="10" ry="5" fill="#3a2a10"/>
+          <circle cx="36" cy="26" r="3" fill="#3a2a10"/>
+          <circle cx="36" cy="26" r="0.7" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">RABID <span class="alt">PACK</span></div>
+      <p class="one">3–5 dogs. Faster than you. Smarter than walkers.</p>
+      <div class="body">
+        <p>Not infected — just rabid. <strong>Pack of 3–5</strong> spawns at suburban POIs or wilderness edges. One harasses, the others flank (re‑uses C·01). Bite inflicts a small bleed but <strong>not infection</strong>. Kill the pack leader and the rest scatter for 30s. Drops nothing — they're an obstacle, not loot.</p>
+        <p>Counterweight to The Dog from the survivors brief: now domesticated vs. feral isn't free flavor — it's a real tactical line.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">suburban POI</span><span class="chip">flanking AI</span><span class="chip">bleed</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">E·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <path d="M8 16 Q14 10 20 14 Q18 18 14 18 Q10 18 8 16" fill="#1c1f25"/>
+          <circle cx="14" cy="14" r="0.7" fill="#d24b35"/>
+          <path d="M28 24 Q34 18 40 22 Q38 26 34 26 Q30 26 28 24" fill="#1c1f25"/>
+          <circle cx="34" cy="22" r="0.7" fill="#d24b35"/>
+          <path d="M44 36 Q50 30 56 34 Q54 38 50 38 Q46 38 44 36" fill="#1c1f25"/>
+          <line x1="14" y1="18" x2="14" y2="46" stroke="#7a7e88" stroke-width="0.4" opacity="0.4"/>
+          <line x1="34" y1="26" x2="34" y2="46" stroke="#7a7e88" stroke-width="0.4" opacity="0.4"/>
+        </svg>
+      </div>
+      <div class="nm">CROWS</div>
+      <p class="one">Three caws. Then dive.</p>
+      <div class="body">
+        <p>Flocks of 4–8 corrupted birds. <strong>Cannot be melee'd</strong> — only ranged. Swoop on a 4s cycle, deal small damage but <strong>blur the screen</strong> for 1s on each hit. Spawn on rooftops and over open plains. A real reason to look up.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">flying AI (new)</span><span class="chip">screen FX</span><span class="chip">ranged only</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">E·03</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <ellipse cx="14" cy="30" rx="6" ry="3" fill="#3a2a10"/>
+          <circle cx="9" cy="28" r="2" fill="#3a2a10"/>
+          <ellipse cx="28" cy="34" rx="6" ry="3" fill="#3a2a10"/>
+          <circle cx="23" cy="32" r="2" fill="#3a2a10"/>
+          <ellipse cx="42" cy="30" rx="6" ry="3" fill="#3a2a10"/>
+          <circle cx="37" cy="28" r="2" fill="#3a2a10"/>
+          <circle cx="9" cy="28" r="0.5" fill="#d24b35"/>
+          <circle cx="23" cy="32" r="0.5" fill="#d24b35"/>
+          <circle cx="37" cy="28" r="0.5" fill="#d24b35"/>
+          <line x1="11" y1="30" x2="16" y2="32" stroke="#3a2a10" stroke-width="0.5"/>
+          <line x1="25" y1="34" x2="30" y2="36" stroke="#3a2a10" stroke-width="0.5"/>
+        </svg>
+      </div>
+      <div class="nm">PLAGUE <span class="alt">RATS</span></div>
+      <p class="one">A swarm at your boots. Every basement.</p>
+      <div class="body">
+        <p>Tiny, fast, in groups of 6–12. Each one deals 1 dmg and a 1% Infection tick. Take 30 hits and you're in trouble. Found in basements, sewers, abandoned warehouses. A real reason to fear melee in tight spaces.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">infection %</span><span class="chip">sewer dungeons</span><span class="chip">basements</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">E·04</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="48" viewBox="0 0 56 48">
+          <ellipse cx="32" cy="30" rx="10" ry="6" fill="#5a3a20"/>
+          <circle cx="22" cy="22" r="4" fill="#5a3a20"/>
+          <path d="M19 18 L14 8 L18 14 L17 22 Z" fill="#5e6a78"/>
+          <path d="M25 18 L30 8 L26 14 L27 22 Z" fill="#5e6a78"/>
+          <rect x="20" y="20" width="2" height="2" fill="#d24b35"/>
+          <rect x="26" y="34" width="2" height="8" fill="#5a3a20"/>
+          <rect x="36" y="34" width="2" height="8" fill="#5a3a20"/>
+        </svg>
+      </div>
+      <div class="nm">STAG</div>
+      <p class="one">Antlers like a Charger. Eyes like a Necro.</p>
+      <div class="body">
+        <p>Rare. One per forest region per run. Charges in straight lines (re‑uses Charger AI). Drops <strong>antler</strong> — craftable into a melee weapon, or pinned in the Trophy Room. Killing it is optional; it doesn't follow you out of the forest.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">charger AI</span><span class="chip">forest biome</span><span class="chip">trophy room</span></div>
+    </div>
+
+  </div>
+</section>
+
+<footer class="footer">
+  <div>
+    <h3>WHAT NEXT</h3>
+    <p>The first‑order question for this brief is <strong>do you want humans in the game</strong>. Cluster A (Raiders, Looters, Cultists, Bounty) is the biggest direction; everything else is incremental. If yes, A·01 is the foundation and the rest stack.</p>
+    <p>Cluster B (Mutations) reads as the safe expansion — same content pipeline as the existing bestiary. Cluster C (Horde Behavior) is the cheapest and arguably the highest impact per line of code; recommend pairing C·01 + C·04 with whatever else you commit to.</p>
+    <ol>
+      <li>strike the cards that don't fit the direction</li>
+      <li>flag two to prototype</li>
+      <li>i'll spec or visualize them</li>
+    </ol>
+  </div>
+  <div class="stamp">
+    <div class="big">BESTIARY</div>
+    <div class="small">REV A · PITCH ONLY</div>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>

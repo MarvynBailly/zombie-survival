@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Outbreak — Expansion Brainstorm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:        #0b0c0e;
+  --ink-2:      #07080a;
+  --panel:      #14161a;
+  --panel2:     #1c1f25;
+  --panel3:     #24272f;
+  --border:     #2a2e36;
+  --border-hi:  #3a3f4a;
+  --fg:         #e8e6df;
+  --fg-dim:     #b0afa7;
+  --muted:      #7a7e88;
+  --muted-2:    #555964;
+  --accent:     #d24b35;
+  --accent-deep:#8a2a1a;
+  --accent-hi:  #ec6448;
+  --toxic:      #8ec547;
+  --warn:       #e3a83a;
+  --info:       #5fb6e8;
+  --danger:     #c83232;
+  --f-display:  "Bebas Neue", Impact, sans-serif;
+  --f-body:     "Manrope", "Helvetica Neue", Helvetica, sans-serif;
+  --f-mono:     "JetBrains Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--ink-2);
+  color: var(--fg);
+  font-family: var(--f-body);
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  background:
+    radial-gradient(ellipse at 20% -10%, rgba(210,75,53,0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 100%, rgba(142,197,71,0.05) 0%, transparent 50%),
+    var(--ink-2);
+  min-height: 100vh;
+  padding: 56px 0 80px;
+}
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+
+/* ─────────────────────────  HEADER  ───────────────────────── */
+.header { border-bottom: 1px solid var(--border); padding-bottom: 28px; margin-bottom: 36px; }
+.header .top {
+  display: flex; align-items: center; gap: 14px;
+  font-family: var(--f-mono);
+  font-size: 11px; letter-spacing: 4px;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+.header .top .x { color: var(--accent); }
+.header .top .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 12px var(--accent); animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.header .top .spacer { flex: 1; }
+.header h1 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: clamp(56px, 9vw, 132px);
+  letter-spacing: 8px;
+  line-height: 0.88;
+  color: var(--fg);
+}
+.header h1 .bleed { color: var(--accent); }
+.header h1 .slash { color: var(--muted-2); font-weight: 400; padding: 0 6px; }
+.header .lede {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 0;
+  margin-top: 28px;
+  border-top: 1px solid var(--border);
+}
+.header .lede .cell {
+  padding: 14px 18px 4px 0;
+  border-right: 1px solid var(--border);
+}
+.header .lede .cell:last-child { border-right: none; }
+.header .lede .l {
+  font-family: var(--f-mono);
+  font-size: 9px; letter-spacing: 3px;
+  color: var(--muted);
+}
+.header .lede .v {
+  font-family: var(--f-display);
+  font-size: 32px; letter-spacing: 2px;
+  margin-top: 4px;
+  color: var(--fg);
+}
+.header .lede .v .unit { font-size: 13px; color: var(--muted); letter-spacing: 1px; margin-left: 4px; }
+
+/* ─────────────────────────  INTRO  ───────────────────────── */
+.intro {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 32px;
+  margin: 8px 0 56px;
+}
+.intro .body { font-size: 15px; line-height: 1.65; color: var(--fg-dim); max-width: 64ch; text-wrap: pretty; }
+.intro .body p { margin: 0 0 12px; }
+.intro .body strong { color: var(--fg); font-weight: 600; }
+.intro .body .acc { color: var(--accent); }
+.intro .legend {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  padding: 18px 20px;
+  align-self: start;
+}
+.intro .legend h4 {
+  margin: 0 0 14px;
+  font-family: var(--f-display);
+  font-size: 14px; letter-spacing: 3px;
+  color: var(--muted);
+}
+.intro .legend .row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--fg-dim);
+  letter-spacing: 0.5px;
+}
+.intro .legend .row .key { font-size: 10px; color: var(--muted); width: 78px; letter-spacing: 2px; }
+.intro .legend .pips { display: flex; gap: 3px; }
+.intro .legend .pip { width: 10px; height: 10px; background: var(--border); }
+.intro .legend .pip.on { background: var(--warn); }
+.intro .legend .tag {
+  display: inline-block;
+  font-family: var(--f-mono);
+  font-size: 9px; letter-spacing: 2px;
+  padding: 2px 6px;
+  border: 1px solid;
+  border-radius: 2px;
+}
+.tag.s { color: var(--toxic); border-color: rgba(142,197,71,0.45); }
+.tag.m { color: var(--warn);  border-color: rgba(227,168,58,0.45); }
+.tag.l { color: var(--accent);border-color: rgba(210,75,53,0.5); }
+.tag.xl { color: var(--info);  border-color: rgba(95,182,232,0.45); }
+
+/* ─────────────────────────  SECTIONS  ───────────────────────── */
+section.cluster { margin-bottom: 60px; }
+section.cluster .sec-head {
+  display: flex; align-items: baseline; gap: 14px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px; margin-bottom: 24px;
+}
+section.cluster .sec-head .idx {
+  font-family: var(--f-display);
+  font-size: 64px; letter-spacing: 0;
+  color: var(--accent);
+  line-height: 0.7;
+}
+section.cluster .sec-head .ttl {
+  font-family: var(--f-display);
+  font-size: 38px; letter-spacing: 5px;
+  color: var(--fg);
+  line-height: 1;
+}
+section.cluster .sec-head .sub {
+  font-family: var(--f-mono);
+  font-size: 11px; letter-spacing: 2px;
+  color: var(--muted);
+  flex: 1;
+  text-align: right;
+  align-self: end;
+  padding-bottom: 4px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 16px;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--border-hi);
+  padding: 20px 20px 18px;
+  position: relative;
+  display: flex; flex-direction: column;
+  transition: border-top-color 0.2s, transform 0.1s;
+}
+.card:hover { border-top-color: var(--accent); transform: translateY(-2px); }
+.card .num {
+  position: absolute; top: -1px; right: -1px;
+  font-family: var(--f-mono);
+  font-size: 10px; letter-spacing: 2px;
+  color: var(--muted);
+  background: var(--ink);
+  border: 1px solid var(--border);
+  border-top: none; border-right: none;
+  padding: 3px 8px 4px;
+}
+.card .nm {
+  font-family: var(--f-display);
+  font-size: 26px; letter-spacing: 3px;
+  color: var(--fg);
+  line-height: 1;
+  margin: 0 0 4px;
+}
+.card .nm .alt { color: var(--accent); }
+.card .nm .glow { color: var(--toxic); }
+.card .one {
+  font-family: var(--f-body);
+  font-size: 12px; letter-spacing: 0.3px;
+  color: var(--accent-hi);
+  margin: 0 0 14px;
+  text-transform: none;
+}
+.card .body { font-size: 13px; line-height: 1.6; color: var(--fg-dim); text-wrap: pretty; }
+.card .body p { margin: 0 0 10px; }
+.card .hooks {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+  display: flex; align-items: center;
+  gap: 10px;
+  font-family: var(--f-mono);
+  font-size: 10px; letter-spacing: 1px;
+  color: var(--muted);
+}
+.card .hooks .lbl { color: var(--muted-2); letter-spacing: 2px; }
+.card .hooks .chip {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  color: var(--fg-dim);
+  border-radius: 2px;
+}
+.card .meta {
+  position: absolute; top: 12px; right: 38px;
+  display: flex; gap: 4px;
+  align-items: center;
+}
+.card .meta .pips { display: flex; gap: 2px; }
+.card .meta .pip { width: 8px; height: 8px; background: var(--border); }
+.card .meta .pip.on { background: var(--warn); }
+.card .ico {
+  width: 56px; height: 56px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* span helpers */
+.s-4 { grid-column: span 4; }
+.s-5 { grid-column: span 5; }
+.s-6 { grid-column: span 6; }
+.s-7 { grid-column: span 7; }
+.s-8 { grid-column: span 8; }
+.s-12 { grid-column: span 12; }
+
+@media (max-width: 980px) {
+  .s-4, .s-5, .s-6, .s-7, .s-8 { grid-column: span 12; }
+  .intro { grid-template-columns: 1fr; }
+  .header .lede { grid-template-columns: 1fr 1fr; }
+  .header .lede .cell:nth-child(2) { border-right: none; }
+}
+
+/* hero feature card */
+.feature {
+  background:
+    linear-gradient(135deg, rgba(210,75,53,0.12) 0%, transparent 60%),
+    var(--panel);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  padding: 28px 32px;
+  grid-column: span 12;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 32px;
+  align-items: center;
+}
+.feature .num { color: var(--accent); }
+.feature .nm { font-size: 44px; letter-spacing: 4px; }
+.feature .body { font-size: 14px; }
+.feature .right { font-family: var(--f-mono); font-size: 11px; color: var(--muted); letter-spacing: 1px; line-height: 1.9; }
+.feature .right .row { display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding: 6px 0; }
+.feature .right .row:last-child { border-bottom: none; }
+.feature .right .row .k { color: var(--muted-2); letter-spacing: 3px; font-size: 9px; }
+.feature .right .row .v { color: var(--fg-dim); }
+
+/* footer */
+.footer {
+  margin-top: 56px;
+  padding: 28px 0 0;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
+}
+.footer h3 {
+  font-family: var(--f-display);
+  font-size: 24px; letter-spacing: 4px;
+  margin: 0 0 12px; color: var(--fg);
+}
+.footer p { font-size: 13px; color: var(--fg-dim); line-height: 1.65; margin: 0 0 10px; max-width: 60ch; }
+.footer ol {
+  margin: 0; padding: 0 0 0 18px;
+  font-family: var(--f-mono);
+  font-size: 11px; letter-spacing: 0.5px;
+  color: var(--muted);
+  line-height: 1.9;
+}
+.footer ol li::marker { color: var(--accent); }
+.footer .stamp {
+  border: 2px dashed var(--accent-deep);
+  padding: 18px 22px;
+  align-self: start;
+  text-align: center;
+  transform: rotate(-2deg);
+  color: var(--accent);
+}
+.footer .stamp .big {
+  font-family: var(--f-display);
+  font-size: 28px; letter-spacing: 4px;
+}
+.footer .stamp .small {
+  font-family: var(--f-mono);
+  font-size: 10px; letter-spacing: 2px;
+  color: var(--accent-hi);
+  margin-top: 4px;
+}
+
+/* svg accents */
+svg.ic { display: block; }
+.bleed { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ───────────  HEADER  ─────────── -->
+<header class="header">
+  <div class="top">
+    <span class="dot"></span>
+    <span>FIELD BRIEF · EXPANSION TRACK</span>
+    <span class="spacer"></span>
+    <span>FILE <span class="x">EXP-001</span></span>
+    <span>·</span>
+    <span>REV A</span>
+    <span>·</span>
+    <span>DAY <span class="x">∞</span></span>
+  </div>
+  <h1>EXPANSION <span class="slash">/</span> <span class="bleed">BRAINSTORM</span></h1>
+  <div class="lede">
+    <div class="cell"><div class="l">DIRECTIONS</div><div class="v">20</div></div>
+    <div class="cell"><div class="l">CLUSTERS</div><div class="v">05</div></div>
+    <div class="cell"><div class="l">COMMITMENTS</div><div class="v">0<span class="unit">so far</span></div></div>
+    <div class="cell"><div class="l">SCOPE</div><div class="v">S → XL</div></div>
+  </div>
+</header>
+
+<!-- ───────────  INTRO  ─────────── -->
+<div class="intro">
+  <div class="body">
+    <p>The game is in great shape — a 32k×32k procedural map, day/night, biomes, base‑building, three chest tiers, a 20‑creature bestiary half‑wired. The question isn't <em>what's missing</em>, it's <strong>what would change the texture of a run</strong>.</p>
+    <p>What follows are <strong class="acc">20 directions</strong>, organized into five clusters. Each card is a self‑contained pitch: a one‑liner, the mechanic, how it hooks into systems that already exist, and a complexity tag. Read them as a buffet, not a roadmap. Tell me which two or three to push into, and we'll spec them out.</p>
+    <p>A guiding principle for every idea here: the open world and the day/night cycle already give you <em>solitude and pressure</em>. The expansions below mostly add <em>company, stakes, or texture</em>, not more zombies.</p>
+  </div>
+  <aside class="legend">
+    <h4>LEGEND</h4>
+    <div class="row"><span class="key">COMPLEXITY</span><span class="tag s">S</span><span class="tag m">M</span><span class="tag l">L</span><span class="tag xl">XL</span></div>
+    <div class="row"><span class="key">IMPACT</span><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip"></span><span class="pip"></span></div></div>
+    <div class="row"><span class="key">HOOKS</span><span style="color:var(--fg-dim)">existing system the idea plugs into</span></div>
+    <div class="row" style="margin-top:14px;border-top:1px dashed var(--border);padding-top:12px"><span class="key">STATUS</span><span style="color:var(--toxic)">all 20 unbuilt — pitch only</span></div>
+  </aside>
+</div>
+
+<!-- ───────────  CLUSTER A — SURVIVORS  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">A</div>
+    <div class="ttl">SURVIVORS</div>
+    <div class="sub">// human stakes · companions · the other 7 billion</div>
+  </div>
+  <div class="grid">
+
+    <!-- HERO: companions -->
+    <div class="card feature">
+      <div class="num">A·01</div>
+      <div class="meta"><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span></div><span class="tag l">L</span></div>
+      <div class="left">
+        <div class="ico">
+          <svg class="ic" width="36" height="36" viewBox="0 0 36 36">
+            <circle cx="13" cy="13" r="5" fill="#e8e6df"/>
+            <rect x="9" y="18" width="8" height="11" fill="#e8e6df"/>
+            <circle cx="25" cy="15" r="4" fill="#d24b35"/>
+            <rect x="22" y="19" width="6" height="9" fill="#d24b35"/>
+          </svg>
+        </div>
+        <div class="nm">SURVIVORS <span class="alt">&amp; SQUADS</span></div>
+        <p class="one">Rescue NPCs from POIs. Recruit them. They follow, shoot, die.</p>
+        <div class="body">
+          <p>Walk into any POI building and there's a chance to find a survivor cowering in a corner — they have a name, a class, and a backstory line ("ex‑EMT, ran out of insulin"). Approach to recruit. They follow at a 60‑unit leash, fire on threats, and can be told to <span style="color:var(--warn)">HOLD</span> a position with a hotkey.</p>
+          <p>Three starter classes: <strong>Medic</strong> drops a healing aura, <strong>Engineer</strong> repairs damaged walls during the day, <strong>Soldier</strong> simply shoots harder. Each squad slot also doubles as an aggro magnet — zombies sometimes pick them over you. That's the cost.</p>
+        </div>
+      </div>
+      <div class="right">
+        <div class="row"><span class="k">SPAWN</span><span class="v">POI buildings, 20% chance</span></div>
+        <div class="row"><span class="k">CAP</span><span class="v">3 squad slots</span></div>
+        <div class="row"><span class="k">LOSS</span><span class="v">permadeath, by name</span></div>
+        <div class="row"><span class="k">UI</span><span class="v">right‑rail portraits + HP</span></div>
+        <div class="row"><span class="k">PAYOFF</span><span class="v">emotional stakes per run</span></div>
+        <div class="row"><span class="k">REUSE</span><span class="v">POIs, bestiary, HUD slots</span></div>
+      </div>
+    </div>
+
+    <!-- pets -->
+    <div class="card s-4">
+      <div class="num">A·02</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="36" height="36" viewBox="0 0 36 36">
+          <ellipse cx="20" cy="20" rx="10" ry="6" fill="#9a7a4a"/>
+          <circle cx="12" cy="17" r="4" fill="#9a7a4a"/>
+          <rect x="10" y="13" width="2" height="3" fill="#9a7a4a"/>
+          <rect x="13" y="13" width="2" height="3" fill="#9a7a4a"/>
+          <circle cx="11" cy="17" r="0.8" fill="#0b0c0e"/>
+          <rect x="27" y="20" width="3" height="6" fill="#9a7a4a"/>
+        </svg>
+      </div>
+      <div class="nm">THE DOG</div>
+      <p class="one">A loyal threat detector with teeth.</p>
+      <div class="body">
+        <p>Find a chained dog at a kennel POI. Cut the chain and it imprints on you. Barks <strong>2 seconds</strong> before zombies spawn from a chunk edge, gives a directional minimap blip, and bites crawlers and hatchlings off your boots.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">POIs</span><span class="chip">aggro</span><span class="chip">minimap</span></div>
+    </div>
+
+    <!-- trader -->
+    <div class="card s-4">
+      <div class="num">A·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="36" height="36" viewBox="0 0 36 36">
+          <rect x="6" y="14" width="24" height="14" fill="#5e6a78"/>
+          <rect x="4" y="12" width="28" height="3" fill="#7e8a98"/>
+          <rect x="10" y="17" width="3" height="3" fill="#e3a83a"/>
+          <rect x="16" y="17" width="3" height="3" fill="#e3a83a"/>
+          <rect x="22" y="17" width="3" height="3" fill="#e3a83a"/>
+        </svg>
+      </div>
+      <div class="nm">THE TRADER</div>
+      <p class="one">A trench‑coated stranger with a folding table.</p>
+      <div class="body">
+        <p>Once per in‑game day, a trader sets up at a random crossroads (marked on compass with a <strong style="color:var(--warn)">$</strong>). Pay in <em>scrap</em> (pulled from car wrecks and dead zombies) for ammo, traps, antibiotics, weapon mods. Leaves at dusk.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">compass</span><span class="chip">scrap econ</span><span class="chip">day cycle</span></div>
+    </div>
+
+    <!-- infected protagonist -->
+    <div class="card s-4">
+      <div class="num">A·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="36" height="36" viewBox="0 0 36 36">
+          <circle cx="18" cy="14" r="7" fill="#e8e6df"/>
+          <path d="M11 14 Q18 24 25 14" stroke="#8ec547" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <circle cx="15" cy="13" r="1.2" fill="#0b0c0e"/>
+          <circle cx="21" cy="13" r="1.2" fill="#0b0c0e"/>
+          <rect x="12" y="22" width="12" height="8" fill="#e8e6df"/>
+        </svg>
+      </div>
+      <div class="nm">INFECTION <span class="glow">%</span></div>
+      <p class="one">Every bite is a loan against the future.</p>
+      <div class="body">
+        <p>Bites no longer just deal damage — they add 5–15% to a hidden <strong>Infection</strong> meter. At 100% you turn at the next dawn. <strong>Antibiotics</strong> are a rare loot tier (hospital POIs, mythic chests). Creates a second clock that doesn't tick when you're cautious.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">damage system</span><span class="chip">loot tiers</span><span class="chip">HUD</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  CLUSTER B — MOTION  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">B</div>
+    <div class="ttl">MOTION</div>
+    <div class="sub">// covering ground · escape velocity · subterranean</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-7">
+      <div class="num">B·01</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="48" height="36" viewBox="0 0 48 36">
+          <rect x="6" y="14" width="36" height="10" rx="2" fill="#5e6a78"/>
+          <rect x="12" y="10" width="24" height="6" fill="#7e8a98"/>
+          <circle cx="14" cy="26" r="4" fill="#0b0c0e"/>
+          <circle cx="34" cy="26" r="4" fill="#0b0c0e"/>
+          <rect x="16" y="11" width="6" height="5" fill="#e3a83a" opacity="0.7"/>
+          <rect x="24" y="11" width="6" height="5" fill="#e3a83a" opacity="0.7"/>
+        </svg>
+      </div>
+      <div class="nm">VEHICLES <span class="alt">&amp; FUEL</span></div>
+      <p class="one">Cars exist as wrecks already. Make some of them <em>run</em>.</p>
+      <div class="body">
+        <p>1 in 8 car wrecks in suburban POIs has a working engine. Hold <strong style="color:var(--warn)">F</strong> near a door to enter. WASD now controls the car; <strong>L‑click rams</strong>, S brakes. Fuel is a real resource (auto‑refill at gas‑pump props, which already exist). Running over a walker is satisfying. Hitting a tank crumples the bumper and stalls you.</p>
+        <p>Motorcycles in the highland biome: faster, no armor, can't ram tanks. <strong>Trade‑off design</strong>: vehicles eat ammo savings but trade for distance, which matters because the world is huge.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">props.fuelpump</span><span class="chip">props.carWreck</span><span class="chip">biome variety</span><span class="chip">camera zoom</span></div>
+    </div>
+
+    <div class="card s-5">
+      <div class="num">B·02</div>
+      <div class="meta"><span class="tag xl">XL</span></div>
+      <div class="ico">
+        <svg class="ic" width="36" height="36" viewBox="0 0 36 36">
+          <rect x="6" y="20" width="24" height="6" fill="#2a2e36"/>
+          <path d="M6 20 L18 8 L30 20 Z" fill="#1c1f25" stroke="#2a2e36"/>
+          <rect x="14" y="26" width="3" height="6" fill="#7a7e88"/>
+          <rect x="20" y="26" width="3" height="6" fill="#7a7e88"/>
+          <circle cx="18" cy="22" r="2" fill="#8ec547"/>
+        </svg>
+      </div>
+      <div class="nm">SEWERS <span class="alt">&amp; BUNKERS</span></div>
+      <p class="one">Manholes are already drawn. Make them drop you somewhere else.</p>
+      <div class="body">
+        <p>Manhole props become <strong>portals</strong> into instanced, hand‑seeded dungeons (8–15 rooms). One‑way entry, one extraction ladder at the far end. Higher loot density, denser enemies, a small mini‑boss at the back. Each seed deterministic — the same manhole always leads to the same dungeon.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">props.manhole</span><span class="chip">chunk swap</span><span class="chip">level gen</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">B·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="44" height="36" viewBox="0 0 44 36">
+          <rect x="14" y="14" width="16" height="8" fill="#3a3f4a"/>
+          <rect x="20" y="11" width="6" height="3" fill="#7e8a98"/>
+          <line x1="4" y1="12" x2="40" y2="12" stroke="#7e8a98" stroke-width="1" opacity="0.6"/>
+          <circle cx="22" cy="10" r="1.5" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">CARE PACKAGES</div>
+      <p class="one">A distant rotor sound. A red smoke flare. A 90‑second window.</p>
+      <div class="body">
+        <p>Twice a day a helicopter passes overhead and drops a crate at a flagged location on the minimap. Other zombies route toward it too — getting there first means fighting <em>through</em> a horde, not around it. Crates contain <strong>premium loot</strong>: railgun ammo, named weapon mods, antibiotics.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">compass</span><span class="chip">spawn timer</span><span class="chip">chest tiers</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">B·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="40" height="36" viewBox="0 0 40 36">
+          <circle cx="20" cy="20" r="12" fill="none" stroke="#5fb6e8" stroke-width="2"/>
+          <circle cx="20" cy="20" r="6" fill="none" stroke="#5fb6e8" stroke-width="1.5" opacity="0.5"/>
+          <rect x="18" y="6" width="4" height="10" fill="#5fb6e8"/>
+          <rect x="16" y="4" width="8" height="3" fill="#e3a83a"/>
+        </svg>
+      </div>
+      <div class="nm">THE RADIO TOWER</div>
+      <p class="one">A real win condition — not just "die later."</p>
+      <div class="body">
+        <p>One POI per map is the <strong>broadcast tower</strong>. Repair its three subsystems (each a mini‑defense event you trigger), then survive a 5‑minute final siege while it transmits. Reward: <strong>extraction</strong>, a permanent unlock, and a different ending screen. Players can also keep playing past it.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">POI</span><span class="chip">waves</span><span class="chip">leaderboard</span><span class="chip">end screen</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  CLUSTER C — SYSTEMS  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">C</div>
+    <div class="ttl">SYSTEMS</div>
+    <div class="sub">// underlying rules · progression · economy</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">C·01</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="40" height="36" viewBox="0 0 40 36">
+          <circle cx="10" cy="18" r="3" fill="#d24b35"/>
+          <circle cx="20" cy="10" r="3" fill="#d24b35"/>
+          <circle cx="20" cy="26" r="3" fill="#7a7e88"/>
+          <circle cx="30" cy="18" r="3" fill="#7a7e88"/>
+          <line x1="10" y1="18" x2="20" y2="10" stroke="#d24b35" stroke-width="1"/>
+          <line x1="10" y1="18" x2="20" y2="26" stroke="#3a3f4a" stroke-width="1"/>
+          <line x1="20" y1="10" x2="30" y2="18" stroke="#3a3f4a" stroke-width="1"/>
+        </svg>
+      </div>
+      <div class="nm">PERK TREE</div>
+      <p class="one">A point per day survived. 24 perks. Build a character.</p>
+      <div class="body">
+        <p>Four lanes — <strong style="color:var(--accent)">Gunner</strong> (reload speed, headshot crit, hipfire spread), <strong style="color:var(--toxic)">Medic</strong> (heal rate, infection resist, bandage radius), <strong style="color:var(--warn)">Engineer</strong> (wall HP, free barrels, turret unlock), <strong style="color:var(--info)">Scout</strong> (sprint, reveal radius, silent boots).</p>
+        <p>Stacks cleanly with weapons — a <em>Scout/Crossbow</em> run plays totally differently from a <em>Gunner/Minigun</em> one. Resets on death.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">day cycle</span><span class="chip">player stats</span><span class="chip">pause UI</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">C·02</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="40" height="36" viewBox="0 0 40 36">
+          <rect x="12" y="14" width="16" height="14" fill="#5e6a78"/>
+          <rect x="14" y="10" width="12" height="5" fill="#7e8a98"/>
+          <path d="M8 8 L20 4 L32 8" stroke="#e3a83a" stroke-width="1.5" fill="none"/>
+          <circle cx="20" cy="4" r="2" fill="#e3a83a"/>
+          <line x1="20" y1="14" x2="20" y2="6" stroke="#e3a83a" stroke-width="1" stroke-dasharray="2 2"/>
+        </svg>
+      </div>
+      <div class="nm">POWER GRID</div>
+      <p class="one">Wire your base. Lights. Turrets. Electric fences.</p>
+      <div class="body">
+        <p>Generators (already a prop!) become placeable. Run conduit tiles between them and powered objects. <strong>Lights</strong> push back night spawn radius. <strong>Electric fences</strong> kill walkers on touch. <strong>Auto‑turrets</strong> point and shoot. Every node costs fuel/sec drawn from the generator's tank.</p>
+        <p>Fuel becomes the most important resource you don't already have. Refill from gas pumps. Run out at 3 AM, lights die, problems begin.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">walls</span><span class="chip">props.generator</span><span class="chip">props.fuelpump</span><span class="chip">night phase</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·03</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="36" height="36" viewBox="0 0 36 36">
+          <rect x="10" y="10" width="16" height="20" rx="1" fill="#e8e6df"/>
+          <rect x="12" y="13" width="12" height="3" fill="#d24b35"/>
+          <rect x="12" y="18" width="12" height="1" fill="#7a7e88"/>
+          <rect x="12" y="21" width="8" height="1" fill="#7a7e88"/>
+        </svg>
+      </div>
+      <div class="nm">SCRAP <span class="alt">+ CRAFT</span></div>
+      <p class="one">Every dumpster is a workbench's pantry.</p>
+      <div class="body">
+        <p>Pull <em>scrap</em> from car wrecks, dumpsters, dead zombies (rare). Spend it at any <em>workbench</em> prop to craft: <strong>walls (cheap)</strong>, <strong>ammo (mid)</strong>, <strong>traps (expensive)</strong>. Gives the day phase a verb that isn't "walk somewhere."</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">props.workbench</span><span class="chip">pickups</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·04</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="36" height="36" viewBox="0 0 36 36">
+          <ellipse cx="14" cy="18" rx="6" ry="3" fill="#0b0c0e"/>
+          <rect x="8" y="11" width="12" height="7" rx="6" fill="#7a5a3a"/>
+          <rect x="12" y="20" width="2" height="6" fill="#7a5a3a"/>
+          <rect x="14" y="20" width="2" height="6" fill="#7a5a3a"/>
+          <circle cx="25" cy="20" r="3" fill="#8ec547"/>
+        </svg>
+      </div>
+      <div class="nm">STEALTH</div>
+      <p class="one">Crouch. Slow down. Fade off the aggro radar.</p>
+      <div class="body">
+        <p>Hold <strong style="color:var(--warn)">CTRL</strong> to crouch: 50% movement, 60% smaller aggro circle, footstep audio muted. Lets a careful player thread a midnight street that would normally be impossible. Pairs perfectly with the Crossbow's <em>silent</em> tag.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">aggro</span><span class="chip">weapons.silent</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·05</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="36" height="36" viewBox="0 0 36 36">
+          <rect x="8" y="14" width="20" height="12" fill="#7e8a98"/>
+          <rect x="8" y="13" width="20" height="3" fill="#5e6a78"/>
+          <rect x="12" y="18" width="12" height="1" fill="#0b0c0e"/>
+          <rect x="14" y="22" width="2" height="2" fill="#e3a83a"/>
+          <rect x="20" y="22" width="2" height="2" fill="#e3a83a"/>
+        </svg>
+      </div>
+      <div class="nm">FOOD <span class="alt">&amp; REST</span></div>
+      <p class="one">Sleep through dawn in a bed you've secured.</p>
+      <div class="body">
+        <p>Light hunger meter (3 days to empty). Food found in fridges/stoves (already drawn). <strong>Rest</strong> mechanic: <em>secured</em> beds (4 walls + door) let you skip 8 hours and recover 40 HP — at the cost of waking up at <strong>dusk</strong>, when the night spawns are about to start.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">props.fridge</span><span class="chip">props.bed</span><span class="chip">walls</span><span class="chip">day cycle</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  CLUSTER D — WORLD  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">D</div>
+    <div class="ttl">WORLD</div>
+    <div class="sub">// weather · events · what's outside the window today</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">D·01</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="44" height="36" viewBox="0 0 44 36">
+          <path d="M8 16 Q14 10 22 13 Q30 8 36 14 Q42 14 38 22 L10 22 Q4 22 8 16" fill="#3a3f4a"/>
+          <line x1="14" y1="24" x2="12" y2="32" stroke="#5fb6e8" stroke-width="1.4"/>
+          <line x1="22" y1="24" x2="20" y2="32" stroke="#5fb6e8" stroke-width="1.4"/>
+          <line x1="30" y1="24" x2="28" y2="32" stroke="#5fb6e8" stroke-width="1.4"/>
+        </svg>
+      </div>
+      <div class="nm">WEATHER</div>
+      <p class="one">Three rolls of the dice each morning.</p>
+      <div class="body">
+        <p><strong style="color:var(--info)">Fog</strong> halves view radius, doubles ambush odds. <strong style="color:var(--accent)">Heatwave</strong> wilts walker speed by 30%, drains player stamina faster. <strong>Rainstorm</strong> extinguishes fire DoT (Flamethrower whiffs), drowns out footsteps. <strong>Blizzard</strong> only in highland — slows everyone, makes the world white and quiet.</p>
+        <p>Each morning's forecast appears in a 2‑second wave‑banner. Players plan around it.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">biomes</span><span class="chip">day cycle</span><span class="chip">flamer DoT</span><span class="chip">view radius</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">D·02</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="36" height="36" viewBox="0 0 36 36">
+          <circle cx="18" cy="18" r="12" fill="#d24b35"/>
+          <circle cx="18" cy="18" r="12" fill="#0b0c0e" opacity="0.35"/>
+          <circle cx="14" cy="14" r="2" fill="#1a0805" opacity="0.5"/>
+          <circle cx="22" cy="20" r="1.5" fill="#1a0805" opacity="0.5"/>
+          <circle cx="16" cy="22" r="1" fill="#1a0805" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="nm">BLOOD MOON</div>
+      <p class="one">Every seventh night, the sky reads RED.</p>
+      <div class="body">
+        <p>Spawn rates 3×. A guaranteed mini‑boss (Brood Mother / Charger / Centipede) plus its retinue. Loot table is upgraded — chests are at least Iron tier. The player either fortifies hard or runs. The cycle gives long runs natural punctuation.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">night phase</span><span class="chip">bestiary</span><span class="chip">chest tiers</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="36" height="36" viewBox="0 0 36 36">
+          <circle cx="18" cy="18" r="3" fill="#d24b35"/>
+          <path d="M18 6 L20 14 L18 18 L16 14 Z" fill="#7a7e88"/>
+          <path d="M18 30 L20 22 L18 18 L16 22 Z" fill="#7a7e88"/>
+          <path d="M6 18 L14 16 L18 18 L14 20 Z" fill="#7a7e88"/>
+          <path d="M30 18 L22 16 L18 18 L22 20 Z" fill="#7a7e88"/>
+        </svg>
+      </div>
+      <div class="nm">TRAPS</div>
+      <p class="one">Bear traps, tripwires, claymores, oil slicks.</p>
+      <div class="body">
+        <p>A craftable family of static hazards. Visible when placing, hidden after 5s of grass cover. <strong>Bear trap</strong> snares, deals 60. <strong>Tripwire grenade</strong> bunches kills. <strong>Oil slick + barrel</strong> = 200 dmg corridor. Rewards thinking.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">crafting</span><span class="chip">barrels</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·04</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="36" height="36" viewBox="0 0 36 36">
+          <rect x="6" y="14" width="24" height="14" fill="#2a2e36"/>
+          <rect x="10" y="10" width="16" height="6" fill="#3a3f4a"/>
+          <rect x="14" y="18" width="3" height="3" fill="#d24b35"/>
+          <rect x="19" y="18" width="3" height="3" fill="#d24b35"/>
+          <rect x="14" y="23" width="3" height="3" fill="#d24b35"/>
+          <rect x="19" y="23" width="3" height="3" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">TURRETS</div>
+      <p class="one">Auto‑shotgun on a tripod. Limited ammo.</p>
+      <div class="body">
+        <p>Engineer‑only craft. Place, feed ammo, point arc. Three variants: <strong>sentry shotgun</strong> (cone), <strong>auto‑pistol</strong> (cheap, fast), <strong>mounted minigun</strong> (you can also man it yourself for a big damage uptick). Vital for power‑grid base defense.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">weapons</span><span class="chip">power grid</span><span class="chip">perks</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·05</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="36" height="36" viewBox="0 0 36 36">
+          <rect x="8" y="8" width="20" height="20" fill="#14161a" stroke="#d24b35"/>
+          <text x="18" y="22" text-anchor="middle" font-family="Bebas Neue" font-size="14" fill="#d24b35" letter-spacing="2">137</text>
+          <rect x="8" y="6" width="20" height="3" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">DAILY SEED</div>
+      <p class="one">Today, everyone plays the same world.</p>
+      <div class="body">
+        <p>One leaderboard per calendar day, one shared seed. Map layout, POIs, chest contents, weather pattern — all identical. Pure meta‑competition. Plays into the existing PocketBase leaderboard with a new tab.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">world seed</span><span class="chip">PocketBase</span><span class="chip">leaderboard UI</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  CLUSTER E — META  ─────────── -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">E</div>
+    <div class="ttl">META</div>
+    <div class="sub">// outside the run · narrative · the next launch</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">E·01</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="36" height="36" viewBox="0 0 36 36">
+          <rect x="9" y="6" width="18" height="24" fill="#e8e6df"/>
+          <rect x="11" y="9" width="14" height="1" fill="#7a7e88"/>
+          <rect x="11" y="12" width="14" height="1" fill="#7a7e88"/>
+          <rect x="11" y="15" width="10" height="1" fill="#7a7e88"/>
+          <rect x="11" y="18" width="14" height="1" fill="#7a7e88"/>
+          <rect x="11" y="21" width="8" height="1" fill="#7a7e88"/>
+          <rect x="11" y="25" width="14" height="2" fill="#d24b35"/>
+        </svg>
+      </div>
+      <div class="nm">JOURNALS <span class="alt">&amp; LORE</span></div>
+      <p class="one">Scraps of paper. Voicemails. The world before the world.</p>
+      <div class="body">
+        <p>Lootable narrative fragments — a kid's diary in a nightstand, a CEO's email backup on an office desk, a hand‑drawn map. Each one logs into a <strong>Files</strong> menu accessible from pause. No quest markers, no pop‑ups. Just texture for players who care.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">props (drawers, desks)</span><span class="chip">pause menu</span><span class="chip">persistence</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">E·02</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="36" height="36" viewBox="0 0 36 36">
+          <path d="M18 6 L21 14 L30 14 L23 19 L26 28 L18 23 L10 28 L13 19 L6 14 L15 14 Z" fill="#e3a83a"/>
+        </svg>
+      </div>
+      <div class="nm">ACHIEVEMENTS</div>
+      <p class="one">Specific. Hard. Visible on the menu screen.</p>
+      <div class="body">
+        <p>Not "kill 100 zombies" — those don't move anyone. Try: <em>Survive a Blood Moon with no walls placed. Win extraction with infection &gt;80%. Clear a sewer without firing the pistol.</em> Build a constraints menu, not a checklist.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">menu</span><span class="chip">persistence</span><span class="chip">cosmetics</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  FOOTER  ─────────── -->
+<footer class="footer">
+  <div>
+    <h3>WHAT NEXT</h3>
+    <p>None of this is committed. Pick a handful and we'll go from idea → spec → build. A useful first pass might be one card from each cluster — say <strong style="color:var(--accent)">A·01 Survivors</strong>, <strong style="color:var(--accent)">B·04 Radio Tower</strong>, <strong style="color:var(--accent)">C·01 Perk Tree</strong>, <strong style="color:var(--accent)">D·02 Blood Moon</strong> — so a single run touches all four new flavors at different scales.</p>
+    <p>If you want me to <strong>prototype</strong> one of these (visually, in your existing palette, not yet wired in‑game), tell me which.</p>
+    <ol>
+      <li>react to the cards — strike any that don't speak to you</li>
+      <li>flag the ones to pursue, in priority order</li>
+      <li>i'll spec or prototype them, your call which</li>
+    </ol>
+  </div>
+  <div class="stamp">
+    <div class="big">PITCH</div>
+    <div class="small">DO NOT DEPLOY</div>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>

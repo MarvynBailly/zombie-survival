@@ -68,5 +68,23 @@
 <script src="render.js"></script>
 <script src="ui.js"></script>
 <script src="bot.js"></script>
+<!-- Bot Arena: per-bot competition harness. See competition/SPEC.md for the
+     bot API. api.js + harness.js must load BEFORE the individual bot files;
+     ui.js must load AFTER ui.js so it can wrap showMenu(). -->
+<script src="competition/api.js"></script>
+<script src="competition/harness.js"></script>
+<script src="competition/bots/bot_random.js"></script>
+<script src="competition/bots/bot_simple.js"></script>
+<script src="competition/bots/bot_marvyn.js"></script>
+<!-- Agent-designed bots -->
+<script src="competition/bots/bot_fortress.js"></script>
+<script src="competition/bots/bot_sniper.js"></script>
+<script src="competition/bots/bot_berserker.js"></script>
+<script src="competition/bots/bot_scavenger.js"></script>
+<script src="competition/bots/bot_tactician.js"></script>
+<script src="competition/bots/bot_predictor.js"></script>
+<script src="competition/bots/bot_demolitionist.js"></script>
+<script src="competition/bots/bot_hunter.js"></script>
+<script src="competition/ui.js"></script>
 </body>
 </html>

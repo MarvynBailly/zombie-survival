@@ -882,19 +882,36 @@ function destroyWall(index, source) {
   NAV.markDirty();
 }
 
+// Wake nearby zombies on a (non-silent) gunshot: short alert timer that boosts
+// their groan rate so the player hears the horde reacting to noise.
+function broadcastAggro(x, y) {
+  const R2 = 280 * 280;
+  const zs = Game.zombies;
+  for (let i = 0; i < zs.length; i++) {
+    const z = zs[i];
+    const dx = z.x - x, dy = z.y - y;
+    if (dx * dx + dy * dy <= R2) z.aggroT = Math.max(z.aggroT || 0, 4);
+  }
+}
+
 function fireWeapon(p, weap) {
   Audio.sfx[weap.sfx]();
-  p.muzzleFlash = 1;
+  // Stream weapons (flamethrower) hold a steady glow instead of spiking the
+  // flash each tick — keeps the flame visually continuous rather than strobing.
+  p.muzzleFlash = weap.isStream ? Math.max(p.muzzleFlash, 0.45) : 1;
   const muzzleX = p.x + Math.cos(p.angle) * (p.r + 4);
   const muzzleY = p.y + Math.sin(p.angle) * (p.r + 4);
+  if (!weap.silent) broadcastAggro(p.x, p.y);
 
   // muzzle flash particle
-  for (let i = 0; i < 3; i++) {
+  const flashColor = weap.isStream ? '#ff7a33' : '#ffcc55';
+  const flashCount = weap.isStream ? 2 : 3;
+  for (let i = 0; i < flashCount; i++) {
     Game.particles.push({
       x: muzzleX, y: muzzleY,
       vx: Math.cos(p.angle) * rand(100, 300) + rand(-30, 30),
       vy: Math.sin(p.angle) * rand(100, 300) + rand(-30, 30),
-      life: rand(0.05, 0.15), color: '#ffcc55', r: rand(2, 4),
+      life: rand(0.05, 0.15), color: flashColor, r: rand(2, 4),
     });
   }
 
@@ -1918,8 +1935,10 @@ function updateZombies(dt) {
       }
     }
 
-    // groan occasionally
-    if (Math.random() < 0.002) Audio.sfx.groan();
+    // groan occasionally — louder when recently alerted by gunfire.
+    if ((z.aggroT || 0) > 0) z.aggroT -= dt;
+    const groanChance = (z.aggroT || 0) > 0 ? 0.012 : 0.002;
+    if (Math.random() < groanChance) Audio.sfx.groan();
   }
 }
 

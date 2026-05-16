@@ -42,10 +42,11 @@ function getChunkSurface(chunk) {
   const baseTx = chunk.cx * tpc;
   const baseTy = chunk.cy * tpc;
   // Whole-chunk base color in one ImageData write. Smooth bilinear noise
-  // is shared at tile corners so adjacent same-type tiles blend across
-  // their seam — no visible lattice in homogeneous areas. Different-type
-  // boundaries stay sharp.
-  ZSprites.paintChunkTerrainBase(sx, chunk, cs, TILE_SIZE);
+  // is shared at tile corners (no lattice in homogeneous areas) and
+  // analytical per-pixel transitions blend across cross-type seams. Pass
+  // a cross-chunk neighbor lookup so tiles on the chunk edge can read
+  // adjacent chunks' terrain too.
+  ZSprites.paintChunkTerrainBase(sx, chunk, cs, TILE_SIZE, neighborAt);
   // Per-tile overlay pass: tufts, flora, ripples, corner blends, foam.
   for (let ly = 0; ly < tpc; ly++) {
     for (let lx = 0; lx < tpc; lx++) {
