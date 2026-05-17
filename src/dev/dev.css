@@ -1,0 +1,277 @@
+/* Dev page styles. Loaded only by dev.html, after styles.css so design
+   tokens (--ink, --panel, etc.) are already defined. */
+
+html, body { overflow: auto; user-select: text; }
+
+/* ---------- Dev shell ---------- */
+#dev-shell {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  background: var(--ink);
+  color: var(--fg);
+  font-family: var(--f-body);
+  z-index: 5;
+}
+#dev-shell.hidden { display: none; }
+
+.dev-header {
+  display: flex; align-items: center; gap: 18px;
+  padding: 14px 22px;
+  background: var(--panel);
+  border-bottom: 2px solid var(--accent);
+}
+.dev-header h1 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 28px;
+  letter-spacing: 0.06em;
+}
+.dev-mode-tag {
+  margin-left: auto;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--muted);
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  letter-spacing: 0.1em;
+}
+
+.dev-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ---------- Side panel ---------- */
+#dev-panel {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 16px;
+}
+#dev-panel h2 {
+  margin: 0 0 12px;
+  font-family: var(--f-display);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.dev-field {
+  margin-bottom: 12px;
+}
+.dev-field > label {
+  display: block;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 4px;
+}
+.dev-row {
+  display: flex; gap: 6px;
+}
+.dev-section {
+  font-family: var(--f-display);
+  font-size: 13px;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 16px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.dev-slider {
+  display: grid;
+  grid-template-columns: 110px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.dev-slider label {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--fg);
+}
+.dev-slider input[type=range] { width: 100%; accent-color: var(--accent); }
+.dev-slider-val {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  text-align: right;
+  color: var(--muted);
+}
+
+input[type=number], select {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--f-mono);
+  padding: 6px 8px;
+  font-size: 12px;
+  flex: 1;
+  min-width: 0;
+}
+input[type=number]:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.dev-btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--f-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.dev-btn-ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent-hi);
+}
+.dev-reset { width: 100%; margin-top: 12px; }
+
+/* ---------- Preview area ---------- */
+#dev-preview-host {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-start;
+  padding: 24px;
+  overflow: auto;
+  background: radial-gradient(ellipse at center, #14161a 0%, #07080a 80%);
+}
+#dev-preview {
+  border: 1px solid var(--border-hi);
+  background: #000;
+  image-rendering: pixelated;
+  max-width: 100%;
+  height: auto;
+  cursor: crosshair;
+}
+.dev-stats {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(5, auto);
+  gap: 16px;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.dev-stats span { color: var(--fg); margin-left: 4px; }
+
+#dev-preview-tooltip {
+  position: fixed;
+  display: none;
+  background: rgba(7,8,10,0.92);
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--fg);
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* ---------- Footer / launch ---------- */
+.dev-footer {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 22px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+}
+#dev-launch {
+  background: var(--accent);
+  color: var(--ink);
+  border: none;
+  font-family: var(--f-display);
+  font-size: 18px;
+  letter-spacing: 0.1em;
+  padding: 10px 22px;
+  cursor: pointer;
+}
+#dev-launch:hover { background: var(--accent-hi); }
+.dev-hint {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.dev-hint kbd {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  margin: 0 3px;
+  font-family: var(--f-mono);
+  border-radius: 2px;
+}
+
+/* ---------- In-game DEV badge ---------- */
+#dev-badge {
+  position: fixed;
+  top: 12px; left: 12px;
+  background: rgba(210,75,53,0.9);
+  color: var(--ink);
+  font-family: var(--f-display);
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  padding: 5px 10px;
+  z-index: 60;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+}
+#dev-badge .kbd {
+  background: rgba(11,12,14,0.4);
+  padding: 0 5px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  border-radius: 2px;
+}
+
+/* ---------- Console ---------- */
+#dev-console {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: 38vh; max-height: 360px;
+  background: rgba(7,8,10,0.94);
+  border-top: 2px solid var(--accent);
+  display: flex; flex-direction: column;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  z-index: 100;
+}
+#dev-console.hidden { display: none; }
+#dev-console-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px;
+  white-space: pre-wrap;
+}
+.dev-log-line { margin: 1px 0; }
+.dev-log-sys   { color: var(--muted); }
+.dev-log-input { color: var(--accent-hi); }
+.dev-log-ok    { color: var(--fg); }
+.dev-log-err   { color: var(--danger); }
+
+.dev-console-input-row {
+  display: flex; align-items: center;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+}
+.dev-console-input-row .prompt {
+  color: var(--accent);
+  margin-right: 8px;
+}
+#dev-console-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--fg);
+  font-family: var(--f-mono);
+  font-size: 13px;
+  outline: none;
+}

@@ -846,4 +846,4 @@ muteBtn.addEventListener('click', () => {
 refreshMuteBtn();
 
 // ---------- Boot ----------
-showMenu();
+if (!window.__DEV_PAGE) showMenu();

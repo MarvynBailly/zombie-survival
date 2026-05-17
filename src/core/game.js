@@ -784,6 +784,7 @@ function updatePlayer(dt) {
   } else if (p.sprintEnergy != null && p.sprintEnergy < 1) {
     p.sprintEnergy = Math.min(1, p.sprintEnergy + dt / 3);  // 3s to refill
   }
+  if (window.__dev && window.__dev.speedMul) speed *= window.__dev.speedMul;
   p.vx = mx * speed; p.vy = my * speed;
   p.x += p.vx * dt;
   p.y += p.vy * dt;
@@ -795,9 +796,11 @@ function updatePlayer(dt) {
 
   // collide with nearby obstacles + player-placed walls + un-opened chests.
   // Use the tight-radius query — a 40px obstacle can only collide within ~p.r+w.
-  World.forEachObstacleNear(p.x, p.y, p.r + TILE_SIZE, (o) => resolveCircleRect(p, o));
-  for (const w of Game.walls) resolveCircleRect(p, w);
-  World.forEachActiveChest(p.x, p.y, (c) => { if (!c.opened) resolveCircleRect(p, c); });
+  if (!(window.__dev && window.__dev.fly)) {
+    World.forEachObstacleNear(p.x, p.y, p.r + TILE_SIZE, (o) => resolveCircleRect(p, o));
+    for (const w of Game.walls) resolveCircleRect(p, w);
+    World.forEachActiveChest(p.x, p.y, (c) => { if (!c.opened) resolveCircleRect(p, c); });
+  }
   // Resolve out of overlapping zombies (other half is applied in updateZombies).
   // Spatial hash gives us a tight candidate set instead of iterating every zombie.
   const zNear = Spatial.query(p.x, p.y, p.r + 40, []);
@@ -2310,6 +2313,7 @@ function spawnPickup(x, y, forceType) {
 function damagePlayer(amount, attacker, opts) {
   const p = Game.player;
   if (p.dead) return;
+  if (window.__dev && window.__dev.godmode) return;
   const isDot = opts && opts.dot;
   // Katana charged-swing iframes — stack with normal hit iframes.
   if (!isDot && (p.iframes || 0) > 0) return;

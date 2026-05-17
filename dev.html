@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Outbreak — Dev Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="src/dev/dev.css">
+<!-- Dev-page flag. Read by ui.js to skip the auto-showMenu() on boot so the
+     dev shell can take over the page. Must run before any game scripts load. -->
+<script>window.__DEV_PAGE = true;</script>
+</head>
+<body>
+
+<!-- Game shell (hidden until LAUNCH). Mirrors index.html so the existing
+     game code finds the DOM nodes it expects. -->
+<div id="app" style="display:none">
+  <canvas id="game" width="1024" height="768"></canvas>
+  <div id="overlay-root"></div>
+  <div id="hud-root" class="hud" style="display:none"></div>
+  <div id="vignette-root" class="damage-vignette" style="display:none"></div>
+  <div id="banner-root"></div>
+  <button id="mute-btn" class="mute-btn" style="display:none">SOUND ON</button>
+</div>
+
+<!-- Dev shell -->
+<div id="dev-shell">
+  <header class="dev-header">
+    <h1>OUTBREAK — DEV CONSOLE</h1>
+    <div class="dev-mode-tag">DESIGN MODE</div>
+  </header>
+  <div class="dev-body">
+    <aside id="dev-panel">
+      <h2>World Generation</h2>
+      <div id="dev-panel-body"></div>
+    </aside>
+    <main id="dev-preview-host">
+      <canvas id="dev-preview" width="720" height="720"></canvas>
+      <div class="dev-stats">
+        <div>seed:<span id="dev-stat-seed">—</span></div>
+        <div>water:<span id="dev-stat-water">—</span></div>
+        <div>forest:<span id="dev-stat-forest">—</span></div>
+        <div>mountain:<span id="dev-stat-mountain">—</span></div>
+        <div>POIs:<span id="dev-stat-pois">—</span></div>
+      </div>
+    </main>
+  </div>
+  <footer class="dev-footer">
+    <button id="dev-launch">▶ LAUNCH WORLD</button>
+    <span class="dev-hint">After launch, press<kbd>`</kbd>for console</span>
+  </footer>
+</div>
+
+<!-- Floating tooltip on the preview canvas -->
+<div id="dev-preview-tooltip"></div>
+
+<!-- Console overlay (hidden until ` is pressed) -->
+<div id="dev-console" class="hidden">
+  <div id="dev-console-log"></div>
+  <div class="dev-console-input-row">
+    <span class="prompt">&gt;</span>
+    <input type="text" id="dev-console-input" autocomplete="off" spellcheck="false" />
+  </div>
+</div>
+
+<!-- ===================================================================
+     SAME SCRIPT LOAD ORDER AS index.html
+     (Everything is a classic top-level <script> sharing global scope.)
+     =================================================================== -->
+<script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.0/dist/pocketbase.umd.js"></script>
+<script src="src/sprites/sprites.js"></script>
+<script src="src/sprites/expansion.js"></script>
+<script src="src/sprites/props.js"></script>
+<script src="src/sprites/bestiary.js"></script>
+<script src="src/core/constants.js"></script>
+<script src="src/core/world.js"></script>
+<script src="src/features/sewers.js"></script>
+<script src="src/core/persistence.js"></script>
+<script src="src/core/defs.js"></script>
+<script src="src/features/weather.js"></script>
+<script src="src/combat/attachments.js"></script>
+<script src="src/combat/items.js"></script>
+<script src="src/foundry/foundry.js"></script>
+<script src="src/foundry/foundry-ore-drill.js"></script>
+<script src="src/foundry/foundry-hand-mine.js"></script>
+<script src="src/foundry/foundry-blast-furnace.js"></script>
+<script src="src/foundry/foundry-powder-mill.js"></script>
+<script src="src/foundry/foundry-casing-press.js"></script>
+<script src="src/foundry/foundry-primer-bench.js"></script>
+<script src="src/foundry/foundry-ammo-press.js"></script>
+<script src="src/foundry/foundry-pumpjack.js"></script>
+<script src="src/foundry/foundry-refinery.js"></script>
+<script src="src/foundry/foundry-centrifuge.js"></script>
+<script src="src/foundry/foundry-silo.js"></script>
+<script src="src/foundry/foundry-foreman.js"></script>
+<script src="src/foundry/foundry-specialty-press.js"></script>
+<script src="src/foundry/foundry-twists.js"></script>
+<script src="src/features/perks.js"></script>
+<script src="src/features/lore.js"></script>
+<script src="src/features/trophy.js"></script>
+<script src="src/features/walls.js"></script>
+<script src="src/features/prefabs.js"></script>
+<script src="src/features/power.js"></script>
+<script src="src/features/vehicles.js"></script>
+<script src="src/features/bases.js"></script>
+<script src="src/features/trader.js"></script>
+<script src="src/features/raid.js"></script>
+<script src="src/features/garden.js"></script>
+<script src="src/features/kitchen.js"></script>
+<script src="src/features/garage.js"></script>
+<script src="src/features/moat.js"></script>
+<script src="src/features/noisebox.js"></script>
+<script src="src/features/cameras.js"></script>
+<script src="src/features/squad.js"></script>
+<script src="src/features/campfire.js"></script>
+<script src="src/features/corkboard.js"></script>
+<script src="src/features/quarters.js"></script>
+<script src="src/features/radio.js"></script>
+<script src="src/features/rv.js"></script>
+<script src="src/core/game.js"></script>
+<script src="src/core/render.js"></script>
+<script src="src/core/ui.js"></script>
+<script src="src/foundry/foundry-ui.js"></script>
+<script src="src/features/bot.js"></script>
+
+<!-- =====  DEV MODULES (only on this page)  ===== -->
+<script src="src/dev/cheats.js"></script>
+<script src="src/dev/console.js"></script>
+<script src="src/dev/worldgen-preview.js"></script>
+<script src="src/dev/worldgen-panel.js"></script>
+<script src="src/dev/dev.js"></script>
+</body>
+</html>
