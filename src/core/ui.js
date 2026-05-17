@@ -3,8 +3,9 @@
 // ---------- Loop ----------
 let last = performance.now(), acc = 0;
 function loop(t) {
-  const dt = Math.min(0.1, (t - last) / 1000);
+  let dt = Math.min(0.1, (t - last) / 1000);
   last = t;
+  if (window.__dev && window.__dev.timescale) dt *= window.__dev.timescale;
   // Game advances only while in 'playing' mode. 'paused' (Esc) and the
   // M-key world map both freeze the simulation.
   if (Game.mode === 'playing' && !Game.mapOpen && !Game.filesOpen) {
