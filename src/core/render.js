@@ -785,6 +785,9 @@ function drawWorldMap() {
   const offY = padY + (availH - chunksH * CHUNK_SIZE * scale) / 2 - minCy * CHUNK_SIZE * scale;
   const w2sx = (wx) => offX + wx * scale;
   const w2sy = (wy) => offY + wy * scale;
+  // Stash the inverse-transform inputs so dev tooling can map clicks back to
+  // world coords (see dev.js shift-click teleport). Inert in production.
+  Game.__mapTransform = { offX, offY, scale };
 
   // Map panel surround
   const panX = padX - 12, panY = padY - 12;

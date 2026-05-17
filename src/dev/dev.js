@@ -13,6 +13,9 @@
     seed: (Math.random() * 0x7fffffff) | 0,
     region: null,  // filled below
   };
+  // Exposed for slot save/load (cheats.js needs to update seed + region
+  // before calling continueGame(slotData)).
+  window.DevState = state;
 
   // Snapshot LEVELS[0] for our initial state. We deep-copy region so slider
   // edits don't mutate the canonical preset on the LEVELS array.
@@ -61,42 +64,47 @@
 
   function pct(n) { return (n * 100).toFixed(1) + '%'; }
 
+  // World.init monkey-patch: replace the random seed used by resetRun with
+  // whatever's in state.seed at call time. Installed once at boot so slot-
+  // load works even from dev shell (before LAUNCH was clicked). Reads state
+  // by closure — state.seed is always current.
+  function installWorldInitPatch() {
+    if (typeof World === 'undefined' || World.__devPatched) return;
+    const origInit = World.init.bind(World);
+    World.init = function (_seed, region) {
+      return origInit(state.seed, region);
+    };
+    World.__devPatched = true;
+  }
+
+  // Swap dev shell out, game UI in. Used by both LAUNCH and slot-load.
+  function enterGameUI() {
+    document.getElementById('dev-shell').classList.add('hidden');
+    document.getElementById('app').style.display = '';
+    mountFloatingControls();
+  }
+  state.enterGameUI = enterGameUI;
+
   // ---- LAUNCH ----
   // Splice point: patch LEVELS[levelIndex].region so resetRun picks up our
-  // custom region; patch World.init so the random seed is replaced with our
-  // chosen one. Both patches persist for the session so Esc → Restart
-  // reproduces the same world.
+  // custom region. World.init patch is already installed at boot.
   function launch() {
     if (!state.region) return;
-    if (typeof LEVELS === 'undefined' || typeof World === 'undefined') {
+    if (typeof LEVELS === 'undefined') {
       console.error('[dev] core not loaded');
       return;
     }
     const idx = state.levelIndex;
     LEVELS[idx].region = { ...state.region };
 
-    if (!World.__devPatched) {
-      const origInit = World.init.bind(World);
-      World.init = function (_seed, region) {
-        return origInit(state.seed, region);
-      };
-      World.__devPatched = true;
-    }
-
-    // Swap visibility BEFORE startGame so the canvas can size itself.
-    document.getElementById('dev-shell').classList.add('hidden');
-    document.getElementById('app').style.display = '';
+    enterGameUI();
 
     // startGame is defined in ui.js. It calls resetRun + sets Game.mode.
     if (typeof startGame === 'function') {
       startGame(idx);
     } else {
       console.error('[dev] startGame missing');
-      return;
     }
-
-    // Mount the floating console button + restore default HUD on play page.
-    mountFloatingControls();
   }
 
   // After launch, drop a small "DEV" badge into the corner so the user
@@ -133,9 +141,38 @@
 
   const TERRAIN_NAMES = ['grass', 'forest', 'sand', 'shallow water', 'deep water', 'hill', 'mountain', 'path'];
 
+  // Shift-click on the M-map teleports the player to that world position.
+  // The map render (render.js) stashes its transform on Game.__mapTransform;
+  // we invert it here. Capture phase so we fire before game.js's mousedown
+  // (which would set input.mouseDown = true and ghost-fire a weapon).
+  function wireMapClickTeleport() {
+    const canvas = document.getElementById('game');
+    if (!canvas) return;
+    canvas.addEventListener('mousedown', (e) => {
+      if (!e.shiftKey) return;
+      if (!window.Game || !window.Game.mapOpen) return;
+      const tx = window.Game.__mapTransform;
+      if (!tx || !tx.scale) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const rect = canvas.getBoundingClientRect();
+      const sx = (e.clientX - rect.left) * (canvas.width / rect.width);
+      const sy = (e.clientY - rect.top)  * (canvas.height / rect.height);
+      const wx = (sx - tx.offX) / tx.scale;
+      const wy = (sy - tx.offY) / tx.scale;
+      if (window.DevCheats) {
+        const msg = window.DevCheats.teleport(wx, wy);
+        if (window.DevConsole) window.DevConsole.log(msg, 'sys');
+      }
+      // Close the map after teleporting so the player sees where they landed.
+      window.Game.mapOpen = false;
+    }, true);
+  }
+
   // ---- Boot ----
   function boot() {
     seedInitialState();
+    installWorldInitPatch();
 
     WorldgenPanel.mount(
       document.getElementById('dev-panel-body'),
@@ -148,6 +185,7 @@
     document.getElementById('dev-launch').addEventListener('click', launch);
 
     wirePreviewTooltip();
+    wireMapClickTeleport();
     renderPreview();
   }
 

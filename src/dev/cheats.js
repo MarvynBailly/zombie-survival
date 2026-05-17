@@ -13,6 +13,8 @@ window.__dev = window.__dev || {
   timescale: 1,
 };
 
+const DEV_SLOT_PREFIX = 'zombie-survival:dev-slot:';
+
 const Cheats = {
   // ---- toggles ----
   setGod(on) {
@@ -91,6 +93,38 @@ const Cheats = {
     return 'healed + refilled ammo';
   },
 
+  // ---- pause / step / resume ----
+  // pause() doesn't fire the existing pause-menu overlay — it just flips
+  // Game.mode so the loop's tick gate (ui.js:10) stops advancing the sim.
+  // render() keeps firing every frame so the canvas updates after manual
+  // step()s.
+  pause() {
+    if (!window.Game) return 'no game';
+    if (window.Game.mode === 'paused') return 'already paused';
+    if (window.Game.mode !== 'playing') return `mode=${window.Game.mode} (not playing)`;
+    window.Game.mode = 'paused';
+    return 'paused';
+  },
+  resume() {
+    if (!window.Game) return 'no game';
+    if (window.Game.mode === 'playing') return 'already playing';
+    window.Game.mode = 'playing';
+    return 'playing';
+  },
+  // Advance the sim by n ticks regardless of Game.mode. tick() is a top-level
+  // function declared in game.js so it lives on window.
+  step(n) {
+    if (typeof tick !== 'function') return 'tick() missing';
+    if (typeof TICK_DT !== 'number') return 'TICK_DT missing';
+    const count = Math.max(1, parseInt(n, 10) || 1);
+    for (let i = 0; i < count; i++) tick(TICK_DT);
+    return `stepped ${count} tick${count === 1 ? '' : 's'}`;
+  },
+  togglePause() {
+    if (!window.Game) return 'no game';
+    return window.Game.mode === 'paused' ? Cheats.resume() : Cheats.pause();
+  },
+
   // Kill every live zombie. Cleanest path: splice the array. Sprites/particles
   // will fade naturally.
   clearZombies() {
@@ -98,6 +132,109 @@ const Cheats = {
     const n = (window.Game.zombies || []).length;
     window.Game.zombies = [];
     return `cleared ${n} zombies`;
+  },
+
+  // ---- dev save slots ----
+  // Reuses the canonical saveGame() serializer. We let saveGame write to
+  // SAVE_KEY, copy that payload to our slot key, then restore SAVE_KEY so
+  // the player's actual auto-save isn't disturbed. devRegion captures the
+  // currently-tweaked region (regionName alone would drop slider edits).
+  saveSlot(name) {
+    if (!name || !/^[a-zA-Z0-9_-]+$/.test(name)) return 'bad slot name (a-z A-Z 0-9 _ -)';
+    if (typeof saveGame !== 'function') return 'saveGame missing';
+    if (!window.Game || !window.Game.player) return 'no game';
+    if (window.Game.player.dead) return 'cannot save: dead';
+    if (window.Game.subworld) return 'cannot save inside a sewer';
+    const wasPaused = window.Game.mode === 'paused';
+    if (wasPaused) window.Game.mode = 'playing';
+    const prior = localStorage.getItem(SAVE_KEY);
+    try {
+      saveGame();
+    } finally {
+      if (wasPaused) window.Game.mode = 'paused';
+    }
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) {
+      if (prior == null) localStorage.removeItem(SAVE_KEY);
+      else localStorage.setItem(SAVE_KEY, prior);
+      return 'saveGame produced no data';
+    }
+    let data;
+    try { data = JSON.parse(raw); } catch { return 'serialize failed'; }
+    if (window.World && window.World.region) {
+      data.devRegion = { ...window.World.region };
+    }
+    data.savedAt = Date.now();
+    localStorage.setItem(DEV_SLOT_PREFIX + name, JSON.stringify(data));
+    if (prior == null) localStorage.removeItem(SAVE_KEY);
+    else localStorage.setItem(SAVE_KEY, prior);
+    return `saved slot "${name}" (day ${data.time && data.time.day})`;
+  },
+
+  loadSlot(name) {
+    if (!name) return 'usage: load <name>';
+    if (typeof continueGame !== 'function') return 'continueGame missing';
+    const raw = localStorage.getItem(DEV_SLOT_PREFIX + name);
+    if (!raw) return `no slot: ${name}`;
+    let data;
+    try { data = JSON.parse(raw); } catch { return 'corrupt slot data'; }
+    if (!data) return 'corrupt slot data';
+    if (data.v !== SAVE_VERSION) {
+      if (typeof migrateSave === 'function') {
+        data = migrateSave(data);
+        if (!data) return `slot version unsupported (need v${SAVE_VERSION})`;
+      } else {
+        return `slot version mismatch (need v${SAVE_VERSION})`;
+      }
+    }
+    // Re-point the launch state so World.init's monkey-patch uses the slot's
+    // seed when resetRun fires inside continueGame.
+    if (window.DevState) {
+      window.DevState.seed = data.seed;
+      if (data.devRegion) {
+        window.DevState.region = { ...data.devRegion };
+      } else if (data.regionName && typeof LEVELS !== 'undefined') {
+        const lvl = LEVELS.find(l => l.region && l.region.name === data.regionName);
+        if (lvl) window.DevState.region = { ...lvl.region };
+      }
+      if (data.levelIndex != null) window.DevState.levelIndex = data.levelIndex;
+      // Sync LEVELS[idx].region so resetRun picks up our region object.
+      if (typeof LEVELS !== 'undefined' && LEVELS[data.levelIndex] && window.DevState.region) {
+        LEVELS[data.levelIndex].region = { ...window.DevState.region };
+      }
+      // First-time load from dev shell: swap to game UI.
+      if (window.DevState.enterGameUI) window.DevState.enterGameUI();
+    }
+    continueGame(data);
+    return `loaded "${name}" — day ${data.time && data.time.day}, ${data.time && data.time.phase}`;
+  },
+
+  listSlots() {
+    const items = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(DEV_SLOT_PREFIX)) continue;
+      const slotName = k.slice(DEV_SLOT_PREFIX.length);
+      try {
+        const d = JSON.parse(localStorage.getItem(k));
+        const day = d && d.time && d.time.day;
+        const phase = d && d.time && d.time.phase;
+        const when = d && d.savedAt ? new Date(d.savedAt).toISOString().slice(0, 16).replace('T', ' ') : '?';
+        items.push(`  ${slotName.padEnd(16)}  day ${String(day ?? '?').padStart(3)} ${(phase ?? '').padEnd(5)}  ${when}`);
+      } catch {
+        items.push(`  ${slotName}  (corrupt)`);
+      }
+    }
+    if (!items.length) return 'no slots (try `save <name>`)';
+    return `slots:\n${items.join('\n')}`;
+  },
+
+  removeSlot(name) {
+    if (!name) return 'usage: slots rm <name>';
+    const k = DEV_SLOT_PREFIX + name;
+    if (!localStorage.getItem(k)) return `no slot: ${name}`;
+    localStorage.removeItem(k);
+    return `removed slot "${name}"`;
   },
 
   // ---- give ----

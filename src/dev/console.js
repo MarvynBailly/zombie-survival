@@ -22,14 +22,40 @@ const DevConsole = (function () {
   }
 
   function onGlobalKey(e) {
-    // Backtick toggles. Ignore when typing into another input.
+    const active = document.activeElement;
+    const typingElsewhere = active && active !== inputEl &&
+      (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+    const typingInConsole = active === inputEl;
+
+    // Backtick: toggle console. Ignore when typing into a different input.
     if (e.key === '`' || e.code === 'Backquote') {
-      const active = document.activeElement;
-      if (active && active !== inputEl && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+      if (typingElsewhere) return;
       e.preventDefault();
       toggle();
-    } else if (e.key === 'Escape' && visible) {
-      toggle();
+      return;
+    }
+    if (e.key === 'Escape' && visible) { toggle(); return; }
+
+    // Backslash: toggle pause. Don't fire while typing in any input.
+    if (e.key === '\\') {
+      if (typingElsewhere || typingInConsole) return;
+      if (!window.DevCheats) return;
+      e.preventDefault();
+      const msg = window.DevCheats.togglePause();
+      if (visible) log(msg, 'sys');
+      return;
+    }
+
+    // Backspace: step one tick while paused. Must not fire while typing
+    // (would delete characters); guard against both console + other inputs.
+    if (e.key === 'Backspace') {
+      if (typingElsewhere || typingInConsole) return;
+      if (!window.DevCheats || !window.Game) return;
+      if (window.Game.mode !== 'paused') return;
+      e.preventDefault();
+      const msg = window.DevCheats.step(1);
+      if (visible) log(msg, 'sys');
+      return;
     }
   }
 
@@ -223,6 +249,29 @@ const DevConsole = (function () {
         return C.setTimescale(args[0]);
       }
 
+      case 'pause':
+        return C.pause();
+      case 'resume':
+      case 'play':
+        return C.resume();
+      case 'step':
+        return C.step(args[0]);
+
+      case 'save': {
+        if (args.length === 0) return 'usage: save <name>';
+        return C.saveSlot(args[0]);
+      }
+      case 'load': {
+        if (args.length === 0) return 'usage: load <name>';
+        return C.loadSlot(args[0]);
+      }
+      case 'slots': {
+        if (args[0] === 'rm' || args[0] === 'remove' || args[0] === 'del') {
+          return C.removeSlot(args[1]);
+        }
+        return C.listSlots();
+      }
+
       case 'pos':
       case 'where': {
         const p = window.Game && window.Game.player;
@@ -263,8 +312,17 @@ const DevConsole = (function () {
     '  time [day|dusk|night|dawn]   jump to start of phase',
     '  day <n>                   set day number (alias: wave)',
     '  timescale <n>             sim speed multiplier (alias: ts)',
+    '  pause / resume            freeze / resume the sim',
+    '  step [n]                  advance n ticks while paused (default 1)',
+    'slots',
+    '  save <name>               snapshot current run to a dev slot',
+    '  load <name>               restore a slot',
+    '  slots                     list slots',
+    '  slots rm <name>           delete a slot',
     '',
-    'press ` to toggle, esc to close, ↑/↓ for history, tab to complete',
+    'keys: ` toggle console · esc close · ↑↓ history · tab complete',
+    '      \\ pause/resume · backspace step (while paused)',
+    '      shift+click on M-map → teleport',
   ].join('\n');
 
   return { mount, log, show, toggle };
