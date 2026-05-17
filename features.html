@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zombie Survival · Feature Showcase</title>
+<style>
+  :root {
+    --bg: #0e1110;
+    --bg-2: #161a18;
+    --bg-3: #1d2220;
+    --line: #2a302d;
+    --line-2: #3a423e;
+    --txt: #d8d6cd;
+    --dim: #8a8b82;
+    --hi:  #f5e9c8;
+
+    --arsenal: #c94a3e;
+    --bestiary: #7a4a9a;
+    --foundry: #d68b2c;
+    --homestead: #4a8a55;
+    --main: #5b9bd5;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--txt); font-family: ui-monospace, "JetBrains Mono", "SF Mono", Consolas, monospace; font-size: 14px; line-height: 1.55; }
+  a { color: var(--hi); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h1, h2, h3, h4 { font-family: inherit; letter-spacing: 0.5px; margin: 0; }
+  code { background: #0a0c0b; padding: 0 4px; border-radius: 2px; color: #c5d9b8; font-size: 12.5px; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 24px 80px; }
+
+  /* hero */
+  .hero {
+    border: 1px solid var(--line);
+    background: linear-gradient(135deg, #0e1110 0%, #1a1f1c 100%);
+    padding: 36px 32px;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 90% 10%, rgba(201, 74, 62, 0.07), transparent 50%),
+      radial-gradient(circle at 10% 90%, rgba(122, 74, 154, 0.07), transparent 50%);
+    pointer-events: none;
+  }
+  .hero h1 { font-size: 28px; color: var(--hi); margin-bottom: 6px; letter-spacing: 2px; }
+  .hero .sub { color: var(--dim); font-size: 13px; max-width: 720px; }
+  .hero .meta { margin-top: 18px; display: flex; gap: 28px; flex-wrap: wrap; color: var(--dim); font-size: 12px; }
+  .hero .meta b { color: var(--txt); font-weight: 500; }
+
+  /* nav strip */
+  .nav {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+  .nav a {
+    display: block;
+    border: 1px solid var(--line);
+    padding: 12px 14px;
+    background: var(--bg-2);
+    color: var(--txt);
+    text-decoration: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .nav a:hover { border-color: var(--line-2); background: var(--bg-3); text-decoration: none; }
+  .nav a .label { font-size: 10.5px; color: var(--dim); letter-spacing: 1.5px; }
+  .nav a .name { font-size: 13.5px; color: var(--hi); display: block; margin-top: 4px; }
+
+  /* branch sections */
+  .branch {
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    margin-bottom: 24px;
+  }
+  .branch-head {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .branch-head h2 { font-size: 17px; letter-spacing: 1.5px; }
+  .branch-head .git { color: var(--dim); font-size: 11.5px; font-family: ui-monospace, monospace; }
+  .branch-body { padding: 22px; }
+
+  .pill {
+    display: inline-block;
+    font-size: 10.5px;
+    letter-spacing: 1px;
+    padding: 3px 9px;
+    border-radius: 1px;
+    background: var(--bg-3);
+    border: 1px solid var(--line-2);
+    color: var(--txt);
+    text-transform: uppercase;
+  }
+  .pill.status-merged { background: #1a3024; border-color: #2e5a40; color: #94d9a5; }
+  .pill.status-wip    { background: #3a2a14; border-color: #6a5028; color: #f0c785; }
+  .pill.status-stable { background: #1a2a3a; border-color: #2e4a6e; color: #8fb5e5; }
+
+  /* color bars by branch */
+  .branch[data-c="arsenal"]   .branch-head { border-left: 4px solid var(--arsenal); }
+  .branch[data-c="bestiary"]  .branch-head { border-left: 4px solid var(--bestiary); }
+  .branch[data-c="foundry"]   .branch-head { border-left: 4px solid var(--foundry); }
+  .branch[data-c="homestead"] .branch-head { border-left: 4px solid var(--homestead); }
+  .branch[data-c="main"]      .branch-head { border-left: 4px solid var(--main); }
+
+  /* commit log */
+  .commits {
+    background: #0a0c0b;
+    border: 1px solid var(--line);
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .commits div { padding: 2px 0; }
+  .commits .sha { color: #c5d9b8; }
+
+  /* feature grid */
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+  .feat {
+    border: 1px solid var(--line);
+    padding: 14px 16px;
+    background: var(--bg-3);
+  }
+  .feat h4 { font-size: 13px; color: var(--hi); margin-bottom: 6px; letter-spacing: 0.5px; }
+  .feat .tag { font-size: 10px; color: var(--dim); letter-spacing: 1px; margin-bottom: 8px; }
+  .feat p { margin: 0; font-size: 12.5px; color: var(--txt); }
+  .feat ul { margin: 6px 0 0 0; padding-left: 18px; font-size: 12px; color: var(--txt); }
+  .feat ul li { padding: 1px 0; }
+
+  /* section subhead */
+  .sh {
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin: 24px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--line);
+    text-transform: uppercase;
+  }
+  .sh:first-child { margin-top: 0; }
+
+  /* enemy/weapon table */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+  th { color: var(--dim); font-weight: 500; letter-spacing: 1px; font-size: 10.5px; text-transform: uppercase; background: #0a0c0b; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--hi); }
+  td.gimmick { color: var(--dim); font-size: 11.5px; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* foundry diagram */
+  .foundry-chain {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 8px;
+    align-items: stretch;
+    margin: 10px 0 18px;
+  }
+  .foundry-col {
+    border: 1px solid var(--line);
+    background: var(--bg-3);
+    padding: 10px 12px;
+  }
+  .foundry-col h5 {
+    font-size: 10.5px;
+    letter-spacing: 1.5px;
+    color: var(--foundry);
+    margin-bottom: 8px;
+  }
+  .foundry-col ul { margin: 0; padding-left: 16px; font-size: 12px; }
+  .foundry-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--dim);
+    font-size: 18px;
+  }
+
+  /* perk lanes */
+  .perks {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .perk-lane {
+    border: 1px solid var(--line);
+    background: var(--bg-3);
+    padding: 12px;
+  }
+  .perk-lane h5 {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  .perk-lane.gunner h5   { color: #e36a52; }
+  .perk-lane.medic h5    { color: #6ec96a; }
+  .perk-lane.engineer h5 { color: #e5c45a; }
+  .perk-lane.scout h5    { color: #5fb6e8; }
+  .perk-lane ul { margin: 0; padding-left: 14px; font-size: 12px; }
+  .perk-lane ul li { padding: 2px 0; color: var(--txt); }
+  .perk-lane ul li b { color: var(--hi); font-weight: 500; }
+
+  /* footer */
+  footer {
+    margin-top: 40px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    color: var(--dim);
+    font-size: 11.5px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  @media (max-width: 900px) {
+    .nav { grid-template-columns: repeat(2, 1fr); }
+    .perks { grid-template-columns: repeat(2, 1fr); }
+    .foundry-chain {
+      grid-template-columns: 1fr;
+    }
+    .foundry-arrow { transform: rotate(90deg); padding: 4px 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section class="hero">
+    <h1>ZOMBIE SURVIVAL — FEATURE SHOWCASE</h1>
+    <div class="sub">
+      A snapshot of what's been built across every active branch and worktree of the
+      <code>zombie-survival</code> project — BoxHead-style top-down arena shooter expanded into a
+      survival/colony hybrid. Each section below covers one parallel development line: what's
+      shipped, what's WIP, and what each phase adds.
+    </div>
+    <div class="meta">
+      <span><b>5</b> branches / worktrees</span>
+      <span><b>4</b> active feature lines</span>
+      <span><b>30+</b> enemy types</span>
+      <span><b>16</b> weapons</span>
+      <span><b>14</b> foundry machines</span>
+      <span><b>17</b> homestead modules</span>
+    </div>
+  </section>
+
+  <nav class="nav">
+    <a href="#main"><span class="label">MAIN</span><span class="name">Core game</span></a>
+    <a href="#arsenal"><span class="label">ARSENAL</span><span class="name">Weapons &amp; perks</span></a>
+    <a href="#bestiary"><span class="label">BESTIARY</span><span class="name">Enemies &amp; bosses</span></a>
+    <a href="#foundry"><span class="label">FOUNDRY</span><span class="name">Production chain</span></a>
+    <a href="#homestead"><span class="label">HOMESTEAD</span><span class="name">Base &amp; survival</span></a>
+  </nav>
+
+  <!-- ─────────────────────── MAIN ─────────────────────── -->
+  <section class="branch" data-c="main" id="main">
+    <div class="branch-head">
+      <h2>MAIN — Core game <span class="pill status-stable">STABLE</span></h2>
+      <span class="git">branch: <code>main</code> · HEAD <code>30d1eb1</code></span>
+    </div>
+    <div class="branch-body">
+      <div class="commits">
+        <div><span class="sha">30d1eb1</span> work</div>
+        <div><span class="sha">2533631</span> bots!</div>
+        <div><span class="sha">49d93eb</span> lots of work</div>
+        <div><span class="sha">7c59652</span> pre major update</div>
+        <div><span class="sha">aee0d2d</span> updated sprites</div>
+      </div>
+
+      <div class="sh">Shipped core</div>
+      <div class="features">
+        <div class="feat">
+          <h4>Top-down arena loop</h4>
+          <p>Fixed-timestep 60 Hz update, interpolated render, camera follow, procedural 32k×32k world generated from a noise sampler — chunked and lazily activated around the player.</p>
+        </div>
+        <div class="feat">
+          <h4>Twelve base weapons</h4>
+          <p>Pistol, shotgun, SMG, rocket, barrels, walls, crossbow, flamer, minigun, railgun, grenade launcher, chainsaw — slot keys <code>1</code>–<code>=</code>.</p>
+        </div>
+        <div class="feat">
+          <h4>Wave director &amp; day cycle</h4>
+          <p>Day/dusk/night phases, escalating spawn budgets, edge-based and POI-bound emitters. Blood-moon-style harder nights gated by the trader system.</p>
+        </div>
+        <div class="feat">
+          <h4>Squad &amp; bots</h4>
+          <p>Up to 3 recruitable survivors (medic / engineer / soldier) with permadeath, leash AI, hold-position, and named backstories. Already wired in <code>squad.js</code>.</p>
+        </div>
+        <div class="feat">
+          <h4>Perks (4 lanes × 6)</h4>
+          <p>Gunner / Medic / Engineer / Scout. One point per day survived; unlocks reset on death. Buff registry consulted via <code>perkMult()</code> / <code>perkSum()</code>.</p>
+        </div>
+        <div class="feat">
+          <h4>Weather + lore</h4>
+          <p>Daily forecast (clear / fog / heatwave / rain / blizzard) with speed &amp; aggro multipliers. <code>lore.js</code> ships 40+ flavor fragments looted from furniture.</p>
+        </div>
+        <div class="feat">
+          <h4>Sewers &amp; bunkers</h4>
+          <p>Manholes portal into instanced, deterministically-seeded dungeons (8–15 rooms). Same manhole = same layout across runs.</p>
+        </div>
+        <div class="feat">
+          <h4>PocketBase leaderboard</h4>
+          <p>Score, waves, kills, weapon stats submitted on death to <code>proj_zombie_survival_scores</code>. Graceful offline fallback.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────── ARSENAL ─────────────────────── -->
+  <section class="branch" data-c="arsenal" id="arsenal">
+    <div class="branch-head">
+      <h2>ARSENAL — Weapons, mods &amp; perks <span class="pill status-wip">PHASE 2 / WIP</span></h2>
+      <span class="git">worktree: <code>arsenal-impl</code> · HEAD <code>a430429</code></span>
+    </div>
+    <div class="branch-body">
+      <div class="commits">
+        <div><span class="sha">a430429</span> Phase 2: weapons &amp; melee — add 4 new weapons (nail/taser/katana/sledge) plus polish on railgun/GL/saw/shield</div>
+        <div><span class="sha">331ee35</span> Phase 1: foundations — arsenal registries, per-weapon state, save v6</div>
+        <div><span class="sha">9488b7b</span> snapshot: WIP from main (perks, squad, modifications) before arsenal work</div>
+      </div>
+
+      <div class="sh">New weapons (Phase 2)</div>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Weapon</th><th>Key</th><th>Rate</th><th>Damage</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>13</td><td>Nail Gun</td><td><code>\</code></td><td class="num">0.18s</td><td class="num">14</td><td class="gimmick">Pins corpses to walls; rapid medium-range.</td></tr>
+          <tr><td>14</td><td>Chain Taser</td><td><code>[</code></td><td class="num">0.9s</td><td class="num">28</td><td class="gimmick">Arcs to nearby targets — chains stuns.</td></tr>
+          <tr><td>15</td><td>Katana</td><td><code>/</code></td><td class="num">0.5s</td><td class="num">70</td><td class="gimmick">Melee sweep, cleaves multiple zombies.</td></tr>
+          <tr><td>16</td><td>Sledgehammer</td><td><code>]</code></td><td class="num">0.95s</td><td class="num">55</td><td class="gimmick">Slow swing, knockback, breaks walls.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sh">Ammo &amp; modifications</div>
+      <div class="features">
+        <div class="feat">
+          <h4>Ammo types</h4>
+          <p>Cross-weapon ammo picker — pick per-magazine which kind to load:</p>
+          <ul>
+            <li><b>Standard</b> — balanced baseline</li>
+            <li><b>Incendiary</b> — DoT, ignites zombies</li>
+            <li><b>Armor-Piercing</b> — ignores frontDR on Riot/Juggernaut</li>
+            <li><b>Explosive</b> — small AoE per hit</li>
+          </ul>
+        </div>
+        <div class="feat">
+          <h4>Attachment slots</h4>
+          <p>Per-weapon registry of mods folded in by <code>effectiveWeapon()</code> at fire time:</p>
+          <ul>
+            <li><b>Sight</b> — Red Dot, 4× Scope, Thermal</li>
+            <li><b>Muzzle</b> — Suppressor (aggro −80%), Compensator</li>
+            <li><b>Mag</b> — Extended, Drum</li>
+            <li><b>Under</b> — Bayonet, Flashlight</li>
+          </ul>
+        </div>
+        <div class="feat">
+          <h4>Modifications (passive)</h4>
+          <ul>
+            <li><b>Headhunter</b> — +25% crit on headshot</li>
+            <li><b>Ricochet</b> — bullets bounce once</li>
+            <li><b>Quickdraw</b> — reload-while-holstered</li>
+            <li><b>Frugal</b> — refund 1 bullet on kill</li>
+          </ul>
+        </div>
+        <div class="feat">
+          <h4>Riot Shield</h4>
+          <p>Equippable defensive item — blocks frontal melee &amp; projectiles, slows movement, can bash for stun.</p>
+        </div>
+      </div>
+
+      <div class="sh">Perks (4 lanes × 6)</div>
+      <div class="perks">
+        <div class="perk-lane gunner">
+          <h5>GUNNER</h5>
+          <ul>
+            <li><b>Quick Hands</b> −15% reload</li>
+            <li><b>Big Mags</b> +25% ammo pickups</li>
+            <li><b>Steady Aim</b> −20% spread</li>
+            <li><b>Trigger Discipline</b> −10% fire interval</li>
+            <li><b>Hollow Points</b> +15% bullet dmg</li>
+            <li><b>Last Stand</b> +50% dmg sub-30% HP</li>
+          </ul>
+        </div>
+        <div class="perk-lane medic">
+          <h5>MEDIC</h5>
+          <ul>
+            <li><b>Tough It Out</b> +25 max HP</li>
+            <li><b>Field Medic</b> +0.5 HP/s regen</li>
+            <li><b>Better Bandages</b> +15 HP</li>
+            <li><b>Strong Stomach</b> +50% food</li>
+            <li><b>Magnet</b> +60% pickup range</li>
+            <li><b>Adrenaline</b> +0.4s iframes</li>
+          </ul>
+        </div>
+        <div class="perk-lane engineer">
+          <h5>ENGINEER</h5>
+          <ul>
+            <li><b>Reinforced</b> +50% wall HP</li>
+            <li><b>Quick Build</b> −30% place CD</li>
+            <li><b>Demolitions</b> +25% explosion R</li>
+            <li><b>Tinker</b> walls auto-repair 4/s</li>
+            <li><b>Scrapper</b> +50% scrap drops</li>
+            <li><b>Auto-Turret</b> unlocks turrets</li>
+          </ul>
+        </div>
+        <div class="perk-lane scout">
+          <h5>SCOUT</h5>
+          <ul>
+            <li><b>Light Feet</b> +15% speed</li>
+            <li><b>Sprint</b> Shift = +30% (5s drain)</li>
+            <li><b>Silent Boots</b> −40% gun aggro</li>
+            <li><b>Scout Eye</b> +20% minimap</li>
+            <li><b>Dodge Roll</b> Shift+move = dash</li>
+            <li><b>Fast Hands</b> −50% chest open</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────── BESTIARY ─────────────────────── -->
+  <section class="branch" data-c="bestiary" id="bestiary">
+    <div class="branch-head">
+      <h2>BESTIARY — Enemies, factions, bosses <span class="pill status-wip">PHASE 0–2 / WIP</span></h2>
+      <span class="git">worktree: <code>bestiary-expansion</code> · HEAD <code>d789436</code></span>
+    </div>
+    <div class="branch-body">
+      <div class="commits">
+        <div><span class="sha">d789436</span> Phase 1: pack flanking, sire call, stampede behaviors</div>
+        <div><span class="sha">8b0a2c9</span> Phase 0: faction tags, player infection, boss arena framework</div>
+      </div>
+
+      <div class="sh">Phase 0 — Foundations</div>
+      <div class="features">
+        <div class="feat">
+          <h4>Faction system</h4>
+          <p>Five factions with an asymmetric hostility table — wildlife attacks raiders only if wired both ways. Drives target selection in <code>updateZombies</code>.</p>
+          <ul>
+            <li><b>zombie</b> → player, raider, wildlife</li>
+            <li><b>raider</b> → player, zombie</li>
+            <li><b>cultist</b> → player (neutral to zombies)</li>
+            <li><b>wildlife</b> → player, zombie</li>
+          </ul>
+        </div>
+        <div class="feat">
+          <h4>Player infection</h4>
+          <p>0–100% bar under HP. Decays 0.3/s when no recent source. Spitter spit adds 3%, bloater aura 0.5%/tick, rats 1% per bite. Death at 100.</p>
+        </div>
+        <div class="feat">
+          <h4>Boss arena framework</h4>
+          <p>Boss-on-engage: ring of indestructible walls erects around <code>Game.bossArena</code>, top-center health bar + nameplate, phase callbacks at HP thresholds (66%, 33%), walls drop on death.</p>
+        </div>
+      </div>
+
+      <div class="sh">Phase 1 — Horde behaviors</div>
+      <div class="features">
+        <div class="feat">
+          <h4>Pack flanking</h4>
+          <p>When ≥5 same-faction zombies within 200px of player, 30% are deterministically tagged with a flank side and add lateral steering offset perpendicular to the player vector.</p>
+        </div>
+        <div class="feat">
+          <h4>Sire call</h4>
+          <p>1-in-12 walkers spawn as a <b>sire</b> (red shoulder cloth). On death they emit a screech FX and schedule 4 extra walker spawns over 8s.</p>
+        </div>
+        <div class="feat">
+          <h4>Stampede</h4>
+          <p>Groups of 8+ walkers within 4 tiles accrue momentum. At cap they sprint at ×1.6 speed for 4s and trample tier-1 walls.</p>
+        </div>
+      </div>
+
+      <div class="sh">Enemy roster (current)</div>
+      <table>
+        <thead><tr><th>Name</th><th>HP</th><th>Speed</th><th>Dmg</th><th>Score</th><th>Gimmick</th></tr></thead>
+        <tbody>
+          <tr><td>Walker</td><td class="num">55</td><td class="num">60</td><td class="num">10</td><td class="num">10</td><td class="gimmick">Baseline melee. 1-in-12 spawns as Sire.</td></tr>
+          <tr><td>Runner</td><td class="num">30</td><td class="num">135</td><td class="num">7</td><td class="num">15</td><td class="gimmick">Fast, low HP.</td></tr>
+          <tr><td>Tank</td><td class="num">240</td><td class="num">40</td><td class="num">22</td><td class="num">40</td><td class="gimmick">Slow, heavy hits, immune to moats.</td></tr>
+          <tr><td>Fire</td><td class="num">65</td><td class="num">80</td><td class="num">8</td><td class="num">25</td><td class="gimmick">Ignites zombies on contact.</td></tr>
+          <tr><td>Spitter</td><td class="num">70</td><td class="num">55</td><td class="num">12</td><td class="num">25</td><td class="gimmick">Ranged spit — +3% infection on hit.</td></tr>
+          <tr><td>Crawler</td><td class="num">22</td><td class="num">160</td><td class="num">6</td><td class="num">12</td><td class="gimmick">Tiny, very fast, swarms.</td></tr>
+          <tr><td>Screamer</td><td class="num">45</td><td class="num">70</td><td class="num">0</td><td class="num">30</td><td class="gimmick">Aura buffs nearby zombies +50% speed.</td></tr>
+          <tr><td>Bomber</td><td class="num">110</td><td class="num">70</td><td class="num">0</td><td class="num">35</td><td class="gimmick">Explodes on death (r 80, dmg 50).</td></tr>
+          <tr><td>Riot</td><td class="num">180</td><td class="num">55</td><td class="num">18</td><td class="num">50</td><td class="gimmick">80% front damage reduction.</td></tr>
+          <tr><td>Wraith</td><td class="num">60</td><td class="num">110</td><td class="num">14</td><td class="num">35</td><td class="gimmick">Walks through walls.</td></tr>
+          <tr><td>Cluster (boss)</td><td class="num">280</td><td class="num">0</td><td class="num">—</td><td class="num">200</td><td class="gimmick">Stationary — spawns Hatch every 4s.</td></tr>
+          <tr><td>Hivesac</td><td class="num">40</td><td class="num">0</td><td class="num">—</td><td class="num">25</td><td class="gimmick">Bursts into 5 Hatch on death.</td></tr>
+          <tr><td>Shrieker</td><td class="num">50</td><td class="num">0</td><td class="num">—</td><td class="num">40</td><td class="gimmick">Calls 2 walkers every 2s.</td></tr>
+          <tr><td>Brood</td><td class="num">400</td><td class="num">35</td><td class="num">22</td><td class="num">150</td><td class="gimmick">Drops crawlers as it walks.</td></tr>
+          <tr><td>Necro</td><td class="num">90</td><td class="num">60</td><td class="num">0</td><td class="num">80</td><td class="gimmick">Raises nearby corpses at 50% HP.</td></tr>
+          <tr><td>Charger</td><td class="num">150</td><td class="num">60</td><td class="num">25</td><td class="num">60</td><td class="gimmick">Telegraphs, then charges 320 speed.</td></tr>
+          <tr><td>Reaper</td><td class="num">110</td><td class="num">70</td><td class="num">25</td><td class="num">55</td><td class="gimmick">Long-reach melee (60px).</td></tr>
+          <tr><td>Stalker</td><td class="num">50</td><td class="num">130</td><td class="num">18</td><td class="num">50</td><td class="gimmick">Cloaked outside 150px.</td></tr>
+          <tr><td>Bloater</td><td class="num">200</td><td class="num">45</td><td class="num">6</td><td class="num">70</td><td class="gimmick">Gas aura: dmg + 0.5%/tick infection. Death cloud.</td></tr>
+          <tr><td>Frost</td><td class="num">80</td><td class="num">60</td><td class="num">8</td><td class="num">35</td><td class="gimmick">Chill on hit (−40% speed, 2.5s).</td></tr>
+          <tr><td>Mimic</td><td class="num">90</td><td class="num">0</td><td class="num">30</td><td class="num">60</td><td class="gimmick">Disguised as a chest. Ambush bite.</td></tr>
+          <tr><td>Centipede (boss)</td><td class="num">600</td><td class="num">90</td><td class="num">35</td><td class="num">500</td><td class="gimmick">7-segment body, head crit ×1.5.</td></tr>
+          <tr><td>Hatch</td><td class="num">12</td><td class="num">180</td><td class="num">4</td><td class="num">4</td><td class="gimmick">Spawned by Cluster / Hivesac.</td></tr>
+          <tr><td>Twins</td><td class="num">130</td><td class="num">60</td><td class="num">12</td><td class="num">30</td><td class="gimmick">Splits into 2 walkers (50% HP) on death.</td></tr>
+          <tr><td>Juggernaut <small>(P2)</small></td><td class="num">350</td><td class="num">35</td><td class="num">22</td><td class="num">80</td><td class="gimmick">95% frontal DR (full 180° arc). Day 8+.</td></tr>
+          <tr><td>Leaper <small>(P2)</small></td><td class="num">60</td><td class="num">110</td><td class="num">12</td><td class="num">30</td><td class="gimmick">Arcs over walls when path blocked.</td></tr>
+          <tr><td>Thorn Husk <small>(P2)</small></td><td class="num">90</td><td class="num">0</td><td class="num">25</td><td class="num">40</td><td class="gimmick">Tree disguise, bleed on bite (4 DPS × 5s).</td></tr>
+          <tr><td>Plague Rat <small>(P2)</small></td><td class="num">6</td><td class="num">100</td><td class="num">1</td><td class="num">2</td><td class="gimmick">Spawns in packs of 8. +1% infection per bite.</td></tr>
+          <tr><td>Stag <small>(P2, wildlife)</small></td><td class="num">200</td><td class="num">60</td><td class="num">25</td><td class="num">60</td><td class="gimmick">Charges 320 speed. Drops antler. 1 per zone.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="sh">Roadmap (Phases 3–7)</div>
+      <div class="features">
+        <div class="feat">
+          <div class="tag">PHASE 3 — MECHANIC</div>
+          <h4>Ember Walker, Apex Predator, Ice Wraith, Burrowers</h4>
+          <p>Fire-leaving walker, once-per-save night-hunter that tracks gunfire, phase-shifting wraith that goes solid in flames, dust-mound ambushers.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">PHASE 4 — TERRAIN-COUPLED</div>
+          <h4>Swimmers, Swamp Lurker, Rabid Pack, Crows</h4>
+          <p>Submerged-ripple swimmers, reed-disguised grabbers, leaderable wildlife packs, airborne diving crows that blur the screen.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">PHASE 5 — HUMANS</div>
+          <h4>Raiders, Looters, Cultists, The Bounty</h4>
+          <p>Raider camps with cover-seeking AI, looters that beeline to chests, self-infecting cultists at forest altars, a singleton bounty NPC with a rifle and a compass-tracked red blip.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">PHASE 6 — WORLD BOSSES</div>
+          <h4>Nursery · Witness Tree · Leviathan · Colossus</h4>
+          <p>Four POI-bound bosses using the Phase 0 arena framework. Colossus drops a permanent −15% region spawn rate on kill.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────── FOUNDRY ─────────────────────── -->
+  <section class="branch" data-c="foundry" id="foundry">
+    <div class="branch-head">
+      <h2>FOUNDRY — Production chain &amp; automation <span class="pill status-stable">PHASES 0–4 / READY</span></h2>
+      <span class="git">worktree: <code>foundry-impl</code> · HEAD <code>f802aa8</code></span>
+    </div>
+    <div class="branch-body">
+      <div class="commits">
+        <div><span class="sha">f802aa8</span> foundry: phase 3 MAXI + phase 4 TWISTS</div>
+        <div><span class="sha">d1f88e0</span> foundry: phase 2 MIDI — automation layer</div>
+        <div><span class="sha">0a4c6d0</span> foundry: phase 1 MICRO — hand-hauled production chain</div>
+        <div><span class="sha">c150b98</span> foundry: phase 0 foundations</div>
+      </div>
+
+      <p>A placeable-machine layer on top of the world: gather ore, sulfur, oil, brass — feed them through chains that refine, press, and assemble finished cartridges. All machine instances live on <code>Game.machines</code>; each is a tiny state machine with inputs / outputs / progress / recipeId.</p>
+
+      <div class="sh">Production chain (Phase 1 MICRO — hand-hauled)</div>
+      <div class="foundry-chain">
+        <div class="foundry-col">
+          <h5>EXTRACTION</h5>
+          <ul>
+            <li><b>Hand Mine</b> — saltpeter / sulfur / charcoal</li>
+            <li><b>Ore Drill</b> — iron / copper / lead</li>
+            <li><b>Pumpjack</b> — sweet or sour crude (toxic)</li>
+          </ul>
+        </div>
+        <div class="foundry-arrow">▶</div>
+        <div class="foundry-col">
+          <h5>REFINING</h5>
+          <ul>
+            <li><b>Blast Furnace</b> — ore → ingot, cast bullets (lead vents toxic gas)</li>
+            <li><b>Powder Mill</b> — saltpeter + sulfur + charcoal → fast/med/slow powder</li>
+            <li><b>Refinery Tower</b> — cracks crude into 4 named precursors (powder/casing/lube/fuel)</li>
+            <li><b>Centrifuge</b> — purifies saltpeter/sulfur, cracks bile → acid + lye</li>
+          </ul>
+        </div>
+        <div class="foundry-arrow">▶</div>
+        <div class="foundry-col">
+          <h5>ASSEMBLY</h5>
+          <ul>
+            <li><b>Casing Press</b> — copper → brass strip → brass casing</li>
+            <li><b>Primer Bench</b> — compound + copper → primer caps</li>
+            <li><b>Ammo Press</b> — casing + primer + powder + bullet → finished cartridges</li>
+            <li><b>Specialty Press</b> — incendiary, AP, acid, capacitor rounds</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="sh">Phase 2 — MIDI (automation layer)</div>
+      <div class="features">
+        <div class="feat">
+          <h4>Silo (buffer)</h4>
+          <p>Bulk storage — drop any precursor in, pull it back later. 9999 cap. Buffer for night-shift production.</p>
+        </div>
+        <div class="feat">
+          <h4>Foreman Console</h4>
+          <p>Top-down x-ray of your foundry — live throughput per cluster, fill %, alarms when an output is full or an input is starved.</p>
+        </div>
+      </div>
+
+      <div class="sh">Phase 4 — TWISTS</div>
+      <div class="features">
+        <div class="feat">
+          <div class="tag">E·02</div>
+          <h4>Gremlin Baffle</h4>
+          <p>Placeable defensive grate that stops gremlins (and small swarmers) from wedging into machine collision boxes.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">E·01</div>
+          <h4>Stench / aggro</h4>
+          <p>Running machines accrue a foundry-wide <code>foundryStenchScore</code> — the higher it climbs, the harder zombies pull toward your factory. Stop production at night, or pay in tank rushes.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">E·03</div>
+          <h4>Match Grade</h4>
+          <p>Each ammo press cycle rolls a quality tier. Better tiers = tighter spread &amp; slightly higher damage when those cartridges are fired. Logged in <code>foundryQualityLog</code>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────── HOMESTEAD ─────────────────────── -->
+  <section class="branch" data-c="homestead" id="homestead">
+    <div class="branch-head">
+      <h2>HOMESTEAD — Bases, survival &amp; colony <span class="pill status-wip">UNCOMMITTED · 17 MODULES</span></h2>
+      <span class="git">worktree: <code>homestead-features</code> · base <code>30d1eb1</code></span>
+    </div>
+    <div class="branch-body">
+      <p>The largest single feature line — 17 self-contained modules in the worktree, each with its own integration doc under <code>.homestead-integration/</code>. Every module is additive: it never modifies an existing file; the integrator wires it in via a script tag plus a handful of hook calls.</p>
+
+      <div class="sh">Base building (cluster A–C)</div>
+      <div class="features">
+        <div class="feat">
+          <div class="tag">A·02 / A·03 / D·02</div>
+          <h4>Walls — tiers, blueprints, decay</h4>
+          <p><b>Tier up:</b> wood / brick / steel (HP 200 / 600 / 1500). Steel reflects bullets. <b>Blueprints:</b> press <code>B</code> to capture a 16×16 box, paste it as a ghost, click to spend scrap. <b>Decay:</b> 1–3% / day (×2 in rain). Hold <code>R</code> to repair (1 scrap = +20).</p>
+        </div>
+        <div class="feat">
+          <div class="tag">B·01</div>
+          <h4>Bases / Safehouse claims</h4>
+          <p>Plant a Base Flag on a clear tile to claim a safehouse (max 3, min 800px apart, effective ring 480px). Other modules (raid, RV, cameras) all hook off <code>nearestBase()</code>.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">B·02</div>
+          <h4>Garden plots</h4>
+          <p>Till tiles, plant seeds, water with bucket (or let rain do it), harvest crops the kitchen consumes. State on <code>Game.gardenPlots</code>.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">B·03</div>
+          <h4>Garage</h4>
+          <p>Roof + 4-wall garage that refuels &amp; repairs any vehicle parked inside (5s tick). Roof goes translucent when you enter.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">C·02</div>
+          <h4>Moats &amp; pits</h4>
+          <p>Dig flat trench tiles (hold-to-dig with progress meter). Non-tank zombies slow to 40%, bleed 30/s; spiked tiles deal 60 dmg on enter. Tanks immune.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">C·03</div>
+          <h4>Noise Box</h4>
+          <p>Battery-powered decoy — pulls zombie aggro to a placed point until the battery dies. Distracts hordes away from your base for night defense.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">C·04</div>
+          <h4>Cameras &amp; monitors</h4>
+          <p>Place cameras on poles, view feeds from a wall-mounted monitor overlay. Both need power. Both can be destroyed.</p>
+        </div>
+      </div>
+
+      <div class="sh">Survival systems (cluster D–F)</div>
+      <div class="features">
+        <div class="feat">
+          <div class="tag">B·05</div>
+          <h4>Power grid</h4>
+          <p>Generators drain fuel, light a powered radius. Required by Garage tools, Radio, Cameras. Damaged generators drop half-fuel as a scrap pickup.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">B·06</div>
+          <h4>Kitchen &amp; cooking</h4>
+          <p>Cook station consumes crops + canned goods into meals. Meals apply timed buffs (speed, sprint regen, cold resist, etc.) via <code>applyBuff()</code>.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">D·01</div>
+          <h4>Trader + Blood Moon</h4>
+          <p>NPC trader walks the map, opens a shop overlay. Advances a <code>nextBloodMoonDay</code> counter — read by Raid Night and Radio modules.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">D·03</div>
+          <h4>Raid Night</h4>
+          <p>On a blood moon, hive bursts + brood drops swarm nearest base. HUD banner + directional arrow guide you back to the besieged claim.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">D·04 / F3</div>
+          <h4>Vehicles &amp; RV</h4>
+          <p>Drivable vehicles with fuel drain, repair via parts, fire DPS when crashed. RV doubles as a mobile mini-base.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">E·01</div>
+          <h4>Trophy room</h4>
+          <p>Special zombies drop one of 8 trophies. Mount on a plinth crafted from a plinth kit. Plinth props reset per run, but mounted trophies persist forever in <code>'zombie-survival:trophies'</code>.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">E·02</div>
+          <h4>Campfire bonding</h4>
+          <p>Hold <code>E</code> on a campfire at dusk with a squadmate within 80 tiles → 90s pause cutscene. Everyone gets +20 morale and +15% accuracy until next day flip.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">F4c → E·04</div>
+          <h4>Lore: journals, screenshots, hand-drawn maps</h4>
+          <p>Three subsystems: journals lootable from chests (~12%), discrete-event canvas screenshots, sketchpad consumable that snaps explored chunks. Persists across runs in <code>'zombie-survival:lore-meta'</code>.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">F4a</div>
+          <h4>Weather (foundation)</h4>
+          <p>Daily forecast: clear / fog / heatwave / rain / blizzard. Multiplier helpers consulted by player speed, sprint drain, zombie speed, aggro radius, flamer ignite. Particle pools persist between frames so visuals don't strobe.</p>
+        </div>
+        <div class="feat">
+          <div class="tag">A·05</div>
+          <h4>Prefabs</h4>
+          <p>Workbench tab with pre-shaped wall layouts (L, T, room, corridor). Click-paste, spend scrap, instant build.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Generated showcase · branches surveyed on 2026-05-17</span>
+    <span>Each branch lives in its own worktree — see <code>git worktree list</code></span>
+  </footer>
+
+</div>
+</body>
+</html>
