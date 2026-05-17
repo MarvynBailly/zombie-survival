@@ -80,35 +80,55 @@ const DevConsole = (function () {
       inputEl.value = histIdx === -1 ? '' : (history[histIdx] || '');
     } else if (e.key === 'Tab') {
       e.preventDefault();
-      tryComplete();
+      tryComplete(e.shiftKey);
     }
   }
 
-  // Tab completion. Looks at the first token to decide which registry to
-  // complete the second token against. Single match → autofill; multiple →
-  // print the candidate list.
-  function tryComplete() {
+  // Tab-cycling completion. State persists across consecutive Tab presses
+  // and resets whenever the input value differs from what cycling last set
+  // (i.e., the user typed something).
+  let cycle = null;  // { cmd, candidates, index, lastSetValue }
+
+  function tryComplete(reverse) {
     const raw = inputEl.value;
+
+    // Continuing an active cycle: input still matches what we last wrote.
+    if (cycle && raw === cycle.lastSetValue) {
+      const n = cycle.candidates.length;
+      cycle.index = (cycle.index + (reverse ? -1 : 1) + n) % n;
+      const next = `${cycle.cmd} ${cycle.candidates[cycle.index]}`;
+      inputEl.value = next;
+      cycle.lastSetValue = next;
+      return;
+    }
+
+    // New completion session: parse the input.
     const m = raw.match(/^(\S+)\s+(\S*)$/);
-    if (!m) return;
+    if (!m) { cycle = null; return; }
     const cmd = m[1].toLowerCase();
     const partial = m[2].toLowerCase();
     const pool = poolFor(cmd);
-    if (!pool) return;
-    const matches = pool.filter(k => k.toLowerCase().startsWith(partial));
-    if (matches.length === 0) return;
-    if (matches.length === 1) {
-      inputEl.value = `${m[1]} ${matches[0]} `;
+    if (!pool) { cycle = null; return; }
+    const matches = pool.filter(k => k.toLowerCase().startsWith(partial)).sort();
+    if (matches.length === 0) {
+      cycle = null;
+      log(`no match for "${partial}"`, 'sys');
       return;
     }
-    // Many matches: complete to longest common prefix, then list them.
-    const lcp = longestCommonPrefix(matches.map(s => s.toLowerCase()));
-    if (lcp.length > partial.length) {
-      // Preserve the original case of one of the matches.
-      const sample = matches.find(s => s.toLowerCase().startsWith(lcp)) || matches[0];
-      inputEl.value = `${m[1]} ${sample.slice(0, lcp.length)}`;
+    if (matches.length === 1) {
+      // Lone match: complete with trailing space so the user can move on.
+      inputEl.value = `${m[1]} ${matches[0]} `;
+      cycle = null;
+      return;
     }
-    log(matches.slice(0, 30).join('  ') + (matches.length > 30 ? '  …' : ''), 'sys');
+    // Multiple matches: enter cycle mode at the first candidate. No trailing
+    // space, so the next Tab continues the cycle.
+    const startIdx = reverse ? matches.length - 1 : 0;
+    const next = `${m[1]} ${matches[startIdx]}`;
+    inputEl.value = next;
+    cycle = { cmd: m[1], candidates: matches, index: startIdx, lastSetValue: next };
+    const preview = matches.slice(0, 20).join('  ') + (matches.length > 20 ? '  …' : '');
+    log(`${matches.length} matches — tab/shift+tab to cycle:  ${preview}`, 'sys');
   }
 
   function poolFor(cmd) {
@@ -125,16 +145,6 @@ const DevConsole = (function () {
     if (cmd === 'time') return ['day', 'dusk', 'night', 'dawn'];
     if (cmd === 'tp' || cmd === 'teleport') return POI_KINDS;
     return null;
-  }
-
-  function longestCommonPrefix(arr) {
-    if (arr.length === 0) return '';
-    let p = arr[0];
-    for (let i = 1; i < arr.length; i++) {
-      while (!arr[i].startsWith(p)) p = p.slice(0, -1);
-      if (!p) return '';
-    }
-    return p;
   }
 
   // POI kinds — from POI_SIZES in world.js. Hardcoded so tab-completion works
