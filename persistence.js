@@ -14,6 +14,9 @@ function savePrefs() {
 // from its seed; we only override mutable state (player, walls, chest hp/opened).
 function saveGame() {
   if (Game.mode !== 'playing' || !Game.player || Game.player.dead) return;
+  // Don't write while the player is in a sewer instance — World.chunks is
+  // pointing at the dungeon and persisting that would corrupt the save.
+  if (Game.subworld) return;
   const chestOverrides = [];
   World.chunks.forEach((chunk, key) => {
     for (let i = 0; i < chunk.chests.length; i++) {
@@ -48,6 +51,10 @@ function saveGame() {
       weapon: p.weapon,
       unlocked: { ...p.unlocked },
       ammo,
+      inventory: p.inventory ? {
+        capacity: p.inventory.capacity,
+        slots: p.inventory.slots.map(s => s ? { id: s.id, count: s.count } : null),
+      } : null,
     },
     walls: Game.walls.map(w => ({ x: w.x, y: w.y, w: w.w, h: w.h, hp: w.hp, maxHp: w.maxHp })),
     barrels: Game.barrels.map(b => ({ x: b.x, y: b.y, hp: b.hp })),
@@ -58,6 +65,22 @@ function saveGame() {
       .map(([k]) => k),
     discoveredPOIs: Array.from(Game.discoveredPOIs || []),
     exploredChunks: Array.from(Game.exploredChunks || []),
+    perks: Game.perks ? {
+      points: Game.perks.points,
+      unlocked: Array.from(Game.perks.unlocked),
+      totalEarned: Game.perks.totalEarned,
+    } : null,
+    squad: Game.squad ? Game.squad.map(s => ({
+      x: s.x, y: s.y, cls: s.cls, name: s.name, backstory: s.backstory,
+      hp: s.hp, maxHp: s.maxHp, holdMode: !!s.holdMode,
+    })) : null,
+    worldSurvivors: Game.worldSurvivors ? Game.worldSurvivors.map(s => ({
+      x: s.x, y: s.y, cls: s.cls, name: s.name, backstory: s.backstory, hp: s.hp, maxHp: s.maxHp,
+    })) : null,
+    weather: (typeof WEATHER !== 'undefined') ? {
+      current: WEATHER.current,
+      rolledForDay: WEATHER.rolledForDay,
+    } : null,
   };
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch {}
 }

@@ -116,18 +116,24 @@ function render(alpha) {
         for (let ccx = cx0; ccx <= cx1; ccx++) {
           const chunk = World.chunks.get(ccx + ',' + ccy);
           if (!chunk || !chunk.terrain) continue;
-          ctx.drawImage(getChunkSurface(chunk), ccx * cs, ccy * cs);
+          if (chunk.sewer && typeof Sewers !== 'undefined') {
+            Sewers.paintSewerChunk(ctx, chunk);
+          } else {
+            ctx.drawImage(getChunkSurface(chunk), ccx * cs, ccy * cs);
+          }
         }
       }
-      // World border (drawn once after terrain so it's not redrawn per chunk).
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 4;
-      ctx.strokeRect(0, 0, WORLD_W, WORLD_H);
-      ctx.strokeStyle = '#d24b35';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([8, 8]);
-      ctx.strokeRect(2, 2, WORLD_W - 4, WORLD_H - 4);
-      ctx.setLineDash([]);
+      // World border — suppressed in sewer mode.
+      if (!Game.subworld) {
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(0, 0, WORLD_W, WORLD_H);
+        ctx.strokeStyle = '#d24b35';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([8, 8]);
+        ctx.strokeRect(2, 2, WORLD_W - 4, WORLD_H - 4);
+        ctx.setLineDash([]);
+      }
     } else {
       ZSprites.drawGround(ctx, Game.camera, VIEW_W, VIEW_H, WORLD_W, WORLD_H, style);
     }
@@ -159,7 +165,14 @@ function render(alpha) {
     // Obstacles in chunks that intersect the viewport (with 60px margin).
     // Each chunk's obstacle carries its own style.
     World.forEachVisibleObstacle(cam.x, cam.y, VIEW_W, VIEW_H, 60, (o) => {
-      if (rectInView(o)) ZSprites.drawObstacle(ctx, o, o.style || style);
+      if (!rectInView(o)) return;
+      if (o.sewerLadder && typeof Sewers !== 'undefined') {
+        Sewers.drawSewerLadder(ctx, o);
+      } else if (o.sewerWall && typeof Sewers !== 'undefined') {
+        Sewers.drawSewerWall(ctx, o);
+      } else {
+        ZSprites.drawObstacle(ctx, o, o.style || style);
+      }
     });
 
     // chests (visible-chunk iteration, viewport-culled)
@@ -184,6 +197,21 @@ function render(alpha) {
 
     // zombies (culled)
     for (const z of Game.zombies) if (inView(z.x, z.y)) ZSprites.drawZombie(ctx, z);
+
+    // Un-recruited world survivors (cowering pose + recruit prompt).
+    if (Game.worldSurvivors) {
+      for (const s of Game.worldSurvivors) {
+        if (!inView(s.x, s.y)) continue;
+        drawWorldSurvivor(ctx, s);
+      }
+    }
+    // Squad members.
+    if (Game.squad) {
+      for (const s of Game.squad) {
+        if (!inView(s.x, s.y)) continue;
+        drawSquadMember(ctx, s);
+      }
+    }
 
     // Charger telegraph — a red ground line pointing at the player while
     // the charger is winding up its dash. Drawn under the player so the
@@ -266,9 +294,14 @@ function render(alpha) {
 
   // Day/night tint overlay (drawn in screen space, after restoring camera).
   drawDayNightTint();
+  // Weather overlay (fog vignette, rain streaks, snow). Drawn over the
+  // world but under HUD/prompts so UI stays readable.
+  if (typeof WEATHER !== 'undefined') WEATHER.draw(ctx);
 
   // Chest interaction prompt (screen-space, drawn over the world but under HUD).
   drawChestPrompt();
+  drawWorkbenchPrompt();
+  if (typeof Sewers !== 'undefined') Sewers.drawSewerPrompt(ctx);
 
   // minimap top-right of canvas
   drawMinimap();
@@ -305,6 +338,28 @@ function drawChest(ctx, c) {
     ctx.fillStyle = pct > 0.5 ? '#7ad97a' : pct > 0.25 ? '#e3c054' : '#d24b35';
     ctx.fillRect(c.x + 2, c.y - 5, bw * pct, 3);
   }
+}
+
+function drawWorkbenchPrompt() {
+  if (!Game.player || Game.player.dead) return;
+  if (findChestNear(Game.player.x, Game.player.y, CHEST_PROMPT_RADIUS)) return;
+  const wb = findWorkbenchNear(Game.player.x, Game.player.y, WORKBENCH_PROMPT_RADIUS);
+  if (!wb) return;
+  const sx = (wb.x + wb.w / 2) - Game.camera.x;
+  const sy = wb.y - Game.camera.y - 16;
+  ctx.save();
+  ctx.font = 'bold 11px "Manrope", sans-serif';
+  const label = `[E] CRAFT`;
+  const w = ctx.measureText(label).width + 14;
+  ctx.fillStyle = 'rgba(11,12,14,0.85)';
+  ctx.fillRect(sx - w / 2, sy - 16, w, 18);
+  ctx.strokeStyle = '#8ec547';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(sx - w / 2 + 0.5, sy - 16 + 0.5, w - 1, 17);
+  ctx.fillStyle = '#e8e6df';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, sx, sy - 4);
+  ctx.restore();
 }
 
 function drawChestPrompt() {
@@ -928,6 +983,10 @@ function renderHUD() {
   const phaseLabel = phaseInfo.label;
   const phaseRemaining = Math.max(0, Math.ceil(phaseInfo.length - (Game.time.t - phaseInfo.start)));
   waveMeta = `${phaseLabel} · ${phaseRemaining}s`;
+  const perkPts = Game.perks ? Game.perks.points : 0;
+  const perkPill = perkPts > 0
+    ? `<div style="margin-top:4px;font-family:var(--f-mono);font-size:10px;color:var(--toxic);letter-spacing:1.5px">[P] ${perkPts} PERK${perkPts > 1 ? 'S' : ''}</div>`
+    : '';
 
   const html = `
     <div class="hud-box hud-vitals">
@@ -946,6 +1005,7 @@ function renderHUD() {
       <div class="lbl">DAY</div>
       <div class="num">${String(Game.time.day).padStart(2, '0')}</div>
       <div class="meta">${waveMeta}</div>
+      ${perkPill}
     </div>
 
     <div class="hud-box hud-stats">
@@ -989,6 +1049,7 @@ function renderHUD() {
       <span class="kb">ESC</span><span>PAUSE</span>
     </div>
 
+    ${renderSquadHud()}
     ${Game.noticeUntil > now() ? `<div class="notice">${escapeHtml(Game.notice)}</div>` : ''}
     ${Game.bannerUntil > now() ? `<div class="wave-banner show">${escapeHtml(Game.bannerText)}</div>` : ''}
   `;
@@ -1017,3 +1078,82 @@ function formatTime(s) {
   return m + ':' + (ss < 10 ? '0' + ss : ss);
 }
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+// ---------- Squad rendering ----------
+function drawSquadMember(ctx, s) {
+  const def = (typeof SQUAD_CLASS !== 'undefined') ? SQUAD_CLASS[s.cls] : null;
+  const col = def ? def.color : '#e8e6df';
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(s.x, s.y + 7, s.r * 0.9, s.r * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#e8e6df';
+  ctx.fillRect(s.x - 7, s.y - 2, 14, 13);
+  ctx.fillStyle = '#caa17a';
+  ctx.beginPath(); ctx.arc(s.x, s.y - 6, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = col;
+  ctx.fillRect(s.x - 7, s.y - 2, 14, 3);
+  if (s.angle != null) {
+    const ax = s.x + Math.cos(s.angle) * 10;
+    const ay = s.y + Math.sin(s.angle) * 10;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(ax, ay, 2.5, 0, Math.PI * 2); ctx.fill();
+  }
+  if (s.hp < s.maxHp) {
+    const pct = Math.max(0, s.hp / s.maxHp);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(s.x - 12, s.y - 16, 24, 3);
+    ctx.fillStyle = pct > 0.5 ? '#7ad97a' : pct > 0.25 ? '#e3c054' : '#d24b35';
+    ctx.fillRect(s.x - 12, s.y - 16, 24 * pct, 3);
+  }
+  if (s.holdMode) {
+    ctx.fillStyle = 'rgba(227,168,58,0.85)';
+    ctx.font = 'bold 9px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('HOLD', s.x, s.y - 20);
+  }
+}
+function drawWorldSurvivor(ctx, s) {
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(s.x, s.y + 7, s.r * 0.9, s.r * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#7d8a6c';
+  ctx.fillRect(s.x - 6, s.y - 1, 12, 12);
+  ctx.fillStyle = '#a0855a';
+  ctx.beginPath(); ctx.arc(s.x, s.y - 4, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.save();
+  ctx.font = 'bold 10px "Manrope", sans-serif';
+  const label = `[E] RECRUIT ${s.name || ''}`;
+  const w = ctx.measureText(label).width + 14;
+  const px = s.x, py = s.y - 22;
+  ctx.fillStyle = 'rgba(11,12,14,0.85)';
+  ctx.fillRect(px - w / 2, py - 9, w, 18);
+  ctx.strokeStyle = '#8ec547';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(px - w / 2 + 0.5, py - 9 + 0.5, w - 1, 17);
+  ctx.fillStyle = '#e8e6df';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, px, py + 3);
+  ctx.restore();
+}
+function renderSquadHud() {
+  const sq = Game.squad;
+  if (!sq || sq.length === 0) return '';
+  const rows = sq.map(s => {
+    const def = (typeof SQUAD_CLASS !== 'undefined') ? SQUAD_CLASS[s.cls] : null;
+    const col = def ? def.color : '#e8e6df';
+    const pct = Math.max(0, s.hp / s.maxHp);
+    const hpw = Math.round(pct * 64);
+    const lbl = def ? def.label : s.cls.toUpperCase();
+    const flag = s.holdMode ? '<span class="sq-flag">HOLD</span>' : '';
+    return `<div class="sq-row" style="--col:${col}">
+      <div class="sq-dot"></div>
+      <div class="sq-meta">
+        <div class="sq-name">${escapeHtml(s.name)}<span class="sq-cls">${lbl}</span>${flag}</div>
+        <div class="sq-bar"><div class="sq-fill" style="width:${hpw}px"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="hud-box hud-squad">${rows}</div>`;
+}

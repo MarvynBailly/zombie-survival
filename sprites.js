@@ -768,13 +768,20 @@
     const x = pk.x, y = pk.y + bob;
 
     // glow
-    const glowColor = {
+    let glowColor = {
       health: 'rgba(210,75,53,0.35)',
       ammo_shotgun: 'rgba(227,168,58,0.35)',
       ammo_smg: 'rgba(142,197,71,0.35)',
       ammo_rocket: 'rgba(210,75,53,0.35)',
       barrel: 'rgba(195,100,40,0.35)',
-    }[pk.type] || 'rgba(200,200,200,0.3)';
+    }[pk.type];
+    if (!glowColor && typeof pk.type === 'string' && pk.type.startsWith('item_')) {
+      const sub = pk.type.slice(5).replace(/_\d+$/, '');
+      if (sub === 'scrap') glowColor = 'rgba(168,165,156,0.35)';
+      else if (sub === 'bandage') glowColor = 'rgba(232,230,223,0.35)';
+      else if (sub === 'antibiotic') glowColor = 'rgba(95,182,232,0.35)';
+    }
+    if (!glowColor) glowColor = 'rgba(200,200,200,0.3)';
 
     const g = ctx.createRadialGradient(x, y, 2, x, y, pk.r + 8);
     g.addColorStop(0, glowColor);
@@ -859,6 +866,39 @@
         ctx.fillRect(-6, 3, 12, 2);
         ctx.fillStyle = '#9a7a4a';
         ctx.fillRect(-1, -5, 2, 10);
+        break;
+      }
+      default: {
+        // Generic inventory-item pickups — `item_<id>[_<n>]`.
+        if (typeof pk.type === 'string' && pk.type.startsWith('item_')) {
+          const sub = pk.type.slice(5).replace(/_\d+$/, '');
+          if (sub === 'scrap') {
+            ctx.fillStyle = '#43464d';
+            ctx.fillRect(-5, -1, 9, 4);
+            ctx.fillStyle = '#a3a4ac';
+            ctx.fillRect(-5, -1, 9, 1);
+            ctx.strokeStyle = '#c64a36';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.moveTo(-6, -5); ctx.lineTo(-1, -3);
+            ctx.lineTo(2, -6);  ctx.lineTo(6, -4);
+            ctx.stroke();
+          } else if (sub === 'bandage') {
+            ctx.fillStyle = '#ece7d7';
+            ctx.fillRect(-5, -4, 10, 8);
+            ctx.fillStyle = '#d24b35';
+            ctx.fillRect(-1, -3, 2, 6);
+            ctx.fillRect(-3, -1, 6, 2);
+          } else if (sub === 'antibiotic') {
+            ctx.fillStyle = '#5fb6e8';
+            ctx.fillRect(-3, -5, 6, 2);
+            ctx.fillStyle = '#ece7d7';
+            ctx.fillRect(-4, -3, 8, 7);
+          } else {
+            ctx.fillStyle = '#7a7e88';
+            ctx.fillRect(-4, -4, 8, 8);
+          }
+        }
         break;
       }
     }

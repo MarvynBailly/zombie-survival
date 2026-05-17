@@ -44,7 +44,7 @@ const input = {
 };
 window.addEventListener('keydown', e => {
   input.keys.add(e.key.toLowerCase());
-  if (['w','a','s','d','r','e',' ','escape',
+  if (['w','a','s','d','r','e','i','p','h','j',' ','escape',
        '1','2','3','4','5','6','7','8','9','0','-','='].includes(e.key.toLowerCase())) {
     e.preventDefault();
   }
@@ -122,17 +122,21 @@ function resetRun(levelIndex) {
   Game.corpseLog = [];
   Game.time = { day: 1, t: 0, phase: 'day' };
   Game.spawnTimer = 0;
+  if (typeof WEATHER !== 'undefined') WEATHER.reset();
   Game.kills = 0;
   Game.score = 0;
   Game.weaponKills = { pistol: 0, shotgun: 0, smg: 0, rocket: 0, barrel: 0 };
   Game.discoveredPOIs = new Set();
   Game.exploredChunks = new Set();
   Game.mapOpen = false;
+  Game.subworld = null;
+  Game.filesOpen = false;
   Game.startTime = now();
   Game.elapsed = 0;
   Game.scoreSubmitted = false;
   // Seed the open world with this run's terrain region preset.
   World.init(Date.now() & 0x7fffffff, Game.level.region);
+  if (typeof WEATHER !== 'undefined') WEATHER.rollForToday();
   // spawn player at world center
   Game.player = {
     x: World.spawnX, y: World.spawnY, r: 12,
@@ -162,6 +166,7 @@ function resetRun(levelIndex) {
     fireCd: 0, reloading: 0, placeCd: 0, openCd: 0,
     walkPhase: 0, muzzleFlash: 0,
     dead: false,
+    inventory: makeInventory(),
     // Expansion weapon state — used by tier-3 fireWeapon branches.
     minigunSpin: 0,    // seconds the trigger has been held with the minigun
     railCharge: 0,     // seconds the trigger has been held with the railgun
@@ -172,6 +177,11 @@ function resetRun(levelIndex) {
   Game.camera.x = Game.player.x - VIEW_W / 2;
   Game.camera.y = Game.player.y - VIEW_H / 2;
   NAV.init();
+  // Perks + squad reset each run (perks per the brainstorm; squad permadeath).
+  Game.perks = makePerks();
+  grantPerkPoint(1);
+  Game.squad = [];
+  Game.worldSurvivors = [];
   setBanner(`DAY 1 · ${Game.level.name}`, 2);
   setNotice(`Scavenge by day, survive by night. Press E to open chests.`, 5);
 }
@@ -181,6 +191,9 @@ function resetRun(levelIndex) {
 // world seed/biome to the saved one, regenerates from there, and overlays
 // player + chest + walls + barrels state.
 function restoreFromSave(d) {
+  // Clear any in-flight subworld state from a prior session.
+  Game.subworld = null;
+  Game.filesOpen = false;
   // Re-seed the world to the saved one. d.regionName (or legacy d.biome) is a
   // region name string; resolve it against LEVELS, falling back to the saved
   // levelIndex's region if the name is unknown.
@@ -213,6 +226,18 @@ function restoreFromSave(d) {
   // finite defaults so the player still has to scavenge after resuming.
   if (p.ammo.pistol.mag === Infinity) p.ammo.pistol.mag = WEAPONS.pistol.magSize;
   if (p.ammo.pistol.reserve === Infinity) p.ammo.pistol.reserve = WEAPONS.pistol.reserve;
+  // Inventory restore — drop entries for unknown ids in case items were removed.
+  if (d.player.inventory && Array.isArray(d.player.inventory.slots)) {
+    const cap = p.inventory.capacity;
+    const slots = Array.from({ length: cap }, () => null);
+    for (let i = 0; i < Math.min(cap, d.player.inventory.slots.length); i++) {
+      const s = d.player.inventory.slots[i];
+      if (s && ITEMS[s.id] && s.count > 0) {
+        slots[i] = { id: s.id, count: Math.min(s.count, ITEMS[s.id].stackMax) };
+      }
+    }
+    p.inventory.slots = slots;
+  }
 
   // World contents
   Game.walls = (d.walls || []).map(w => ({ ...w }));
@@ -239,6 +264,39 @@ function restoreFromSave(d) {
   Game.discoveredPOIs = new Set(d.discoveredPOIs || []);
   Game.exploredChunks = new Set(d.exploredChunks || []);
   Game.mapOpen = false;
+  // Perks
+  if (d.perks) {
+    Game.perks = {
+      points: d.perks.points | 0,
+      unlocked: new Set(d.perks.unlocked || []),
+      totalEarned: d.perks.totalEarned | 0,
+    };
+    for (const id of Game.perks.unlocked) applyPerkSideEffects(id);
+  } else {
+    Game.perks = makePerks();
+  }
+  // Survivors / squad
+  Game.squad = Array.isArray(d.squad) ? d.squad.map(s => ({
+    x: s.x, y: s.y, r: 12,
+    cls: s.cls, name: s.name, backstory: s.backstory,
+    hp: s.hp, maxHp: s.maxHp,
+    angle: 0, walkPhase: 0,
+    holdMode: !!s.holdMode, holdX: s.x, holdY: s.y,
+    fireCd: 0, iframe: 0,
+  })) : [];
+  if (typeof WEATHER !== 'undefined') {
+    if (d.weather && typeof d.weather.current === 'string') {
+      WEATHER.restore(d.weather.current, d.weather.rolledForDay || d.time.day);
+    } else {
+      WEATHER.reset();
+    }
+  }
+  Game.worldSurvivors = Array.isArray(d.worldSurvivors) ? d.worldSurvivors.map(s => ({
+    x: s.x, y: s.y, r: 12,
+    cls: s.cls, name: s.name, backstory: s.backstory,
+    hp: s.hp, maxHp: s.maxHp,
+    angle: 0, walkPhase: 0,
+  })) : [];
 
   // Camera + NAV need a refresh now that we've moved the player.
   Game.camera.x = p.x - VIEW_W / 2;
@@ -355,6 +413,15 @@ function advanceDayPhase(prevPhase, newPhase) {
     Game.time.day += 1;
     setBanner(`DAY ${Game.time.day}`, 2);
     Audio.sfx.wave();
+    grantPerkPoint(1);
+    // Weather: re-roll forecast at the dawn->day boundary, with a chained
+    // 2s announcement banner so DAY-NN and the forecast are both visible.
+    if (typeof WEATHER !== 'undefined') {
+      WEATHER.rollForToday();
+      setTimeout(() => {
+        if (Game.mode === 'playing') setBanner(WEATHER.bannerText(), 2);
+      }, 2000);
+    }
   }
 }
 
@@ -369,10 +436,13 @@ function updateDayCycle(dt) {
     advanceDayPhase(prev.name, cur.name);
   }
 
-  // Spawn director: pace by rate, capped by population.
+  // Spawn director: pace by rate, capped by population. Suspended while
+  // the player is in a sewer instance.
   const rate = targetSpawnRate(t.phase, t.day);
   const cap = targetPopulation(t.phase, t.day);
-  if (rate > 0 && Game.zombies.length < cap) {
+  if (Game.subworld) {
+    Game.spawnTimer = 9999;
+  } else if (rate > 0 && Game.zombies.length < cap) {
     Game.spawnTimer -= dt;
     if (Game.spawnTimer <= 0) {
       spawnZombieAtEdge(pickZombieType(t.phase, t.day));
@@ -504,6 +574,21 @@ function updatePlayer(dt) {
       && (p.minigunSpin || 0) >= (weapDef.spinUp || 0)) {
     speed *= weapDef.slowsWhileFiring;
   }
+  // Perks: Light Feet flat multiplier + Sprint burst with stamina.
+  speed *= perkMult('speedMult');
+  // Weather: blizzard slows everyone (0.8x).
+  if (typeof WEATHER !== 'undefined') speed *= WEATHER.playerSpeedMult();
+  if (hasPerk('s_sprint') && (input.keys.has('shift'))) {
+    p.sprintEnergy = p.sprintEnergy ?? 1;
+    if (p.sprintEnergy > 0) {
+      speed *= 1.30;
+      // Heatwave drains sprint stamina faster.
+      const drainMult = (typeof WEATHER !== 'undefined') ? WEATHER.sprintDrainMult() : 1;
+      p.sprintEnergy = Math.max(0, p.sprintEnergy - (dt / 5) * drainMult);
+    }
+  } else if (p.sprintEnergy != null && p.sprintEnergy < 1) {
+    p.sprintEnergy = Math.min(1, p.sprintEnergy + dt / 3);
+  }
   p.vx = mx * speed; p.vy = my * speed;
   p.x += p.vx * dt;
   p.y += p.vy * dt;
@@ -550,6 +635,12 @@ function updatePlayer(dt) {
 
   // iframes
   if (p.iframe > 0) p.iframe -= dt;
+  // Field Medic regen — heal slowly if not hit for 3s.
+  const regen = perkSum('regenPerSec');
+  if (regen > 0 && p.hp < p.maxHp) {
+    const cool = now() - (p.lastHurtAt || -10);
+    if (cool > 3) p.hp = Math.min(p.maxHp, p.hp + regen * dt);
+  }
 
   // weapon switching — use each weapon's declared key, since slots beyond 9
   // need '-' and '=' (not 'String(i+1)', which would give '10', '11', '12').
@@ -572,7 +663,7 @@ function updatePlayer(dt) {
     const w = WEAPONS[p.weapon];
     const a = p.ammo[p.weapon];
     if (w.magSize !== Infinity && p.reloading <= 0 && a.mag < w.magSize && a.reserve > 0) {
-      p.reloading = w.reloadTime;
+      p.reloading = w.reloadTime * perkMult('reloadMult');
       Audio.sfx.reload();
     }
   }
@@ -603,7 +694,7 @@ function updatePlayer(dt) {
         p.placeCd = 0.4;
       } else if (p.weapon === 'wall' && p.ammo.wall.reserve > 0) {
         placeWall();
-        p.placeCd = WALL_PLACE_CD;
+        p.placeCd = WALL_PLACE_CD * perkMult('placeCdMult');
       } else {
         Audio.sfx.empty();
         p.placeCd = 0.3;
@@ -648,7 +739,7 @@ function updatePlayer(dt) {
           p.muzzleFlash = 0.3;
         } else {
           fireWeapon(p, weap);
-          p.fireCd = weap.fireRate;
+          p.fireCd = weap.fireRate * perkMult('fireRateMult');
           if (weap.magSize !== Infinity) a.mag--;
           if (weap.magSize !== Infinity && a.mag === 0 && a.reserve > 0) {
             p.reloading = weap.reloadTime;
@@ -656,7 +747,7 @@ function updatePlayer(dt) {
           }
         }
       } else if (a.reserve > 0 && p.reloading <= 0) {
-        p.reloading = weap.reloadTime;
+        p.reloading = weap.reloadTime * perkMult('reloadMult');
         Audio.sfx.reload();
       } else {
         // empty click throttle
@@ -672,15 +763,36 @@ function updatePlayer(dt) {
     p.placeCd = 0.4;
   }
 
-  // E to open the nearest unopened chest within range.
+  // E to open the nearest unopened chest within range, or fall through to
+  // the workbench crafting overlay, or recruit a nearby survivor.
   if (input.keys.has('e') && p.openCd <= 0) {
     const chest = findChestNear(p.x, p.y, CHEST_PROMPT_RADIUS);
     if (chest) {
       openChest(chest);
       p.openCd = 0.4;
+    } else {
+      const wb = findWorkbenchNear(p.x, p.y, WORKBENCH_PROMPT_RADIUS);
+      if (wb && typeof openCrafting === 'function') {
+        openCrafting(wb);
+        p.openCd = 0.4;
+      } else if (typeof findSurvivorNear === 'function') {
+        const sv = findSurvivorNear(p.x, p.y, SURVIVOR_RECRUIT_RADIUS);
+        if (sv) {
+          recruitSurvivor(sv); p.openCd = 0.4;
+        } else if (typeof Sewers !== 'undefined' && Sewers.trySewerInteract()) {
+          p.openCd = 0.4;
+        }
+      } else if (typeof Sewers !== 'undefined' && Sewers.trySewerInteract()) {
+        p.openCd = 0.4;
+      }
     }
   }
   if (p.openCd > 0) p.openCd -= dt;
+
+  // H toggles squad HOLD/FOLLOW (edge-triggered so a tap fires once).
+  if (input.keys.has('h')) {
+    if (!p._hHeld) { toggleSquadHold(); p._hHeld = true; }
+  } else { p._hHeld = false; }
 }
 
 function placeBarrel(x, y) {
@@ -727,7 +839,8 @@ function placeWall() {
   if (p.ammo.wall.reserve <= 0) { setNotice('No walls left', 1); Audio.sfx.empty(); return; }
   const rect = wallPlacementRect(p);
   if (!isWallPlacementValid(rect)) { setNotice("Can't place there", 1); Audio.sfx.empty(); return; }
-  Game.walls.push({ x: rect.x, y: rect.y, w: rect.w, h: rect.h, hp: WALL_HP, maxHp: WALL_HP });
+  const wallHp = Math.round(WALL_HP * perkMult('wallHpMult'));
+  Game.walls.push({ x: rect.x, y: rect.y, w: rect.w, h: rect.h, hp: wallHp, maxHp: wallHp });
   p.ammo.wall.reserve--;
   Audio.sfx.click();
   NAV.markDirty();
@@ -769,6 +882,20 @@ function findChestNear(x, y, radius) {
     const dx = x - cx, dy = y - cy;
     const d = dx * dx + dy * dy;
     if (d < bestD) { bestD = d; best = c; }
+  });
+  return best;
+}
+
+// Returns the closest workbench (style or kind 'workbench') in radius.
+function findWorkbenchNear(x, y, radius) {
+  let best = null, bestD = radius * radius;
+  World.forEachActiveObstacle(x, y, (o) => {
+    if (o.dead) return;
+    if (o.style !== 'workbench' && o.kind !== 'workbench') return;
+    const ox = o.x + o.w / 2, oy = o.y + o.h / 2;
+    const dx = x - ox, dy = y - oy;
+    const d = dx * dx + dy * dy;
+    if (d < bestD) { bestD = d; best = o; }
   });
   return best;
 }
@@ -852,6 +979,14 @@ function updatePuddles(dt) {
   }
 }
 
+// F16: furniture kinds where paper might be stashed. Both `kind` (set by
+// world.js kindObstacle for ZProps furniture) and `style` (set by sinks.tile
+// for tile-based decor) are checked.
+const LORE_FURNITURE = new Set([
+  'nightstand', 'dresser', 'desk', 'cabinet', 'filing_cabinet',
+  'bookshelf', 'tvstand', 'wardrobe', 'whiteboard',
+]);
+
 function destroyObstacle(o, source) {
   o.dead = true;
   const [hi, lo] = obstacleParticleColors(o.style);
@@ -863,8 +998,44 @@ function destroyObstacle(o, source) {
     });
   }
   Audio.sfx.hit();
+  // F16: chance to drop a lore fragment from paper-stashing furniture.
+  const _tag = o.kind || o.style;
+  if (_tag && LORE_FURNITURE.has(_tag) && typeof loreRandomUnseenId === 'function'
+      && Math.random() < 0.08) {
+    const id = loreRandomUnseenId();
+    Game.pickups.push({
+      x: o.x + o.w / 2, y: o.y + o.h / 2,
+      r: 12, type: 'item_journal_' + id, life: 60,
+    });
+  }
+  // Scrap salvage — yield depends on what got smashed.
+  const tag = o.kind || o.style;
+  const base = scrapYieldFor(tag);
+  const n = Math.round(base * perkMult('scrapMult'));
+  if (n > 0) {
+    Game.pickups.push({
+      x: o.x + o.w / 2, y: o.y + o.h / 2,
+      r: 12, type: `item_scrap_${n}`, life: 30,
+    });
+  }
   // Flow field must be rebuilt so zombies route through the new opening.
   NAV.markDirty();
+}
+
+function scrapYieldFor(tag) {
+  switch (tag) {
+    case 'CarWreck':  return randi(3, 6);
+    case 'Dumpster':  return randi(2, 5);
+    case 'Pallet':    return randi(1, 3);
+    case 'FuelPump':  return randi(2, 4);
+    case 'ToxicDrum': return randi(1, 3);
+    case 'Sandbags':  return randi(1, 2);
+    case 'Jersey':    return randi(1, 2);
+    case 'fridge':    return randi(1, 3);
+    case 'stove':     return randi(1, 3);
+    case 'workbench': return 0;
+    default:          return 0;
+  }
 }
 
 function destroyWall(index, source) {
@@ -884,8 +1055,12 @@ function destroyWall(index, source) {
 
 // Wake nearby zombies on a (non-silent) gunshot: short alert timer that boosts
 // their groan rate so the player hears the horde reacting to noise.
+// Per-shot crit helper (Last Stand) — kicks in under 30% HP.
 function broadcastAggro(x, y) {
-  const R2 = 280 * 280;
+  // Silent Boots perk + weather (fog muffles sound).
+  const wMul = (typeof WEATHER !== 'undefined') ? WEATHER.aggroMult() : 1;
+  const r = 280 * perkMult('aggroMult') * wMul;
+  const R2 = r * r;
   const zs = Game.zombies;
   for (let i = 0; i < zs.length; i++) {
     const z = zs[i];
@@ -915,9 +1090,11 @@ function fireWeapon(p, weap) {
     });
   }
 
+  // Perk-derived bonuses, sampled per-shot.
+  const dmgMult = perkMult('damageMult') * playerLastStandMult(p);
+  const spreadMult = perkMult('spreadMult');
+  const explodeMult = perkMult('explodeMult');
   // Rockets + grenade launcher both ride the rocket projectile system.
-  // The GL adds `bounces` so it ricochets off obstacles once before
-  // detonating (see updateRockets).
   if (weap.isRocket || weap.isProjectile) {
     Game.rockets.push({
       x: muzzleX, y: muzzleY,
@@ -925,8 +1102,8 @@ function fireWeapon(p, weap) {
       vy: Math.sin(p.angle) * weap.bulletSpeed,
       life: weap.bulletRange / weap.bulletSpeed,
       owner: 'player',
-      explodeRadius: weap.explodeRadius || 100,
-      damage: weap.damage,
+      explodeRadius: (weap.explodeRadius || 100) * explodeMult,
+      damage: weap.damage * dmgMult,
       bounces: weap.bounces || 0,
     });
     return;
@@ -935,13 +1112,13 @@ function fireWeapon(p, weap) {
   if (weap.isMelee) { applyMeleeCone(p, weap); return; }
 
   for (let k = 0; k < weap.pellets; k++) {
-    const ang = p.angle + (Math.random() - 0.5) * weap.spread * 2 * (weap.pellets > 1 ? 1 : 1);
+    const ang = p.angle + (Math.random() - 0.5) * (weap.spread * spreadMult) * 2 * (weap.pellets > 1 ? 1 : 1);
     const b = {
       x: muzzleX, y: muzzleY,
       vx: Math.cos(ang) * weap.bulletSpeed,
       vy: Math.sin(ang) * weap.bulletSpeed,
       life: weap.bulletRange / weap.bulletSpeed,
-      damage: weap.damage,
+      damage: weap.damage * dmgMult,
       owner: 'player',
       weapon: p.weapon,
     };
@@ -1105,7 +1282,9 @@ function updateBullets(dt) {
         damageZombie(z, b.damage, b.weapon, b.x - b.vx * 0.05, b.y - b.vy * 0.05);
         spawnBlood(b.x, b.y, Math.atan2(b.vy, b.vx));
         // Flamethrower ignites on contact.
-        if (b.ignites) { z.onFire = Math.max(z.onFire || 0, 2.0); }
+        if (b.ignites && (typeof WEATHER === 'undefined' || WEATHER.flamerProcOK())) {
+          z.onFire = Math.max(z.onFire || 0, 2.0);
+        }
         if (b._pierced) {
           b._pierced.add(z);
           if (b.pierce > 0) { b.pierce--; b.damage *= 0.75; }
@@ -1398,6 +1577,18 @@ function killZombie(z, weapon) {
     if (z.type === 'tank') spawnTankDrop(z.x, z.y);
     else spawnPickup(z.x, z.y);
   }
+  // Independent scrap drop scaled by zombie tier.
+  const scrapRoll = Math.random();
+  let scrapChance = 0.06; let scrapAmt = 1;
+  if (z.type === 'tank') { scrapChance = 0.85; scrapAmt = randi(3, 6); }
+  else if (z.type === 'brood' || z.type === 'cent') { scrapChance = 0.95; scrapAmt = randi(4, 8); }
+  else if (z.type === 'riot') { scrapChance = 0.45; scrapAmt = randi(2, 4); }
+  else if (z.type === 'fire' || z.type === 'charger' || z.type === 'reaper') { scrapChance = 0.20; scrapAmt = randi(1, 3); }
+  else if (z.type === 'hatch' || z.type === 'crawler') { scrapChance = 0.03; }
+  if (scrapRoll < scrapChance) {
+    const boosted = Math.max(1, Math.round(scrapAmt * perkMult('scrapMult')));
+    Game.pickups.push({ x: z.x, y: z.y, r: 12, type: `item_scrap_${boosted}`, life: 25 });
+  }
   const idx = Game.zombies.indexOf(z);
   if (idx >= 0) Game.zombies.splice(idx, 1);
 }
@@ -1465,7 +1656,8 @@ function damagePlayer(amount, attacker, opts) {
   // pool would only tick once per 0.6s and feel like nothing.
   if (!isDot && p.iframe > 0) return;
   p.hp -= amount;
-  if (!isDot) p.iframe = 0.6;
+  if (!isDot) p.iframe = 0.6 + perkSum('iframeBonus');
+  p.lastHurtAt = now();
   if (!isDot) Audio.sfx.hurt();
   if (!isDot) screenShake(6, 0.2);
   // Frost walker: each hit chills the player. Multipliers don't stack —
@@ -1820,7 +2012,8 @@ function updateZombies(dt) {
     const vl = Math.hypot(vx, vy) || 1;
     vx /= vl; vy /= vl;
     // Screamer aura applies as a per-frame speed boost (set in tier3PreTick).
-    const speedMul = z.speedBoost || 1;
+    const wMul = (typeof WEATHER !== 'undefined') ? WEATHER.zombieSpeedMult() : 1;
+    const speedMul = (z.speedBoost || 1) * wMul;
     z.x += vx * z.speed * speedMul * dt;
     z.y += vy * z.speed * speedMul * dt;
     // facing + walk cycle
@@ -1998,11 +2191,19 @@ function updateBarrels(dt) {
 // ---------- Pickups ----------
 function updatePickups(dt) {
   const p = Game.player;
+  const magnet = perkSum('pickupRange');
   for (let i = Game.pickups.length - 1; i >= 0; i--) {
     const pk = Game.pickups[i];
     pk.life -= dt;
     if (pk.life <= 0) { Game.pickups.splice(i, 1); continue; }
-    if (Math.hypot(p.x - pk.x, p.y - pk.y) < p.r + pk.r) {
+    const d = Math.hypot(p.x - pk.x, p.y - pk.y);
+    const reach = p.r + pk.r;
+    if (magnet > 0 && d < reach * (1 + magnet) && d > reach) {
+      const k = 400 * dt / Math.max(1, d);
+      pk.x += (p.x - pk.x) * k;
+      pk.y += (p.y - pk.y) * k;
+    }
+    if (d < reach) {
       applyPickup(pk.type);
       Game.pickups.splice(i, 1);
       Audio.sfx.pickup();
@@ -2011,19 +2212,29 @@ function updatePickups(dt) {
 }
 function applyPickup(type) {
   const p = Game.player;
+  const bm = 1 + perkSum('ammoBonus');
+  const ammoUp = (n) => Math.round(n * bm);
   switch (type) {
     case 'health': p.hp = Math.min(p.maxHp, p.hp + 35); setNotice('+35 HP', 1.5); break;
-    case 'ammo_pistol':
-      p.ammo.pistol.reserve += 24; setNotice('+24 pistol rounds', 1.5); break;
-    case 'ammo_shotgun':
+    case 'ammo_pistol': {
+      const n = ammoUp(24);
+      p.ammo.pistol.reserve += n; setNotice(`+${n} pistol rounds`, 1.5); break;
+    }
+    case 'ammo_shotgun': {
       if (!p.unlocked.shotgun) unlockWeapon('shotgun', 12, 'SHOTGUN PICKED UP');
-      p.ammo.shotgun.reserve += 12; setNotice('+12 shells', 1.5); break;
-    case 'ammo_smg':
+      const n = ammoUp(12);
+      p.ammo.shotgun.reserve += n; setNotice(`+${n} shells`, 1.5); break;
+    }
+    case 'ammo_smg': {
       if (!p.unlocked.smg) unlockWeapon('smg', 80, 'SMG PICKED UP');
-      p.ammo.smg.reserve += 60; setNotice('+60 rounds', 1.5); break;
-    case 'ammo_rocket':
+      const n = ammoUp(60);
+      p.ammo.smg.reserve += n; setNotice(`+${n} rounds`, 1.5); break;
+    }
+    case 'ammo_rocket': {
       if (!p.unlocked.rocket) unlockWeapon('rocket', 3, 'ROCKETS PICKED UP');
-      p.ammo.rocket.reserve += 2; setNotice('+2 rockets', 1.5); break;
+      const n = ammoUp(2);
+      p.ammo.rocket.reserve += n; setNotice(`+${n} rockets`, 1.5); break;
+    }
     case 'barrel':
       if (!p.unlocked.barrel) unlockWeapon('barrel', 3, 'BARRELS PICKED UP');
       p.ammo.barrel.reserve += 2; setNotice('+2 barrels', 1.5); break;
@@ -2049,6 +2260,34 @@ function applyPickup(type) {
     case 'saw':
       if (!p.unlocked.saw) unlockWeapon('saw', Infinity, 'CHAINSAW PICKED UP');
       setNotice('Chainsaw equipped', 1.5); break;
+    default:
+      // F16: synthetic journal pickups bypass the inventory and write to
+      // the meta-progression lore set (prefs.lore).
+      if (typeof type === 'string' && type.indexOf('item_journal_') === 0) {
+        const id = type.slice('item_journal_'.length);
+        const frag = (typeof lorePickById === 'function') ? lorePickById(id) : null;
+        const isNew = (typeof saveLoreId === 'function') ? saveLoreId(id) : false;
+        const title = frag ? frag.title : 'JOURNAL';
+        if (isNew) setNotice('FILE RECOVERED · ' + title + ' · [J]', 3);
+        else setNotice('DUPLICATE · ' + title, 1.5);
+        break;
+      }
+      // Generic item pickups route through the inventory. `item_<id>[_<n>]`
+      // — only a trailing _digits is treated as count, so multi-word ids
+      // (e.g. item_bear_trap) round-trip cleanly.
+      if (typeof type === 'string' && type.startsWith('item_')) {
+        const rest = type.slice(5);
+        let id = rest, n = 1;
+        const m = rest.match(/^(.+)_(\d+)$/);
+        if (m) { id = m[1]; n = parseInt(m[2], 10); }
+        if (ITEMS[id]) {
+          const left = addItem(p.inventory, id, n);
+          const got = n - left;
+          if (got > 0) setNotice(`+${got} ${ITEMS[id].name}`, 1.2);
+          else setNotice('Inventory full', 1.2);
+        }
+      }
+      break;
   }
 }
 
@@ -2094,6 +2333,7 @@ function spawnZombieAt(type, x, y) {
 const SAFE_SPAWN_DIST = 720; // px — just outside the camera diagonal (~640)
 function activateChunkIfNeeded() {
   const p = Game.player;
+  if (Game.subworld) return;
   const [pcx, pcy] = World.chunkOf(p.x, p.y);
 
   // Track explored chunks (3×3 ring around the player). Drives the M map.
@@ -2138,6 +2378,9 @@ function activateChunkIfNeeded() {
           b._done = true;
         }
       }
+      if (typeof maybeSpawnSurvivorsInActiveChunk === 'function') {
+        maybeSpawnSurvivorsInActiveChunk(chunk, ccx + ',' + ccy);
+      }
 
       if (!anyDeferred) chunk.activated = true;
     }
@@ -2166,6 +2409,8 @@ function activateChunkIfNeeded() {
 function tick(dt) {
   if (Game.mode !== 'playing') return;
   Game.elapsed += dt;
+  Game.frameDt = dt;
+  if (typeof Sewers !== 'undefined') Sewers.tickSewer(dt);
   updatePlayer(dt);
   // Ensure chunks around the player are generated each tick (cheap when stable).
   World.ensureActive(Game.player.x, Game.player.y);
@@ -2177,6 +2422,7 @@ function tick(dt) {
   NAV.update(dt);
   updateZombies(dt);
   updateZombieProjectiles(dt);
+  updateSquad(dt);
   updateBullets(dt);
   updateRockets(dt);
   updatePuddles(dt);
@@ -2185,6 +2431,13 @@ function tick(dt) {
   updateExplosions(dt);
   updateParticles(dt);
   updateDayCycle(dt);
+  // Tinker perk: walls auto-repair.
+  const wallRep = perkSum('wallRepair');
+  if (wallRep > 0) {
+    for (const w of Game.walls) {
+      if (w.hp < w.maxHp) w.hp = Math.min(w.maxHp, w.hp + wallRep * dt);
+    }
+  }
   if (shakeTime > 0) { shakeTime -= dt; if (shakeTime <= 0) { shakeAmt = 0; } }
   // Autosave every 5 seconds of play.
   Game.saveTimer = (Game.saveTimer || 0) + dt;

@@ -14,7 +14,7 @@ const PB_URL = 'https://raspberrypi.tail0bf0ce.ts.net:8443';
 const COL_SCORES = 'proj_zombie_survival_scores';
 const PREFS_KEY = 'zombie-survival:prefs';
 const SAVE_KEY = 'zombie-survival:save';
-const SAVE_VERSION = 4;
+const SAVE_VERSION = 5;
 
 // World tile grid. TILE_SIZE matches WALL_SIZE so player-placed walls and
 // generated obstacles snap to the same lattice. ZONE_CHUNKS controls POI
@@ -71,6 +71,7 @@ const CHEST_TIER = {
   mythic: { hp: 250, base: '#3a2c5a', plank: '#5a3a8a', trim: '#e3c054' },
 };
 const CHEST_PROMPT_RADIUS = 60;
+const WORKBENCH_PROMPT_RADIUS = 60;
 
 // Day/night cycle — total cycle ≈ 4 minutes, ~60% safe daytime, ~24% night siege.
 const DAY_PHASES = [

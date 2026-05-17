@@ -7,7 +7,7 @@ function loop(t) {
   last = t;
   // Game advances only while in 'playing' mode. 'paused' (Esc) and the
   // M-key world map both freeze the simulation.
-  if (Game.mode === 'playing' && !Game.mapOpen) {
+  if (Game.mode === 'playing' && !Game.mapOpen && !Game.filesOpen) {
     acc += dt;
     while (acc >= TICK_DT) {
       tick(TICK_DT);
@@ -163,7 +163,12 @@ function showControls() {
         mk('<kbd>1</kbd>–<kbd>6</kbd> &nbsp;switch weapon / placer'),
         mk('<kbd>R</kbd> &nbsp;reload'),
         mk('<kbd>Space</kbd> &nbsp;place barrel or wall (when its slot is active)'),
-        mk('<kbd>E</kbd> &nbsp;open a chest you are standing next to (or shoot it)'),
+        mk('<kbd>E</kbd> &nbsp;open chest · craft at workbench · recruit survivor'),
+        mk('<kbd>I</kbd> &nbsp;inventory (right-click an item to use it)'),
+        mk('<kbd>P</kbd> &nbsp;perk tree (1 point per day survived)'),
+        mk('<kbd>J</kbd> &nbsp;files / journals (recovered fragments persist across runs)'),
+        mk('<kbd>H</kbd> &nbsp;squad: toggle HOLD / FOLLOW'),
+        mk('<kbd>Shift</kbd> &nbsp;sprint (requires the Sprint perk)'),
         mk('<kbd>M</kbd> &nbsp;world map (shows the sectors you have explored)'),
         mk('<kbd>Esc</kbd> &nbsp;pause'),
       ),
@@ -525,20 +530,307 @@ function showLeaderboard() {
   refresh();
 }
 
-// ---------- Esc + M handling ----------
+// ---------- Inventory overlay (I) ----------
+let __invEl = null;
+function refreshInventory() {
+  if (!__invEl) return;
+  const p = Game.player;
+  if (!p || !p.inventory) return;
+  const inv = p.inventory;
+  const grid = __invEl.querySelector('.inv-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let i = 0; i < inv.slots.length; i++) {
+    const s = inv.slots[i];
+    const cell = el('div', { class: 'inv-cell' + (s ? ' filled' : ''), 'data-i': String(i) });
+    if (s) {
+      const def = ITEMS[s.id];
+      const img = el('img', { src: getItemIcon(s.id), width: 36, height: 36, alt: def.name });
+      cell.appendChild(img);
+      if (s.count > 1) cell.appendChild(el('div', { class: 'inv-count' }, String(s.count)));
+      cell.title = `${def.name} — ${def.desc}`;
+      cell.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        if (def.category === 'consumable') {
+          if (useItem(inv, i)) refreshInventory();
+        }
+      });
+    }
+    grid.appendChild(cell);
+  }
+}
+function openInventory() {
+  if (Game.mode !== 'playing') return;
+  Game.mapOpen = true;
+  if (__invEl && !__invEl.isConnected) __invEl = null;
+  if (__invEl) { __invEl.style.display = 'flex'; refreshInventory(); return; }
+  __invEl = el('div', { class: 'overlay inv-overlay', style: 'background:rgba(7,8,10,0.78)' },
+    el('div', { class: 'panel', style: 'max-width:520px' },
+      el('div', { class: 'eyebrow' }, '// FIELD INVENTORY'),
+      el('h2', { style: 'font-size:34px;margin-bottom:6px;display:flex;align-items:baseline' },
+        el('span', {}, 'CARRY'),
+        el('span', { style: 'margin-left:auto;font-family:var(--f-mono);font-size:10px;color:var(--muted);letter-spacing:2px' }, 'RIGHT-CLICK USE'),
+      ),
+      el('div', { class: 'inv-grid' }),
+      el('div', { class: 'sub', style: 'margin-top:14px;font-size:11px;font-family:var(--f-mono);letter-spacing:1px' },
+        'Materials go to workbenches. Close with I or Esc.'),
+    )
+  );
+  __invEl.addEventListener('click', e => { if (e.target === __invEl) closeInventory(); });
+  overlayRoot.appendChild(__invEl);
+  refreshInventory();
+}
+function closeInventory() {
+  if (__invEl) __invEl.style.display = 'none';
+  if (Game.mode === 'playing') Game.mapOpen = false;
+}
+function isInventoryOpen() { return !!__invEl && __invEl.style.display !== 'none'; }
+
+// ---------- Crafting overlay (workbench) ----------
+let __craftEl = null;
+function refreshCrafting() {
+  if (!__craftEl) return;
+  const list = __craftEl.querySelector('.craft-list');
+  if (!list) return;
+  const inv = Game.player.inventory;
+  list.innerHTML = '';
+  for (const r of CRAFT_RECIPES) {
+    const canAfford = r.cost.every(c => hasItem(inv, c.id, c.n));
+    const row = el('div', { class: 'craft-row' + (canAfford ? '' : ' poor') });
+    const left = el('div', { class: 'left' },
+      el('div', { class: 'nm' }, r.label),
+      el('div', { class: 'desc' }, r.desc),
+    );
+    const costStr = r.cost.map(c => `${c.n}× ${ITEMS[c.id].name}`).join(' + ');
+    const right = el('div', { class: 'right' },
+      el('div', { class: 'cost' }, costStr),
+      el('button', {
+        class: 'primary',
+        disabled: canAfford ? null : 'disabled',
+        onclick: () => {
+          if (!canAfford) return;
+          for (const c of r.cost) removeItem(inv, c.id, c.n);
+          r.apply(Game.player);
+          Audio.sfx.pickup();
+          refreshCrafting(); refreshInventory();
+        },
+      }, 'CRAFT'),
+    );
+    row.appendChild(left); row.appendChild(right);
+    list.appendChild(row);
+  }
+  const headStock = __craftEl.querySelector('.craft-stock');
+  if (headStock) headStock.textContent = `SCRAP · ${itemCount(inv, 'scrap')}`;
+}
+function openCrafting(wb) {
+  if (Game.mode !== 'playing') return;
+  Game.mapOpen = true;
+  if (__craftEl && !__craftEl.isConnected) __craftEl = null;
+  if (__craftEl) { __craftEl.style.display = 'flex'; refreshCrafting(); return; }
+  __craftEl = el('div', { class: 'overlay craft-overlay', style: 'background:rgba(7,8,10,0.78)' },
+    el('div', { class: 'panel', style: 'max-width:580px' },
+      el('div', { class: 'eyebrow' }, '// WORKBENCH'),
+      el('h2', { style: 'display:flex;align-items:baseline' },
+        el('span', {}, 'CRAFT'),
+        el('span', { class: 'craft-stock', style: 'margin-left:auto;font-family:var(--f-mono);font-size:12px;color:var(--toxic);letter-spacing:2px' }, ''),
+      ),
+      el('div', { class: 'craft-list' }),
+      el('div', { class: 'sub', style: 'margin-top:14px;font-size:11px;font-family:var(--f-mono);letter-spacing:1px' },
+        'Step away or press E / Esc to close.'),
+    )
+  );
+  __craftEl.addEventListener('click', e => { if (e.target === __craftEl) closeCrafting(); });
+  overlayRoot.appendChild(__craftEl);
+  refreshCrafting();
+}
+function closeCrafting() {
+  if (__craftEl) __craftEl.style.display = 'none';
+  if (Game.mode === 'playing') Game.mapOpen = false;
+  if (Game.player) Game.player.openCd = 0.4;
+}
+function isCraftingOpen() { return !!__craftEl && __craftEl.style.display !== 'none'; }
+
+// ---------- Perk tree overlay (P) ----------
+let __perkEl = null;
+function refreshPerks() {
+  if (!__perkEl) return;
+  const lanesEl = __perkEl.querySelector('.perk-lanes');
+  const headPts = __perkEl.querySelector('.perk-points');
+  if (!lanesEl) return;
+  if (headPts) headPts.textContent = `POINTS · ${Game.perks ? Game.perks.points : 0}`;
+  lanesEl.innerHTML = '';
+  for (const lane of PERK_LANES) {
+    const col = el('div', { class: 'perk-lane', style: `--lane:${PERK_LANE_COLOR[lane]}` });
+    col.appendChild(el('div', { class: 'perk-lane-name' }, lane.toUpperCase()));
+    const list = el('div', { class: 'perk-list' });
+    for (const id in PERKS) {
+      const def = PERKS[id];
+      if (def.lane !== lane) continue;
+      const unlocked = hasPerk(id);
+      const canAfford = Game.perks && Game.perks.points > 0 && !unlocked;
+      const row = el('div', {
+        class: 'perk-row' + (unlocked ? ' on' : '') + (canAfford ? ' buy' : ''),
+        title: def.desc,
+        onclick: () => { if (unlocked) return; if (unlockPerk(id)) refreshPerks(); },
+      },
+        el('div', { class: 'perk-mark' }, unlocked ? '●' : '○'),
+        el('div', { class: 'perk-text' },
+          el('div', { class: 'perk-name' }, def.name),
+          el('div', { class: 'perk-desc' }, def.desc),
+        ),
+      );
+      list.appendChild(row);
+    }
+    col.appendChild(list);
+    lanesEl.appendChild(col);
+  }
+}
+function openPerkTree() {
+  if (Game.mode !== 'playing') return;
+  Game.mapOpen = true;
+  if (__perkEl && !__perkEl.isConnected) __perkEl = null;
+  if (__perkEl) { __perkEl.style.display = 'flex'; refreshPerks(); return; }
+  __perkEl = el('div', { class: 'overlay perk-overlay', style: 'background:rgba(7,8,10,0.86)' },
+    el('div', { class: 'panel', style: 'max-width:880px' },
+      el('div', { class: 'eyebrow' }, '// CHARACTER · PERK TREE'),
+      el('h2', { style: 'display:flex;align-items:baseline' },
+        el('span', {}, 'PERKS'),
+        el('span', { class: 'perk-points', style: 'margin-left:auto;font-family:var(--f-mono);font-size:13px;color:var(--toxic);letter-spacing:2px' }, ''),
+      ),
+      el('div', { class: 'perk-lanes' }),
+      el('div', { class: 'sub', style: 'margin-top:14px;font-size:11px;font-family:var(--f-mono);letter-spacing:1px' },
+        '1 point per day survived. Perks reset on death. Press P or Esc to close.'),
+    )
+  );
+  __perkEl.addEventListener('click', e => { if (e.target === __perkEl) closePerkTree(); });
+  overlayRoot.appendChild(__perkEl);
+  refreshPerks();
+}
+function closePerkTree() {
+  if (__perkEl) __perkEl.style.display = 'none';
+  if (Game.mode === 'playing') Game.mapOpen = false;
+}
+function isPerkTreeOpen() { return !!__perkEl && __perkEl.style.display !== 'none'; }
+
+// ---------- F16 Files / Lore overlay (J) ----------
+function openFiles() {
+  Game.filesOpen = true;
+  clearOverlay();
+  const collected = (typeof getCollectedLoreIds === 'function') ? getCollectedLoreIds() : [];
+  const collectedSet = new Set(collected);
+  const total = (typeof LORE_FRAGMENTS !== 'undefined') ? LORE_FRAGMENTS.length : 0;
+  const have = collectedSet.size;
+  function closeFiles() {
+    Game.filesOpen = false;
+    clearOverlay();
+  }
+  const detail = el('div', {
+    class: 'panel',
+    style: 'max-width:520px;margin:0;align-self:stretch;background:rgba(11,12,14,0.92);overflow-y:auto;max-height:70vh',
+  });
+  function showDetail(frag) {
+    detail.innerHTML = '';
+    detail.appendChild(el('div', { class: 'eyebrow' }, '◇ ' + (frag.source || 'RECOVERED FILE')));
+    detail.appendChild(el('h2', { style: 'font-size:20px;letter-spacing:3px' }, frag.title));
+    detail.appendChild(el('div', { class: 'sep' }));
+    detail.appendChild(el('div', {
+      style: 'font-family:var(--f-body);font-size:13px;line-height:1.7;color:var(--fg);white-space:pre-wrap',
+    }, frag.body));
+  }
+  function showEmptyDetail() {
+    detail.innerHTML = '';
+    detail.appendChild(el('div', { class: 'eyebrow', style: 'color:var(--muted)' }, '◇ NO FILE SELECTED'));
+    detail.appendChild(el('div', { style: 'font-family:var(--f-mono);font-size:11px;color:var(--muted);line-height:1.7;margin-top:8px' },
+      have === 0
+        ? 'No recovered files yet. Smash nightstands, desks, dressers, filing cabinets, and bookshelves to find paper.'
+        : 'Select a recovered file from the list to read it.'));
+  }
+  const list = el('div', {
+    class: 'scroll',
+    style: 'max-height:70vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px',
+  });
+  if (typeof LORE_FRAGMENTS !== 'undefined') {
+    LORE_FRAGMENTS.forEach(frag => {
+      const owned = collectedSet.has(frag.id);
+      const row = el('button', {
+        class: owned ? '' : 'ghost',
+        style: 'width:100%;text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 10px;'
+             + (owned ? '' : 'opacity:0.45;cursor:not-allowed'),
+        onclick: () => {
+          if (!owned) return;
+          Audio.sfx.click();
+          showDetail(frag);
+        },
+      },
+        el('span', { style: 'font-family:var(--f-display);font-size:12px;letter-spacing:2px' },
+          owned ? frag.title : '????????????????'),
+        el('span', { style: 'font-family:var(--f-mono);font-size:10px;color:var(--muted);letter-spacing:1px' },
+          owned ? (frag.source || '') : '— RECOVER TO READ —'),
+      );
+      if (!owned) row.disabled = true;
+      list.appendChild(row);
+    });
+  }
+  const left = el('div', { class: 'panel', style: 'max-width:380px;margin:0;background:rgba(11,12,14,0.92)' },
+    el('div', { class: 'eyebrow' }, '◉ FIELD ARCHIVE'),
+    el('h2', {}, 'FILES'),
+    el('div', { class: 'sub' }, have + ' of ' + total + ' recovered'),
+    el('div', { class: 'sep' }),
+    list,
+    el('div', { class: 'sep' }),
+    el('button', { class: 'ghost', style: 'width:100%;display:flex;align-items:center;justify-content:space-between', onclick: () => { Audio.sfx.click(); closeFiles(); } },
+      el('span', {}, 'CLOSE'), el('span', { class: 'kbd-hint' }, 'J / ESC')),
+  );
+  showEmptyDetail();
+  overlayRoot.appendChild(el('div', { class: 'overlay', style: 'background:rgba(0,0,0,0.55)' },
+    el('div', { style: 'display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;justify-content:center' },
+      left,
+      detail,
+    ),
+  ));
+}
+
+// ---------- Esc + M + I + P + J handling ----------
 window.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    if (Game.filesOpen) { Game.filesOpen = false; clearOverlay(); e.preventDefault(); return; }
+    if (isPerkTreeOpen()) { closePerkTree(); e.preventDefault(); return; }
+    if (isCraftingOpen()) { closeCrafting(); e.preventDefault(); return; }
+    if (isInventoryOpen()) { closeInventory(); e.preventDefault(); return; }
     if (Game.mapOpen) { Game.mapOpen = false; e.preventDefault(); return; }
     if (Game.mode === 'playing') showPause();
     else if (Game.mode === 'paused') { clearOverlay(); Game.mode = 'playing'; }
     return;
   }
+  if (e.key === 'j' || e.key === 'J') {
+    if (Game.mode !== 'playing' && Game.mode !== 'paused') return;
+    if (Game.filesOpen) { Game.filesOpen = false; clearOverlay(); }
+    else { if (Game.mapOpen) Game.mapOpen = false; Audio.sfx.click(); openFiles(); }
+    e.preventDefault();
+  }
   if (e.key === 'm' || e.key === 'M') {
-    if (Game.mode === 'playing') {
+    if (Game.mode === 'playing' && !isInventoryOpen() && !isCraftingOpen() && !isPerkTreeOpen()) {
       Game.mapOpen = !Game.mapOpen;
       Audio.sfx.click();
       e.preventDefault();
     }
+  }
+  if (e.key === 'i' || e.key === 'I') {
+    if (Game.mode === 'playing' && !isCraftingOpen() && !isPerkTreeOpen()) {
+      if (isInventoryOpen()) closeInventory(); else openInventory();
+      Audio.sfx.click();
+      e.preventDefault();
+    }
+  }
+  if (e.key === 'p' || e.key === 'P') {
+    if (Game.mode === 'playing' && !isInventoryOpen() && !isCraftingOpen()) {
+      if (isPerkTreeOpen()) closePerkTree(); else openPerkTree();
+      Audio.sfx.click();
+      e.preventDefault();
+    }
+  }
+  if (e.key === 'e' || e.key === 'E') {
+    if (isCraftingOpen()) { closeCrafting(); e.preventDefault(); }
   }
 });
 
