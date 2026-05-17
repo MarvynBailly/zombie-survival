@@ -164,6 +164,10 @@ function showControls() {
         mk('<kbd>R</kbd> &nbsp;reload'),
         mk('<kbd>Space</kbd> &nbsp;place barrel or wall (when its slot is active)'),
         mk('<kbd>E</kbd> &nbsp;open a chest you are standing next to (or shoot it)'),
+        mk('<kbd>I</kbd> &nbsp;inventory (right-click an item to use it)'),
+        mk('<kbd>P</kbd> &nbsp;perk tree (1 point per day survived)'),
+        mk('<kbd>H</kbd> &nbsp;squad: toggle HOLD / FOLLOW'),
+        mk('<kbd>Shift</kbd> &nbsp;sprint (requires the Sprint perk)'),
         mk('<kbd>M</kbd> &nbsp;world map (shows the sectors you have explored)'),
         mk('<kbd>Esc</kbd> &nbsp;pause'),
       ),
@@ -525,20 +529,265 @@ function showLeaderboard() {
   refresh();
 }
 
-// ---------- Esc + M handling ----------
+// ---------- Inventory overlay ----------
+// While open, sets Game.mapOpen so the simulation freezes (the existing
+// "is a modal up?" pause hook). Hover for description; right-click or
+// number-key to use a consumable. Close with I or Esc.
+let __invEl = null;
+function refreshInventory() {
+  if (!__invEl) return;
+  const p = Game.player;
+  if (!p || !p.inventory) return;
+  const inv = p.inventory;
+  const grid = __invEl.querySelector('.inv-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let i = 0; i < inv.slots.length; i++) {
+    const s = inv.slots[i];
+    const cell = el('div', { class: 'inv-cell' + (s ? ' filled' : ''), 'data-i': String(i) });
+    if (s) {
+      const def = ITEMS[s.id];
+      const img = el('img', { src: getItemIcon(s.id), width: 36, height: 36, alt: def.name });
+      cell.appendChild(img);
+      if (s.count > 1) {
+        cell.appendChild(el('div', { class: 'inv-count' }, String(s.count)));
+      }
+      cell.title = `${def.name} — ${def.desc}`;
+      cell.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        if (def.category === 'consumable') {
+          if (useItem(inv, i)) refreshInventory();
+        }
+      });
+    }
+    grid.appendChild(cell);
+  }
+}
+function openInventory() {
+  if (Game.mode !== 'playing') return;
+  Game.mapOpen = true; // reuse the freeze gate already wired into the loop
+  // Detached node (e.g. after a clearOverlay) — discard and rebuild.
+  if (__invEl && !__invEl.isConnected) __invEl = null;
+  if (__invEl) { __invEl.style.display = 'flex'; refreshInventory(); return; }
+  __invEl = el('div', { class: 'overlay inv-overlay', style: 'background:rgba(7,8,10,0.78)' },
+    el('div', { class: 'panel', style: 'max-width:520px' },
+      el('div', { class: 'eyebrow' }, '// FIELD INVENTORY'),
+      el('h2', { style: 'font-size:34px;margin-bottom:6px;display:flex;align-items:baseline' },
+        el('span', {}, 'CARRY'),
+        el('span', { style: 'margin-left:auto;font-family:var(--f-mono);font-size:10px;color:var(--muted);letter-spacing:2px' }, 'RIGHT-CLICK · USE'),
+      ),
+      el('div', { class: 'inv-grid' }),
+      el('div', { class: 'sub', style: 'margin-top:14px;font-size:11px;font-family:var(--f-mono);letter-spacing:1px' },
+        'Hover an item for description. Materials are spent at workbenches. Close with I or Esc.'),
+    )
+  );
+  // Close when the dim backdrop (the overlay itself, not the panel) is clicked.
+  __invEl.addEventListener('click', e => {
+    if (e.target === __invEl) closeInventory();
+  });
+  overlayRoot.appendChild(__invEl);
+  refreshInventory();
+}
+function closeInventory() {
+  if (__invEl) __invEl.style.display = 'none';
+  if (Game.mode === 'playing') Game.mapOpen = false;
+}
+function isInventoryOpen() {
+  return !!__invEl && __invEl.style.display !== 'none';
+}
+
+// ---------- Crafting overlay ----------
+// Opened by `E` near a workbench (dispatched from game.js updatePlayer).
+// Lists recipes from CRAFT_RECIPES; clicking a recipe consumes the cost
+// from the inventory and adds the outputs. Closes the same way as the
+// inventory (Esc / E again / click backdrop).
+let __craftEl = null;
+function refreshCrafting() {
+  if (!__craftEl) return;
+  const list = __craftEl.querySelector('.craft-list');
+  if (!list) return;
+  const inv = Game.player.inventory;
+  list.innerHTML = '';
+  for (const r of CRAFT_RECIPES) {
+    const canAfford = r.cost.every(c => hasItem(inv, c.id, c.n));
+    const row = el('div', { class: 'craft-row' + (canAfford ? '' : ' poor') });
+    // left: output description
+    const left = el('div', { class: 'left' },
+      el('div', { class: 'nm' }, r.label),
+      el('div', { class: 'desc' }, r.desc),
+    );
+    // right: cost + button
+    const costStr = r.cost.map(c => `${c.n}× ${ITEMS[c.id].name}`).join(' + ');
+    const right = el('div', { class: 'right' },
+      el('div', { class: 'cost' }, costStr),
+      el('button', {
+        class: 'primary',
+        disabled: canAfford ? null : 'disabled',
+        onclick: () => {
+          if (!canAfford) return;
+          for (const c of r.cost) removeItem(inv, c.id, c.n);
+          r.apply(Game.player);
+          Audio.sfx.pickup();
+          refreshCrafting();
+          refreshInventory();
+        },
+      }, 'CRAFT'),
+    );
+    row.appendChild(left);
+    row.appendChild(right);
+    list.appendChild(row);
+  }
+  // Stock readout in the header
+  const headStock = __craftEl.querySelector('.craft-stock');
+  if (headStock) {
+    headStock.textContent = `SCRAP · ${itemCount(inv, 'scrap')}`;
+  }
+}
+function openCrafting(workbench) {
+  if (Game.mode !== 'playing') return;
+  Game.mapOpen = true;
+  if (__craftEl && !__craftEl.isConnected) __craftEl = null;
+  if (__craftEl) { __craftEl.style.display = 'flex'; refreshCrafting(); return; }
+  __craftEl = el('div', { class: 'overlay craft-overlay', style: 'background:rgba(7,8,10,0.78)' },
+    el('div', { class: 'panel', style: 'max-width:580px' },
+      el('div', { class: 'eyebrow' }, '// WORKBENCH'),
+      el('h2', { style: 'display:flex;align-items:baseline' },
+        el('span', {}, 'CRAFT'),
+        el('span', { class: 'craft-stock', style: 'margin-left:auto;font-family:var(--f-mono);font-size:12px;color:var(--toxic);letter-spacing:2px' }, ''),
+      ),
+      el('div', { class: 'craft-list' }),
+      el('div', { class: 'sub', style: 'margin-top:14px;font-size:11px;font-family:var(--f-mono);letter-spacing:1px' },
+        'Step away or press E / Esc to close.'),
+    )
+  );
+  __craftEl.addEventListener('click', e => {
+    if (e.target === __craftEl) closeCrafting();
+  });
+  overlayRoot.appendChild(__craftEl);
+  refreshCrafting();
+}
+function closeCrafting() {
+  if (__craftEl) __craftEl.style.display = 'none';
+  if (Game.mode === 'playing') Game.mapOpen = false;
+  // Block the E held-key from re-opening on the very next tick.
+  if (Game.player) Game.player.openCd = 0.4;
+}
+function isCraftingOpen() {
+  return !!__craftEl && __craftEl.style.display !== 'none';
+}
+
+// ---------- Perk tree overlay ----------
+// Opened with P or via the pause-screen button. Shows 4 lanes side by side.
+// Clicking an unspent perk consumes a point; unlocked perks are dimmed and
+// show a check. The overlay reuses the modal-pause gate (Game.mapOpen).
+let __perkEl = null;
+function refreshPerks() {
+  if (!__perkEl) return;
+  const lanesEl = __perkEl.querySelector('.perk-lanes');
+  const headPts = __perkEl.querySelector('.perk-points');
+  if (!lanesEl) return;
+  if (headPts) {
+    headPts.textContent = `POINTS · ${Game.perks ? Game.perks.points : 0}`;
+  }
+  lanesEl.innerHTML = '';
+  for (const lane of PERK_LANES) {
+    const col = el('div', { class: 'perk-lane', style: `--lane:${PERK_LANE_COLOR[lane]}` });
+    col.appendChild(el('div', { class: 'perk-lane-name' }, lane.toUpperCase()));
+    const list = el('div', { class: 'perk-list' });
+    for (const id in PERKS) {
+      const def = PERKS[id];
+      if (def.lane !== lane) continue;
+      const unlocked = hasPerk(id);
+      const canAfford = Game.perks && Game.perks.points > 0 && !unlocked;
+      const row = el('div', {
+        class: 'perk-row' + (unlocked ? ' on' : '') + (canAfford ? ' buy' : ''),
+        title: def.desc,
+        onclick: () => {
+          if (unlocked) return;
+          if (unlockPerk(id)) refreshPerks();
+        },
+      },
+        el('div', { class: 'perk-mark' }, unlocked ? '●' : '○'),
+        el('div', { class: 'perk-text' },
+          el('div', { class: 'perk-name' }, def.name),
+          el('div', { class: 'perk-desc' }, def.desc),
+        ),
+      );
+      list.appendChild(row);
+    }
+    col.appendChild(list);
+    lanesEl.appendChild(col);
+  }
+}
+function openPerkTree() {
+  if (Game.mode !== 'playing') return;
+  Game.mapOpen = true;
+  if (__perkEl && !__perkEl.isConnected) __perkEl = null;
+  if (__perkEl) { __perkEl.style.display = 'flex'; refreshPerks(); return; }
+  __perkEl = el('div', { class: 'overlay perk-overlay', style: 'background:rgba(7,8,10,0.86)' },
+    el('div', { class: 'panel', style: 'max-width:880px' },
+      el('div', { class: 'eyebrow' }, '// CHARACTER · PERK TREE'),
+      el('h2', { style: 'display:flex;align-items:baseline' },
+        el('span', {}, 'PERKS'),
+        el('span', { class: 'perk-points', style: 'margin-left:auto;font-family:var(--f-mono);font-size:13px;color:var(--toxic);letter-spacing:2px' }, ''),
+      ),
+      el('div', { class: 'perk-lanes' }),
+      el('div', { class: 'sub', style: 'margin-top:14px;font-size:11px;font-family:var(--f-mono);letter-spacing:1px' },
+        '1 point per day survived. Perks reset on death. Press P or Esc to close.'),
+    )
+  );
+  __perkEl.addEventListener('click', e => {
+    if (e.target === __perkEl) closePerkTree();
+  });
+  overlayRoot.appendChild(__perkEl);
+  refreshPerks();
+}
+function closePerkTree() {
+  if (__perkEl) __perkEl.style.display = 'none';
+  if (Game.mode === 'playing') Game.mapOpen = false;
+}
+function isPerkTreeOpen() {
+  return !!__perkEl && __perkEl.style.display !== 'none';
+}
+
+// ---------- Esc + M + I handling ----------
 window.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    if (isPerkTreeOpen()) { closePerkTree(); e.preventDefault(); return; }
+    if (isCraftingOpen()) { closeCrafting(); e.preventDefault(); return; }
+    if (isInventoryOpen()) { closeInventory(); e.preventDefault(); return; }
     if (Game.mapOpen) { Game.mapOpen = false; e.preventDefault(); return; }
     if (Game.mode === 'playing') showPause();
     else if (Game.mode === 'paused') { clearOverlay(); Game.mode = 'playing'; }
     return;
   }
+  if (e.key === 'p' || e.key === 'P') {
+    if (Game.mode === 'playing' && !isInventoryOpen() && !isCraftingOpen()) {
+      if (isPerkTreeOpen()) closePerkTree();
+      else openPerkTree();
+      Audio.sfx.click();
+      e.preventDefault();
+    }
+  }
   if (e.key === 'm' || e.key === 'M') {
-    if (Game.mode === 'playing') {
+    if (Game.mode === 'playing' && !isInventoryOpen() && !isCraftingOpen() && !isPerkTreeOpen()) {
       Game.mapOpen = !Game.mapOpen;
       Audio.sfx.click();
       e.preventDefault();
     }
+  }
+  if (e.key === 'i' || e.key === 'I') {
+    if (Game.mode === 'playing' && !isCraftingOpen() && !isPerkTreeOpen()) {
+      if (isInventoryOpen()) closeInventory();
+      else openInventory();
+      Audio.sfx.click();
+      e.preventDefault();
+    }
+  }
+  if (e.key === 'e' || e.key === 'E') {
+    // Toggle the workbench overlay closed when E is pressed while it's open
+    // (matches the close-on-reinteract pattern of the chest E-handler).
+    if (isCraftingOpen()) { closeCrafting(); e.preventDefault(); }
   }
 });
 

@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Outbreak — Foundry Brainstorm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="brainstorm.css">
+<style>
+/* file-specific overrides — oil & rust palette */
+body {
+  background:
+    radial-gradient(ellipse at 15% -10%, rgba(217,179,90,0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 88% 100%, rgba(210,75,53,0.10) 0%, transparent 55%),
+    var(--ink-2);
+}
+.tag.s { color: var(--toxic); border-color: rgba(142,197,71,0.45); }
+.tag.m { color: var(--warn);  border-color: rgba(227,168,58,0.45); }
+.tag.l { color: var(--accent);border-color: rgba(210,75,53,0.5); }
+.tag.xl { color: var(--info); border-color: rgba(95,182,232,0.45); }
+
+/* ─── system diagram (intro centerpiece) ─── */
+.flowmap {
+  margin: 32px 0 56px;
+  padding: 28px 32px 22px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 18px, rgba(255,255,255,0.012) 18px 19px),
+    var(--panel);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--gold);
+  position: relative;
+  overflow: hidden;
+}
+.flowmap::before {
+  content: "// PROCESS FLOW · CRUDE → CARTRIDGE";
+  position: absolute; top: 10px; right: 18px;
+  font-family: var(--f-mono); font-size: 9px; letter-spacing: 3px; color: var(--muted-2);
+}
+.flowmap h3 {
+  margin: 0 0 18px;
+  font-family: var(--f-display);
+  font-size: 22px; letter-spacing: 4px; color: var(--fg);
+}
+.flowmap h3 .gold { color: var(--gold); }
+.flowmap pre {
+  font-family: var(--f-mono);
+  font-size: 11px; line-height: 1.55;
+  color: var(--fg-dim);
+  margin: 0;
+  overflow-x: auto;
+  letter-spacing: 0.4px;
+}
+.flowmap pre .lbl { color: var(--muted); }
+.flowmap pre .ore { color: var(--gold); }
+.flowmap pre .oil { color: var(--accent-hi); }
+.flowmap pre .bio { color: var(--toxic); }
+.flowmap pre .out { color: var(--info); }
+.flowmap pre .arr { color: var(--muted-2); }
+
+/* tier ladder */
+.tiers {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  margin: 18px 0 0;
+  border-top: 1px dashed var(--border);
+  padding-top: 14px;
+}
+.tiers .t {
+  padding: 6px 10px 4px 0;
+  border-right: 1px solid var(--border);
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--fg-dim);
+  letter-spacing: 0.5px;
+}
+.tiers .t:last-child { border-right: none; }
+.tiers .t .k { display: block; font-size: 8px; letter-spacing: 2px; color: var(--muted); margin-bottom: 3px; }
+.tiers .t.s1 .k { color: var(--muted-2); }
+.tiers .t.s2 .k { color: var(--fg-dim); }
+.tiers .t.s3 .k { color: var(--warn); }
+.tiers .t.s4 .k { color: var(--accent); }
+.tiers .t.s5 .k { color: var(--info); }
+
+@media (max-width: 720px) {
+  .tiers { grid-template-columns: repeat(2, 1fr); }
+  .flowmap pre { font-size: 9.5px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ───────────  HEADER  ─────────── -->
+<header class="header">
+  <div class="top">
+    <span class="dot"></span>
+    <span>FIELD BRIEF · INDUSTRY TRACK</span>
+    <span class="spacer"></span>
+    <span>FILE <span class="x">FND-001</span></span>
+    <span>·</span>
+    <span>REV A</span>
+    <span>·</span>
+    <span>DAY <span class="x">∞</span></span>
+  </div>
+  <h1>FOUNDRY <span class="slash">/</span> <span class="bleed">BRAINSTORM</span></h1>
+  <div class="lede">
+    <div class="cell"><div class="l">DIRECTIONS</div><div class="v">20</div></div>
+    <div class="cell"><div class="l">CLUSTERS</div><div class="v">05</div></div>
+    <div class="cell"><div class="l">FOCUS</div><div class="v">AMMO PIPE<span class="unit">crude→casing</span></div></div>
+    <div class="cell"><div class="l">SCALE</div><div class="v">S → XL</div></div>
+  </div>
+</header>
+
+<!-- ───────────  INTRO  ─────────── -->
+<div class="intro">
+  <div class="body">
+    <p>The pitch is simple: you stop <em>finding</em> ammo and start <em>making</em> it — at industrial scale. The <strong class="acc">Foundry</strong> is a multi‑stage production network you bolt onto the homestead. Pull crude oil from a wildcat well, dig iron and copper from veins, refine the slurries into <strong>powder, plastics, brass strip, lead cores, primer compound</strong>, and feed them down a belt to an assembly line that prints finished cartridges by the crate.</p>
+    <p>The point isn't a recipe — it's a <strong>factory</strong>. Belts. Pipes. Hoppers. Couriers. A foreman's console. The first hour is hauling jerricans by hand. By night fifty you're running an automated city block that wakes up while you sleep.</p>
+    <p>It is also a beacon. Every smokestack pulls aggro from a mile out, sour crude leaks toxic gas, and there's a special zombie that clogs your pipes for fun. Set‑up is a project. Defending the project is a second project. Eat it, gunslinger.</p>
+  </div>
+  <aside class="legend">
+    <h4>LEGEND</h4>
+    <div class="row"><span class="key">COMPLEXITY</span><span class="tag s">S</span><span class="tag m">M</span><span class="tag l">L</span><span class="tag xl">XL</span></div>
+    <div class="row"><span class="key">IMPACT</span><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip"></span></div></div>
+    <div class="row"><span class="key">HOOKS</span><span style="color:var(--fg-dim)">existing or proposed system</span></div>
+    <div class="row" style="margin-top:14px;border-top:1px dashed var(--border);padding-top:12px"><span class="key">STATUS</span><span style="color:var(--toxic)">all 20 unbuilt — pitch only</span></div>
+    <div class="row"><span class="key">SISTER FILE</span><span style="color:var(--fg-dim)">ARM‑001 · D·04 Ammo Press</span></div>
+  </aside>
+</div>
+
+<!-- ───────────  SYSTEM DIAGRAM  ─────────── -->
+<div class="flowmap">
+  <h3>THE <span class="gold">PIPELINE</span> AT A GLANCE</h3>
+<pre><span class="lbl">WORLD</span>           <span class="lbl">EXTRACT</span>            <span class="lbl">REFINE</span>                <span class="lbl">ASSEMBLE</span>             <span class="lbl">OUTPUT</span>
+
+<span class="oil">oil seep</span>   <span class="arr">──►</span>  pumpjack   <span class="arr">──►</span>   refinery tower    <span class="arr">─┬─►</span>  powder mill        <span class="arr">─┐</span>
+                                                  <span class="arr">├─►</span>  lubricant          <span class="arr">│</span>
+                                                  <span class="arr">├─►</span>  casing plastic     <span class="arr">│</span>
+                                                  <span class="arr">└─►</span>  coke / fuel        <span class="arr">│</span>
+                                                                          <span class="arr">▼</span>
+<span class="ore">iron vein</span>  <span class="arr">──►</span>  ore drill  <span class="arr">──►</span>   blast furnace     <span class="arr">─►</span>  casing press      <span class="arr">─►</span>  <span class="out">ASSEMBLY  ──► CRATE</span>
+<span class="ore">copper</span>     <span class="arr">──►</span>                                          bullet caster     <span class="arr">─►</span>     <span class="out">LINE</span>          <span class="arr">▲</span>
+<span class="ore">lead</span>       <span class="arr">──►</span>                                          primer bench      <span class="arr">─►</span>                    <span class="arr">│</span>
+                                                                                              <span class="arr">│</span>
+<span class="ore">saltpeter</span>  <span class="arr">──►</span>  hand dig   <span class="arr">──►</span>   centrifuge        <span class="arr">─►</span>  primer compound   <span class="arr">─────────────┘</span>
+<span class="ore">sulfur</span>     <span class="arr">──►</span>                                              ▲
+<span class="bio">zombie bile</span><span class="arr">──►</span>  bile vat   <span class="arr">──►</span>   bile cracker      <span class="arr">─►</span>  alt solvent path</pre>
+
+  <div class="tiers">
+    <div class="t s1"><span class="k">TIER 0 · SALVAGE</span>scavenged rounds · stock</div>
+    <div class="t s2"><span class="k">TIER 1 · STANDARD</span>your foundry, basic recipe</div>
+    <div class="t s3"><span class="k">TIER 2 · MATCH</span>tuned tolerances · +crit</div>
+    <div class="t s4"><span class="k">TIER 3 · BOUTIQUE</span>incendiary · AP · HE</div>
+    <div class="t s5"><span class="k">TIER 4 · EXPERIMENTAL</span>capacitor cell · thermite</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     CLUSTER A — EXTRACTION
+     ═══════════════════════════════════════════════════════ -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">A</div>
+    <div class="ttl">EXTRACTION</div>
+    <div class="sub">// getting the dirt and crude out of the ground</div>
+  </div>
+  <div class="grid">
+
+    <!-- HERO: Wildcat Oil Field -->
+    <div class="card feature">
+      <div class="num">A·01</div>
+      <div class="meta"><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span></div><span class="tag xl">XL</span></div>
+      <div class="left">
+        <div class="ico">
+          <svg class="ic" width="84" height="60" viewBox="0 0 84 60">
+            <!-- ground -->
+            <rect x="0" y="46" width="84" height="14" fill="#3a2e1f"/>
+            <rect x="0" y="46" width="84" height="2" fill="#1f1810"/>
+            <!-- derrick -->
+            <line x1="22" y1="46" x2="34" y2="10" stroke="#5e6a78" stroke-width="1.5"/>
+            <line x1="46" y1="46" x2="34" y2="10" stroke="#5e6a78" stroke-width="1.5"/>
+            <line x1="26" y1="36" x2="42" y2="36" stroke="#5e6a78" stroke-width="1"/>
+            <line x1="28" y1="28" x2="40" y2="28" stroke="#5e6a78" stroke-width="1"/>
+            <line x1="30" y1="20" x2="38" y2="20" stroke="#5e6a78" stroke-width="1"/>
+            <!-- pumpjack arm -->
+            <rect x="48" y="32" width="3" height="14" fill="#5e6a78"/>
+            <rect x="50" y="30" width="24" height="4" fill="#3a3f4a"/>
+            <circle cx="50" cy="32" r="3" fill="#d24b35"/>
+            <rect x="72" y="32" width="3" height="14" fill="#5e6a78"/>
+            <!-- oil splash -->
+            <ellipse cx="34" cy="48" rx="6" ry="2" fill="#0b0c0e"/>
+            <circle cx="36" cy="44" r="1.4" fill="#0b0c0e"/>
+            <circle cx="32" cy="42" r="1" fill="#0b0c0e"/>
+            <!-- gas flare -->
+            <path d="M58 16 Q60 8 62 14 Q63 6 64 12 Q66 18 60 22 Z" fill="#e3a83a" opacity="0.85"/>
+            <path d="M60 20 Q62 14 63 18 Z" fill="#d24b35"/>
+          </svg>
+        </div>
+        <div class="nm">WILDCAT <span class="alt">OIL FIELD</span></div>
+        <p class="one">Step one. Find the seep. Sink the well. Pray for sweet.</p>
+        <div class="body">
+          <p>Oil isn't on the map — you <strong>scout for it</strong>. A handful of <em>oil seeps</em> spawn per world (dark stain on a tile, faint smell radius). You sink a <strong>pumpjack</strong> on top of it (rare blueprint, found at a fueling‑station POI). It pulls <em>crude</em> into a buried tank at 1 barrel/min, automated.</p>
+          <p>Two crude qualities, rolled per well: <strong style="color:var(--gold)">sweet</strong> (clean, high powder yield) or <strong style="color:var(--accent)">sour</strong> (foul, 1.5× yield but vents a toxic gas cloud 8 tiles wide — kills crops, sickens survivors, scrubs need a flare stack). The decision to claim a sour field is half the meta game.</p>
+          <p>Wells deplete. A rich one dries in ~20 days; you'll go nomadic, or run a <strong>pipeline</strong> (see E·04).</p>
+        </div>
+      </div>
+      <div class="right">
+        <div class="row"><span class="k">RATE</span><span class="v">1 bbl/min · automatic</span></div>
+        <div class="row"><span class="k">FUEL</span><span class="v">5 W from grid</span></div>
+        <div class="row"><span class="k">YIELD</span><span class="v">sweet 1× · sour 1.5× + gas</span></div>
+        <div class="row"><span class="k">RESERVE</span><span class="v">~20 in‑game days</span></div>
+        <div class="row"><span class="k">NOISE</span><span class="v">audible 30 tiles</span></div>
+        <div class="row"><span class="k">DEFENSE</span><span class="v">remote · must garrison</span></div>
+      </div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="0" y="34" width="64" height="14" fill="#3a2e1f"/>
+          <!-- veins -->
+          <circle cx="10" cy="40" r="2" fill="#d24b35"/>
+          <circle cx="16" cy="44" r="1.4" fill="#d24b35"/>
+          <circle cx="50" cy="42" r="1.8" fill="#8ec547" opacity="0.7"/>
+          <circle cx="56" cy="40" r="1.2" fill="#8ec547" opacity="0.7"/>
+          <!-- drill -->
+          <rect x="26" y="14" width="14" height="18" fill="#5e6a78" stroke="#2a2e36"/>
+          <rect x="28" y="18" width="10" height="2" fill="#e3a83a"/>
+          <polygon points="30,32 33,38 36,32 39,38 36,32" fill="#5e6a78"/>
+          <rect x="32" y="34" width="2" height="8" fill="#3a3f4a"/>
+          <!-- chimney puff -->
+          <circle cx="33" cy="10" r="3" fill="#7a7e88" opacity="0.5"/>
+          <circle cx="36" cy="6" r="2" fill="#7a7e88" opacity="0.35"/>
+        </svg>
+      </div>
+      <div class="nm">ORE <span class="alt">DRILL</span></div>
+      <p class="one">Plant it on a vein. It eats stone. You collect ingots.</p>
+      <div class="body">
+        <p>Three vein types spawn in the highlands and quarry POI: <strong style="color:var(--gold)">iron</strong> (everywhere), <strong style="color:var(--accent-hi)">copper</strong> (cliffs), <strong style="color:var(--info)">lead</strong> (caves; toxic, sickens unprotected workers). Hand‑mine with a pickaxe for slow yield, or plant a powered <strong>drill</strong> for 1 chunk/30s automated.</p>
+        <p>Veins are <em>finite</em>. Surveyed remaining tonnage shows on the drill — you'll pull up stakes and move it.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">power grid</span><span class="chip">map flags</span><span class="chip">pickaxe</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·03</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <!-- cave mouth -->
+          <path d="M4 44 Q4 18 22 14 L42 14 Q60 18 60 44 Z" fill="#1c1f25" stroke="#3a3f4a"/>
+          <!-- crystals -->
+          <polygon points="18,42 22,30 26,42" fill="#e3a83a"/>
+          <polygon points="22,40 24,32 27,40" fill="#d9b35a"/>
+          <polygon points="38,42 42,28 46,42" fill="#8ec547"/>
+          <polygon points="42,40 44,32 47,40" fill="#b3d870"/>
+          <!-- shovel -->
+          <line x1="50" y1="20" x2="56" y2="32" stroke="#8a5a2a" stroke-width="1.4"/>
+          <polygon points="55,30 58,34 53,36" fill="#7a7e88"/>
+        </svg>
+      </div>
+      <div class="nm">SALT &amp; <span class="alt">SULFUR</span></div>
+      <p class="one">The boring half of black powder. Hand‑dug from caves.</p>
+      <div class="body">
+        <p><strong style="color:var(--gold)">Saltpeter</strong> (cave crystals) and <strong style="color:var(--toxic)">sulfur</strong> (yellow vents near hot springs) round out the powder recipe. No automation — by design. You hand‑mine these on scavenger runs and haul them home in stacks. Keeps the early loop physical.</p>
+        <p>A late‑game <em>Saltpeter Vat</em> can synthesize it from bat guano + lye — funny, slow, but a renewable backstop.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">caves POI</span><span class="chip">hot springs</span><span class="chip">scavenge loop</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">A·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <!-- crew silhouette -->
+          <circle cx="14" cy="20" r="4" fill="#5e6a78"/>
+          <rect x="11" y="24" width="6" height="10" fill="#5e6a78"/>
+          <circle cx="32" cy="18" r="4" fill="#7a7e88"/>
+          <rect x="29" y="22" width="6" height="12" fill="#7a7e88"/>
+          <circle cx="50" cy="22" r="4" fill="#5e6a78"/>
+          <rect x="47" y="26" width="6" height="10" fill="#5e6a78"/>
+          <!-- ground + casings -->
+          <rect x="0" y="38" width="64" height="10" fill="#3a2e1f"/>
+          <rect x="8"  y="40" width="3" height="6" fill="#d9b35a"/>
+          <rect x="18" y="42" width="3" height="5" fill="#d9b35a"/>
+          <rect x="30" y="41" width="3" height="6" fill="#d9b35a"/>
+          <rect x="44" y="42" width="3" height="5" fill="#d9b35a"/>
+          <rect x="55" y="40" width="3" height="6" fill="#d9b35a"/>
+        </svg>
+      </div>
+      <div class="nm">BRASS <span class="gold">SCAVENGERS</span></div>
+      <p class="one">Send a survivor crew out to pick up your spent casings.</p>
+      <div class="body">
+        <p>Every shot you fire <strong>leaves a casing on the ground</strong>. Assign a survivor (from the homestead brief) to a <em>brass crew</em>; they patrol within 60 tiles and return a bag of casings to a hopper at base each day.</p>
+        <p>Brass cases reduce assembly cost by 60% — recycled rounds are your bread and butter. Without a crew, only what you personally pick up survives.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">survivors</span><span class="chip">pickups</span><span class="chip">daily rhythm</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     CLUSTER B — REFINING
+     ═══════════════════════════════════════════════════════ -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">B</div>
+    <div class="ttl">REFINING</div>
+    <div class="sub">// turning crude muck into named precursors</div>
+  </div>
+  <div class="grid">
+
+    <!-- HERO: Refinery Tower -->
+    <div class="card feature">
+      <div class="num">B·01</div>
+      <div class="meta"><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span></div><span class="tag xl">XL</span></div>
+      <div class="left">
+        <div class="ico">
+          <svg class="ic" width="84" height="60" viewBox="0 0 84 60">
+            <rect x="0" y="50" width="84" height="10" fill="#3a2e1f"/>
+            <!-- tower -->
+            <rect x="22" y="10" width="14" height="40" fill="#5e6a78" stroke="#2a2e36"/>
+            <rect x="22" y="14" width="14" height="3" fill="#3a3f4a"/>
+            <rect x="22" y="22" width="14" height="3" fill="#3a3f4a"/>
+            <rect x="22" y="30" width="14" height="3" fill="#3a3f4a"/>
+            <rect x="22" y="38" width="14" height="3" fill="#3a3f4a"/>
+            <!-- flare -->
+            <rect x="20" y="4" width="2" height="14" fill="#5e6a78"/>
+            <path d="M17 8 Q21 -2 25 6 Q27 -2 28 6 Q26 10 21 12 Z" fill="#e3a83a"/>
+            <path d="M19 8 Q21 4 23 8 Z" fill="#d24b35"/>
+            <!-- output pipes -->
+            <rect x="36" y="18" width="20" height="2" fill="#7a7e88"/>
+            <rect x="36" y="28" width="28" height="2" fill="#7a7e88"/>
+            <rect x="36" y="38" width="18" height="2" fill="#7a7e88"/>
+            <circle cx="56" cy="19" r="2" fill="#e3a83a"/>
+            <circle cx="64" cy="29" r="2" fill="#0b0c0e"/>
+            <circle cx="54" cy="39" r="2" fill="#d9b35a"/>
+            <!-- intake -->
+            <rect x="6" y="42" width="18" height="2" fill="#7a7e88"/>
+            <circle cx="6" cy="43" r="2" fill="#d24b35"/>
+          </svg>
+        </div>
+        <div class="nm">REFINERY <span class="alt">TOWER</span></div>
+        <p class="one">One crude in. Four named fluids out.</p>
+        <div class="body">
+          <p>The <strong>cracking tower</strong> is the spine of the Foundry. It takes <em>crude</em> and a constant trickle of <em>coal</em>, runs hot, and outputs four products on four separate pipes:</p>
+          <p><strong style="color:var(--warn)">SMOKELESS BASE</strong> · feed it to the powder mill.<br>
+          <strong style="color:var(--accent-hi)">CASING PLASTIC</strong> · the polymer for shotgun hulls and shock‑round bodies.<br>
+          <strong style="color:var(--info)">LUBRICANT</strong> · keeps every machine in the Foundry above 80% condition. Run out and your factory <em>jams</em>.<br>
+          <strong style="color:var(--gold)">FUEL OIL</strong> · same fuel that runs vehicles, generators, chainsaws, and flamers.</p>
+          <p>You set the <strong>blend dial</strong> per tower — bias more powder vs more fuel. The numbers update live on the foreman console. Towers must be flared (B·05) or they back up and shut down.</p>
+        </div>
+      </div>
+      <div class="right">
+        <div class="row"><span class="k">INPUT</span><span class="v">1 bbl crude · 4 coal · 12 W</span></div>
+        <div class="row"><span class="k">OUTPUTS</span><span class="v">4 fluids · blend dial</span></div>
+        <div class="row"><span class="k">CYCLE</span><span class="v">45 s / batch</span></div>
+        <div class="row"><span class="k">FOOTPRINT</span><span class="v">3×3 tiles + 4 pipes</span></div>
+        <div class="row"><span class="k">FAILURE</span><span class="v">backed‑up = shutdown</span></div>
+        <div class="row"><span class="k">UNLOCK</span><span class="v">refinery POI · blueprint</span></div>
+      </div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">B·02</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <!-- furnace body -->
+          <path d="M14 44 L14 18 Q14 10 22 8 L42 8 Q50 10 50 18 L50 44 Z" fill="#3a3f4a" stroke="#2a2e36"/>
+          <rect x="22" y="24" width="20" height="16" fill="#0b0c0e"/>
+          <!-- glow -->
+          <rect x="24" y="28" width="16" height="10" fill="#d24b35"/>
+          <rect x="26" y="32" width="12" height="6" fill="#e3a83a"/>
+          <!-- chimney -->
+          <rect x="28" y="0" width="8" height="10" fill="#5e6a78"/>
+          <circle cx="32" cy="-1" r="2" fill="#7a7e88"/>
+          <!-- ingot drop -->
+          <rect x="52" y="38" width="8" height="4" fill="#d9b35a"/>
+        </svg>
+      </div>
+      <div class="nm">BLAST <span class="alt">FURNACE</span></div>
+      <p class="one">Raw ore in the door. Ingots out the chute.</p>
+      <div class="body">
+        <p>Smelts <strong>iron / copper / lead</strong> chunks into stackable ingots. Burns <em>coke</em> (from B·05) at 2/ingot. Three slots: fuel, ore, output. Cycle 12s.</p>
+        <p>Lead smelting vents toxic fumes inside a 4‑tile radius — keep it on an outer wall or build a flue.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">ore drill</span><span class="chip">coke oven</span><span class="chip">ventilation</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">B·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <circle cx="32" cy="24" r="18" fill="#1c1f25" stroke="#5e6a78" stroke-width="1.5"/>
+          <circle cx="32" cy="24" r="12" fill="#3a3f4a"/>
+          <path d="M32 12 A12 12 0 0 1 44 24" stroke="#e3a83a" stroke-width="2" fill="none"/>
+          <path d="M32 36 A12 12 0 0 1 20 24" stroke="#8ec547" stroke-width="2" fill="none"/>
+          <circle cx="32" cy="24" r="3" fill="#d24b35"/>
+          <!-- output pipes -->
+          <rect x="8" y="23" width="6" height="2" fill="#e3a83a"/>
+          <rect x="50" y="23" width="6" height="2" fill="#8ec547"/>
+        </svg>
+      </div>
+      <div class="nm">CENTRIFUGE</div>
+      <p class="one">Spin slurry. Heavy on one side, light on the other.</p>
+      <div class="body">
+        <p>Takes <em>powdered minerals + water</em> and separates them by density. The key use: <strong>saltpeter slurry → pure saltpeter + lye byproduct</strong>; <strong>sulfur muck → pure sulfur + acid byproduct</strong>. Also used to enrich primer compound (D·02 ammo types).</p>
+        <p>The byproducts aren't waste — lye is soap (survivor morale), acid pairs with the Acid Round recipe.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">water</span><span class="chip">byproducts</span><span class="chip">acid rounds</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">B·04</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <!-- barrel mill -->
+          <ellipse cx="32" cy="24" rx="22" ry="12" fill="#5e6a78" stroke="#2a2e36"/>
+          <ellipse cx="32" cy="24" rx="22" ry="12" fill="none" stroke="#3a3f4a"/>
+          <line x1="14" y1="24" x2="50" y2="24" stroke="#2a2e36" stroke-width="0.6"/>
+          <line x1="20" y1="14" x2="20" y2="34" stroke="#3a3f4a" stroke-width="0.5"/>
+          <line x1="44" y1="14" x2="44" y2="34" stroke="#3a3f4a" stroke-width="0.5"/>
+          <!-- drive shaft -->
+          <rect x="0" y="22" width="14" height="4" fill="#3a3f4a"/>
+          <!-- output stream -->
+          <path d="M54 24 Q60 28 60 38" stroke="#7a7e88" stroke-width="2" fill="none"/>
+          <circle cx="60" cy="38" r="1.2" fill="#7a7e88"/>
+          <circle cx="58" cy="34" r="1" fill="#7a7e88" opacity="0.7"/>
+        </svg>
+      </div>
+      <div class="nm">POWDER <span class="alt">MILL</span></div>
+      <p class="one">Where smokeless meets saltpeter. Try not to spark anything.</p>
+      <div class="body">
+        <p>Combines <em>smokeless base + saltpeter + sulfur + charcoal</em> on a rotating drum into <strong>finished propellant</strong>. Three recipes — <strong>fast</strong> (pistol/SMG), <strong>medium</strong> (rifle), <strong>slow</strong> (shotgun, AP). The recipe you load determines what rounds the line downstream can make.</p>
+        <p>The mill is <strong>volatile</strong>. A fire within 3 tiles, or a stray bullet in the building, has a chance to trigger a chain detonation. Build it underground or in its own outbuilding.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">fire DoT</span><span class="chip">friendly fire</span><span class="chip">recipe slot</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     CLUSTER C — ASSEMBLY
+     ═══════════════════════════════════════════════════════ -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">C</div>
+    <div class="ttl">ASSEMBLY</div>
+    <div class="sub">// turning precursors into a thing that fits a magazine</div>
+  </div>
+  <div class="grid">
+
+    <!-- HERO: Cartridge Assembly Line -->
+    <div class="card feature">
+      <div class="num">C·01</div>
+      <div class="meta"><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip"></span></div><span class="tag xl">XL</span></div>
+      <div class="left">
+        <div class="ico">
+          <svg class="ic" width="84" height="60" viewBox="0 0 84 60">
+            <!-- conveyor base -->
+            <rect x="2" y="34" width="80" height="6" fill="#3a3f4a"/>
+            <rect x="2" y="40" width="80" height="2" fill="#2a2e36"/>
+            <circle cx="8"  cy="37" r="3" fill="#5e6a78"/>
+            <circle cx="24" cy="37" r="3" fill="#5e6a78"/>
+            <circle cx="40" cy="37" r="3" fill="#5e6a78"/>
+            <circle cx="56" cy="37" r="3" fill="#5e6a78"/>
+            <circle cx="72" cy="37" r="3" fill="#5e6a78"/>
+            <!-- assembly arms -->
+            <rect x="12" y="14" width="2" height="18" fill="#7a7e88"/>
+            <rect x="10" y="12" width="6" height="4" fill="#d24b35"/>
+            <rect x="28" y="10" width="2" height="22" fill="#7a7e88"/>
+            <rect x="26" y="8"  width="6" height="4" fill="#e3a83a"/>
+            <rect x="44" y="14" width="2" height="18" fill="#7a7e88"/>
+            <rect x="42" y="12" width="6" height="4" fill="#8ec547"/>
+            <rect x="60" y="10" width="2" height="22" fill="#7a7e88"/>
+            <rect x="58" y="8"  width="6" height="4" fill="#5fb6e8"/>
+            <!-- cartridge progressing -->
+            <rect x="6"  y="29" width="3" height="5" fill="#d9b35a"/>
+            <rect x="22" y="28" width="3" height="6" fill="#d9b35a"/>
+            <polygon points="38,30 41,28 41,34 38,34" fill="#d9b35a"/>
+            <polygon points="54,30 58,27 58,34 54,34" fill="#d9b35a"/>
+            <polygon points="70,30 74,27 74,34 70,34" fill="#d9b35a"/>
+            <circle cx="72" cy="30" r="0.8" fill="#d24b35"/>
+            <!-- crate at end -->
+            <rect x="78" y="30" width="4" height="6" fill="#8a5a2a"/>
+          </svg>
+        </div>
+        <div class="nm">ASSEMBLY <span class="alt">LINE</span></div>
+        <p class="one">A belt, four stations, a crate at the end.</p>
+        <div class="body">
+          <p>The terminal stage. A short conveyor with <strong>four station slots</strong> — drop in <em>casing</em>, then <em>primer</em>, then <em>powder charge</em>, then <em>projectile</em>. Each station is a separate building piece you've placed; the line connects them.</p>
+          <p>The same line can produce <strong>any caliber</strong> — you load a <em>recipe card</em> at the foreman console (D·04). Switching cards stalls the line for 20s while the arms reconfigure. Finished rounds drop into a crate at the end of the belt; full crates can be hauled to your weapon wall, your turret feeds, or a trade caravan.</p>
+          <p>Throughput is ~4 rounds/sec at full feed. The bottleneck is always upstream — whichever precursor runs out first stops the whole line. Watching the foreman view is a tiny puzzle game in itself.</p>
+        </div>
+      </div>
+      <div class="right">
+        <div class="row"><span class="k">STATIONS</span><span class="v">4 · case · prime · pwdr · proj</span></div>
+        <div class="row"><span class="k">RATE</span><span class="v">~4 rds/sec at peak</span></div>
+        <div class="row"><span class="k">RECIPE</span><span class="v">swap card · 20 s stall</span></div>
+        <div class="row"><span class="k">OUTPUT</span><span class="v">stacked crate (50/100/200)</span></div>
+        <div class="row"><span class="k">CALIBERS</span><span class="v">all existing guns</span></div>
+        <div class="row"><span class="k">FOOTPRINT</span><span class="v">8×2 tile strip</span></div>
+      </div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <!-- press frame -->
+          <rect x="6" y="4" width="52" height="6" fill="#3a3f4a"/>
+          <rect x="6" y="38" width="52" height="6" fill="#3a3f4a"/>
+          <rect x="6" y="4" width="6" height="40" fill="#5e6a78"/>
+          <rect x="52" y="4" width="6" height="40" fill="#5e6a78"/>
+          <!-- ram -->
+          <rect x="20" y="10" width="24" height="8" fill="#7a7e88"/>
+          <rect x="28" y="18" width="8" height="14" fill="#7a7e88"/>
+          <!-- workpiece -->
+          <rect x="22" y="32" width="20" height="6" fill="#d9b35a"/>
+          <!-- gauge -->
+          <circle cx="48" cy="22" r="3" fill="#0b0c0e" stroke="#7a7e88"/>
+          <line x1="48" y1="22" x2="50" y2="20" stroke="#e3a83a"/>
+        </svg>
+      </div>
+      <div class="nm">CASING <span class="alt">PRESS</span></div>
+      <p class="one">Hydraulic stamps brass strip into deep‑drawn cups.</p>
+      <div class="body">
+        <p>Brass ingot + lubricant → <strong>casings</strong> in the caliber you've loaded. Slow (5s/case); the heart of throughput. <em>Recycled brass</em> (from A·04 scavengers) skips the smelting step and runs 2× faster.</p>
+        <p>Each press dies for one caliber family — swap the die plate to produce 9mm vs. 12‑gauge. Crafted as a workbench upgrade.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">brass</span><span class="chip">lubricant</span><span class="chip">die plates</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·03</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <!-- bench -->
+          <rect x="6" y="30" width="52" height="6" fill="#8a5a2a"/>
+          <rect x="6" y="36" width="6" height="8" fill="#8a5a2a"/>
+          <rect x="52" y="36" width="6" height="8" fill="#8a5a2a"/>
+          <!-- primers -->
+          <circle cx="18" cy="26" r="3" fill="#d9b35a"/>
+          <circle cx="18" cy="26" r="1" fill="#d24b35"/>
+          <circle cx="28" cy="26" r="3" fill="#d9b35a"/>
+          <circle cx="28" cy="26" r="1" fill="#d24b35"/>
+          <circle cx="38" cy="26" r="3" fill="#d9b35a"/>
+          <circle cx="38" cy="26" r="1" fill="#d24b35"/>
+          <!-- spark -->
+          <polygon points="48,12 50,18 56,18 51,22 53,28 48,24 43,28 45,22 40,18 46,18" fill="#e3a83a"/>
+        </svg>
+      </div>
+      <div class="nm">PRIMER <span class="alt">BENCH</span></div>
+      <p class="one">Tiny disks. Big bang if you sneeze on them.</p>
+      <div class="body">
+        <p>Mixes <em>lead styphnate + acid byproduct + powdered glass</em> into primer compound, presses it into copper cups. Cycle 2s/primer, but the bench needs a <strong>survivor operator</strong> — too dangerous to fully automate, and a higher operator skill = lower defect rate.</p>
+        <p>A jammed primer is the source of weapon misfires (E·03 quality).</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">survivors</span><span class="chip">jam stat</span><span class="chip">condition</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">C·04</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <!-- branching paths -->
+          <rect x="0" y="22" width="20" height="4" fill="#5e6a78"/>
+          <rect x="20" y="22" width="4" height="4" fill="#5e6a78"/>
+          <!-- top branch -->
+          <rect x="20" y="8" width="4" height="14" fill="#5e6a78"/>
+          <rect x="20" y="8" width="44" height="4" fill="#5e6a78"/>
+          <rect x="56" y="6" width="8" height="8" fill="#d24b35"/>
+          <!-- mid branch -->
+          <rect x="24" y="22" width="40" height="4" fill="#5e6a78"/>
+          <rect x="56" y="20" width="8" height="8" fill="#e3a83a"/>
+          <!-- bottom branch -->
+          <rect x="20" y="26" width="4" height="14" fill="#5e6a78"/>
+          <rect x="20" y="36" width="44" height="4" fill="#5e6a78"/>
+          <rect x="56" y="34" width="8" height="8" fill="#8ec547"/>
+          <!-- start chip -->
+          <rect x="0" y="20" width="6" height="8" fill="#d9b35a"/>
+        </svg>
+      </div>
+      <div class="nm">SPECIALTY <span class="alt">LINES</span></div>
+      <p class="one">Branch the line to make boutique rounds in parallel.</p>
+      <div class="body">
+        <p>A second (and third, and fourth…) line shares your precursor supply but takes a rare additive at one station. Run them in parallel and your factory makes a mix of round types simultaneously.</p>
+        <p><strong style="color:var(--accent)">INCENDIARY</strong> · +1 white phosphorus / round.<br>
+        <strong style="color:var(--warn)">ARMOR‑PIERCING</strong> · steel‑penetrator projectile (extra blast furnace pass).<br>
+        <strong style="color:var(--toxic)">ACID</strong> · centrifuge acid byproduct charge.<br>
+        <strong style="color:var(--info)">CAPACITOR CELL</strong> · the Railgun's food. End‑game; needs a charged capacitor at station 4 plus a copper coil.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">arsenal ammo types</span><span class="chip">phosphorus</span><span class="chip">parallel lines</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     CLUSTER D — LOGISTICS
+     ═══════════════════════════════════════════════════════ -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">D</div>
+    <div class="ttl">LOGISTICS</div>
+    <div class="sub">// the connective tissue · belts, pipes, hands, eyes</div>
+  </div>
+  <div class="grid">
+
+    <!-- HERO: Belts & pipes -->
+    <div class="card feature">
+      <div class="num">D·01</div>
+      <div class="meta"><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span></div><span class="tag l">L</span></div>
+      <div class="left">
+        <div class="ico">
+          <svg class="ic" width="84" height="60" viewBox="0 0 84 60">
+            <!-- belt -->
+            <rect x="4" y="14" width="50" height="6" fill="#3a3f4a"/>
+            <rect x="4" y="20" width="50" height="2" fill="#2a2e36"/>
+            <rect x="6"  y="14" width="3" height="6" fill="#5e6a78"/>
+            <rect x="14" y="14" width="3" height="6" fill="#5e6a78"/>
+            <rect x="22" y="14" width="3" height="6" fill="#5e6a78"/>
+            <rect x="30" y="14" width="3" height="6" fill="#5e6a78"/>
+            <rect x="38" y="14" width="3" height="6" fill="#5e6a78"/>
+            <rect x="46" y="14" width="3" height="6" fill="#5e6a78"/>
+            <!-- inserter arm -->
+            <circle cx="58" cy="14" r="3" fill="#5e6a78"/>
+            <rect x="57" y="14" width="2" height="10" fill="#5e6a78"/>
+            <rect x="54" y="24" width="8" height="2" fill="#d24b35"/>
+            <!-- pipe -->
+            <rect x="4" y="36" width="60" height="4" fill="#7a7e88"/>
+            <circle cx="14" cy="38" r="3" fill="#3a3f4a"/>
+            <circle cx="36" cy="38" r="3" fill="#3a3f4a"/>
+            <circle cx="58" cy="38" r="3" fill="#3a3f4a"/>
+            <path d="M64 36 Q72 36 72 44 L72 56" stroke="#7a7e88" stroke-width="4" fill="none"/>
+            <!-- packet on belt -->
+            <rect x="34" y="9" width="5" height="5" fill="#d9b35a"/>
+          </svg>
+        </div>
+        <div class="nm">BELTS · PIPES · <span class="alt">INSERTERS</span></div>
+        <p class="one">Three modular parts. Plumb your whole factory with them.</p>
+        <div class="body">
+          <p>The connective layer. You place these like building pieces and they snap onto adjacent machines automatically.</p>
+          <p><strong>BELTS</strong> · move solid items in a straight line at 1 tile/sec. Underground belt segments tunnel for 4 tiles. T‑junctions split by priority or by item type (a filter).<br>
+          <strong>PIPES</strong> · move fluids — crude, lube, fuel, plastic. Direction is automatic (machine pressure differential). One‑way valves let you isolate sections for repair.<br>
+          <strong>INSERTERS</strong> · little arms that lift one item off a belt and feed it into a machine, or vice versa. Stack them at junctions to handle multiple item types.</p>
+          <p>Belts and pipes have an <strong>HP value</strong> — a zombie can claw through one if it's exposed. Run them underground (more cost, safe), or build a wall <em>over</em> them, or run them outside the perimeter and accept the risk. This is the puzzle: every factory layout is a balance of throughput, cost, and how exposed your tubing is.</p>
+        </div>
+      </div>
+      <div class="right">
+        <div class="row"><span class="k">BELT</span><span class="v">1 tile/sec · 25 scrap</span></div>
+        <div class="row"><span class="k">PIPE</span><span class="v">10 unit/sec · 15 scrap + 2 rubber</span></div>
+        <div class="row"><span class="k">INSERTER</span><span class="v">1 item/0.5s · 30 scrap</span></div>
+        <div class="row"><span class="k">UNDERGROUND</span><span class="v">×3 cost · 4‑tile span</span></div>
+        <div class="row"><span class="k">FILTER‑T</span><span class="v">sorts by item · 50 scrap</span></div>
+        <div class="row"><span class="k">EXPOSED HP</span><span class="v">claws break · auto‑halt</span></div>
+      </div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·02</div>
+      <div class="meta"><span class="tag s">S</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <!-- silo -->
+          <rect x="10" y="14" width="20" height="28" fill="#5e6a78" stroke="#2a2e36"/>
+          <polygon points="10,14 20,4 30,14" fill="#5e6a78" stroke="#2a2e36"/>
+          <rect x="14" y="20" width="2" height="20" fill="#3a3f4a"/>
+          <rect x="20" y="20" width="2" height="20" fill="#3a3f4a"/>
+          <!-- tank -->
+          <rect x="36" y="22" width="22" height="20" fill="#3a3f4a" stroke="#2a2e36"/>
+          <ellipse cx="47" cy="22" rx="11" ry="3" fill="#5e6a78"/>
+          <rect x="40" y="30" width="14" height="6" fill="#e3a83a"/>
+          <line x1="36" y1="28" x2="58" y2="28" stroke="#7a7e88" stroke-width="0.4"/>
+          <line x1="36" y1="32" x2="58" y2="32" stroke="#7a7e88" stroke-width="0.4"/>
+        </svg>
+      </div>
+      <div class="nm">SILOS &amp; <span class="alt">TANKS</span></div>
+      <p class="one">Smooth out the spikes. A factory needs buffer.</p>
+      <div class="body">
+        <p>Silos hold solids (ore, brass, powder, primer); tanks hold fluids. Stackable up to 3‑high for vertical storage. <strong>Read‑outs</strong> on the side show fill % at a glance — same colors that show up on the foreman console.</p>
+        <p>Critical for the night cycle: build deep enough buffer and your factory keeps running while you're scavenging.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">inventory</span><span class="chip">night rhythm</span><span class="chip">overflow alarm</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <!-- track -->
+          <rect x="0" y="38" width="64" height="2" fill="#5e6a78"/>
+          <rect x="0" y="42" width="64" height="2" fill="#5e6a78"/>
+          <line x1="6"  y1="40" x2="6"  y2="42" stroke="#3a3f4a"/>
+          <line x1="14" y1="40" x2="14" y2="42" stroke="#3a3f4a"/>
+          <line x1="22" y1="40" x2="22" y2="42" stroke="#3a3f4a"/>
+          <line x1="30" y1="40" x2="30" y2="42" stroke="#3a3f4a"/>
+          <line x1="38" y1="40" x2="38" y2="42" stroke="#3a3f4a"/>
+          <line x1="46" y1="40" x2="46" y2="42" stroke="#3a3f4a"/>
+          <line x1="54" y1="40" x2="54" y2="42" stroke="#3a3f4a"/>
+          <!-- cart -->
+          <rect x="20" y="22" width="24" height="14" fill="#3a3f4a" stroke="#2a2e36"/>
+          <rect x="24" y="18" width="16" height="4" fill="#8a5a2a"/>
+          <rect x="26" y="26" width="4" height="6" fill="#d9b35a"/>
+          <rect x="32" y="26" width="4" height="6" fill="#d9b35a"/>
+          <rect x="38" y="26" width="4" height="6" fill="#d9b35a"/>
+          <circle cx="24" cy="38" r="3" fill="#5e6a78"/>
+          <circle cx="40" cy="38" r="3" fill="#5e6a78"/>
+        </svg>
+      </div>
+      <div class="nm">COURIER <span class="alt">CARTS</span></div>
+      <p class="one">A mine cart on rails between two hoppers.</p>
+      <div class="body">
+        <p>For long hauls where a belt is impractical (remote oil well to base, or two distant ore drills). Lay <em>rail</em>, plant two <em>hopper stations</em>, the cart shuttles automatically. Carries 20 stacks per trip. Slow but cheap.</p>
+        <p>Alt: assign a <strong>survivor courier</strong> who walks the same route on foot with a backpack — slower, smarter, can defend itself.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">rails</span><span class="chip">survivors</span><span class="chip">vehicles</span></div>
+    </div>
+
+    <div class="card s-4">
+      <div class="num">D·04</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="64" height="48" viewBox="0 0 64 48">
+          <rect x="4" y="6" width="56" height="36" fill="#0b0c0e" stroke="#5e6a78"/>
+          <!-- ascii-like factory map -->
+          <rect x="8" y="10" width="6" height="4" fill="#d24b35"/>
+          <rect x="14" y="10" width="20" height="2" fill="#e3a83a"/>
+          <rect x="34" y="10" width="6" height="4" fill="#e3a83a"/>
+          <rect x="40" y="10" width="14" height="2" fill="#8ec547"/>
+          <rect x="8" y="18" width="46" height="2" fill="#5fb6e8"/>
+          <rect x="8" y="24" width="46" height="2" fill="#5fb6e8"/>
+          <rect x="8" y="32" width="10" height="6" fill="#d9b35a"/>
+          <rect x="22" y="32" width="14" height="6" fill="#d9b35a"/>
+          <rect x="40" y="32" width="14" height="6" fill="#d24b35"/>
+          <!-- header strip -->
+          <line x1="4" y1="14" x2="60" y2="14" stroke="#3a3f4a"/>
+        </svg>
+      </div>
+      <div class="nm">FOREMAN <span class="alt">CONSOLE</span></div>
+      <p class="one">One panel. The whole factory at a glance.</p>
+      <div class="body">
+        <p>Build the <strong>console</strong> and a top‑down x‑ray of your Foundry appears on its screen. Live throughput per belt, fill % per silo, condition per machine, alarms for bottlenecks. Click a machine on the panel to fast‑travel the camera.</p>
+        <p>Plus a <strong>production planner</strong>: tell it "I want 200 rounds of 12ga incendiary," and it highlights what's missing — out of phosphorus, lube tank at 11%, etc. Becomes the home base of the engineering player.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">UI</span><span class="chip">alarms</span><span class="chip">planner</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     CLUSTER E — TWISTS
+     ═══════════════════════════════════════════════════════ -->
+<section class="cluster">
+  <div class="sec-head">
+    <div class="idx">E</div>
+    <div class="ttl">TWISTS</div>
+    <div class="sub">// the surprises · what makes this not just Factorio with corpses</div>
+  </div>
+  <div class="grid">
+
+    <div class="card s-6">
+      <div class="num">E·01</div>
+      <div class="meta"><span class="tag l">L</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <!-- factory silhouette -->
+          <rect x="4" y="20" width="14" height="10" fill="#3a3f4a"/>
+          <rect x="20" y="14" width="10" height="16" fill="#3a3f4a"/>
+          <rect x="32" y="22" width="20" height="8" fill="#3a3f4a"/>
+          <rect x="24" y="6" width="4" height="10" fill="#5e6a78"/>
+          <!-- smoke -->
+          <circle cx="26" cy="4"  r="3" fill="#7a7e88" opacity="0.8"/>
+          <circle cx="30" cy="2"  r="3" fill="#7a7e88" opacity="0.6"/>
+          <circle cx="36" cy="4"  r="3" fill="#7a7e88" opacity="0.5"/>
+          <circle cx="22" cy="2"  r="2" fill="#7a7e88" opacity="0.4"/>
+          <!-- aggro ring -->
+          <circle cx="28" cy="20" r="26" fill="none" stroke="#d24b35" stroke-width="0.6" stroke-dasharray="2 3"/>
+        </svg>
+      </div>
+      <div class="nm">THE BIG <span class="alt">SMOKE</span></div>
+      <p class="one">Every chimney is a beacon. Every shift gathers a crowd.</p>
+      <div class="body">
+        <p>Each running machine emits a <strong>stench radius</strong> (worse for refineries and furnaces, light for benches). Stench radii stack on the tile map and produce a slow <strong>aggro pull</strong> — wanderer zombies will drift toward your base over hours of game time, not just react to gunfire.</p>
+        <p>Counters: build <strong>flare stacks</strong> (E·04 byproduct), pipe machines underground, install <strong>filtration scrubbers</strong> (cost: spare lubricant + a HEPA filter, rare). Pick your poison: scale down, or scale up and defend.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">spawn director</span><span class="chip">aggro</span><span class="chip">scrubbers</span><span class="chip">tradeoff</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">E·02</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <!-- pipe section -->
+          <rect x="2" y="14" width="52" height="6" fill="#7a7e88"/>
+          <circle cx="10" cy="17" r="2" fill="#3a3f4a"/>
+          <circle cx="46" cy="17" r="2" fill="#3a3f4a"/>
+          <!-- saboteur silhouette -->
+          <circle cx="26" cy="10" r="4" fill="#8ec547" opacity="0.85"/>
+          <rect x="23" y="12" width="6" height="10" fill="#8ec547" opacity="0.85"/>
+          <rect x="22" y="18" width="2" height="6" fill="#8ec547" opacity="0.85"/>
+          <rect x="30" y="18" width="2" height="6" fill="#8ec547" opacity="0.85"/>
+          <!-- wrench / clog -->
+          <rect x="28" y="14" width="6" height="2" fill="#d24b35"/>
+          <circle cx="34" cy="15" r="1.4" fill="#d24b35"/>
+          <!-- leak drips -->
+          <circle cx="20" cy="24" r="1" fill="#e3a83a"/>
+          <circle cx="36" cy="24" r="1" fill="#e3a83a"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="glow">GREMLIN</span></div>
+      <p class="one">A new zombie. Small, fast, eats pipes.</p>
+      <div class="body">
+        <p>Once your Foundry pulls aggro from far enough, <strong>Gremlins</strong> show up at night. Sewer‑born and small enough to fit through ventilation ducts. They don't attack you — they crawl <em>onto your belts and pipes</em> and clog them. A clogged segment stalls everything downstream.</p>
+        <p>You won't notice from inside your bedroom — only the foreman console alarm. Late‑game players will build <strong>Gremlin baffles</strong> (1‑tile screen pieces) at every duct, and patrol routes at dawn to clear nests. A real cost to a real reward.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">new enemy</span><span class="chip">belts.hp</span><span class="chip">alarms</span><span class="chip">patrol</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">E·03</div>
+      <div class="meta"><span class="tag m">M</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <!-- five cartridge marks -->
+          <rect x="6"  y="10" width="4" height="14" fill="#7a7e88"/>
+          <polygon points="6,10 10,10 8,6" fill="#7a7e88"/>
+          <rect x="16" y="10" width="4" height="14" fill="#7a7e88"/>
+          <polygon points="16,10 20,10 18,6" fill="#7a7e88"/>
+          <rect x="26" y="10" width="4" height="14" fill="#e3a83a"/>
+          <polygon points="26,10 30,10 28,6" fill="#e3a83a"/>
+          <rect x="36" y="10" width="4" height="14" fill="#d9b35a"/>
+          <polygon points="36,10 40,10 38,6" fill="#d9b35a"/>
+          <rect x="46" y="10" width="4" height="14" fill="#5fb6e8"/>
+          <polygon points="46,10 50,10 48,6" fill="#5fb6e8"/>
+          <!-- star above match -->
+          <polygon points="38,2 39,5 42,5 39.5,7 40.5,10 38,8 35.5,10 36.5,7 34,5 37,5" fill="#d9b35a"/>
+        </svg>
+      </div>
+      <div class="nm">MATCH <span class="gold">GRADE</span></div>
+      <p class="one">Five quality tiers. Tolerances earn the upper ones.</p>
+      <div class="body">
+        <p>Every round leaves the line with a <em>quality roll</em>: <strong>Salvage / Standard / Match / Boutique / Experimental</strong>. The roll is weighted by inputs:</p>
+        <p>1) machine <strong>condition</strong> (well‑lubricated, recently maintained), 2) <strong>primer operator skill</strong>, 3) <strong>recipe purity</strong> (sweet crude beats sour for headshot crit, sour crude beats sweet for damage). Match‑grade rounds give +25% headshot crit; Boutique unlocks the trait pool from <em>Named Weapons</em> (ARM‑001 E·01) on the cartridge — yes, a <em>named bullet</em>.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">condition</span><span class="chip">named weapons</span><span class="chip">survivor skills</span></div>
+    </div>
+
+    <div class="card s-6">
+      <div class="num">E·04</div>
+      <div class="meta"><span class="tag xl">XL</span></div>
+      <div class="ico">
+        <svg class="ic" width="56" height="32" viewBox="0 0 56 32">
+          <!-- terrain -->
+          <rect x="0" y="24" width="56" height="8" fill="#3a2e1f"/>
+          <!-- distant well -->
+          <line x1="48" y1="24" x2="52" y2="14" stroke="#5e6a78" stroke-width="1.5"/>
+          <line x1="56" y1="24" x2="52" y2="14" stroke="#5e6a78" stroke-width="1.5"/>
+          <!-- base -->
+          <rect x="0" y="14" width="14" height="10" fill="#3a3f4a"/>
+          <rect x="6" y="10" width="3" height="4" fill="#5e6a78"/>
+          <!-- pipeline -->
+          <rect x="0" y="20" width="46" height="2" fill="#7a7e88"/>
+          <circle cx="10" cy="21" r="1.5" fill="#3a3f4a"/>
+          <circle cx="22" cy="21" r="1.5" fill="#3a3f4a"/>
+          <circle cx="34" cy="21" r="1.5" fill="#3a3f4a"/>
+          <circle cx="44" cy="21" r="1.5" fill="#3a3f4a"/>
+          <!-- attacker -->
+          <circle cx="28" cy="18" r="2" fill="#d24b35"/>
+          <!-- leak -->
+          <polygon points="28,20 26,28 30,28" fill="#e3a83a" opacity="0.8"/>
+          <!-- siege tower -->
+          <rect x="20" y="12" width="6" height="12" fill="#3a3f4a"/>
+          <rect x="20" y="10" width="6" height="3" fill="#5e6a78"/>
+        </svg>
+      </div>
+      <div class="nm">THE <span class="alt">PIPELINE</span></div>
+      <p class="one">A 200‑tile umbilical from a far well to your tanks.</p>
+      <div class="body">
+        <p>When your local oil wells dry up (or you find a rich sour one across the map), you commission a <strong>pipeline</strong>: a long pipe segment that hauls crude across the world. Construction is the real game — you build it tile by tile, defending the work site at dusk.</p>
+        <p>Pipelines become <em>permanent defensive concerns</em>. Every tile is HP. A pipeline rupture costs barrels of crude and lights a fire. Place <strong>pumping stations</strong> every 40 tiles (they boost flow + double as fast‑travel waypoints + bunkers). Survivors can be stationed at stations as guards.</p>
+        <p>An entire late‑game faction war can be fought over <em>whose pipeline runs through the highway POI</em>.</p>
+      </div>
+      <div class="hooks"><span class="lbl">HOOKS</span><span class="chip">world map</span><span class="chip">factions</span><span class="chip">fast travel</span><span class="chip">long‑form defense</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────  FOOTER  ─────────── -->
+<footer class="footer">
+  <div>
+    <h3>WHAT NEXT</h3>
+    <p>This brief is intentionally <em>too</em> ambitious. Read it as a maximum shape — the full Foundry would be a months‑long content track on its own. The interesting question is which slice ships in the first cut.</p>
+    <p>Three honest first‑cut bundles, in order of effort:</p>
+    <ol>
+      <li><strong style="color:var(--accent)">MICRO</strong> · A·02 ore drill + B·02 furnace + C·02 casing press + the ARM‑001 ammo press. No belts, no oil. Hand‑hauled. Doable in a week of work.</li>
+      <li><strong style="color:var(--accent)">MIDI</strong> · adds A·01 oil + B·01 refinery + B·04 powder mill + C·01 assembly line + D·01 belts. The factory becomes real but stays small.</li>
+      <li><strong style="color:var(--accent)">MAXI</strong> · adds D·02–04 logistics, all of Cluster E, the named‑bullet bridge, the pipeline. Endgame‑worthy.</li>
+    </ol>
+    <p>Tell me which cards survive a strike‑through pass and which two or three you want me to spec or prototype first — the foreman console UI and an automated assembly line are both fun visual mockups.</p>
+  </div>
+  <div class="stamp">
+    <div class="big">FOUNDRY</div>
+    <div class="small">REV A · PITCH ONLY</div>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>

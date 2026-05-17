@@ -24,8 +24,9 @@ const ITEMS = {
     desc: 'Restores 25 HP. Right-click to apply.',
     use(p) {
       if (p.hp >= p.maxHp) return false;
-      p.hp = Math.min(p.maxHp, p.hp + 25);
-      setNotice('+25 HP (bandage)', 1.2);
+      const heal = 25 + (typeof perkSum === 'function' ? perkSum('bandageBonus') : 0);
+      p.hp = Math.min(p.maxHp, p.hp + heal);
+      setNotice(`+${heal} HP (bandage)`, 1.2);
       return true;
     },
   },
@@ -124,6 +125,77 @@ function useItem(inv, slotIndex) {
   }
   return ok;
 }
+
+// ---------- Crafting recipes ----------
+// Each recipe consumes a list of items (`cost`) and runs `apply(p)` to
+// deliver the output. apply() may push to ammo reserves, the inventory,
+// or some yet-to-exist subsystem (e.g. perks). Keep recipes minimal —
+// the inventory + workbench overlay don't care about recipe shape, only
+// that cost.every(hasItem) and apply(p) are valid.
+const CRAFT_RECIPES = [
+  {
+    id: 'wall_pair',
+    label: 'Walls ×2',
+    desc: 'Two placeable barricades. Stack to ' + (typeof WALL_MAX_RESERVE !== 'undefined' ? WALL_MAX_RESERVE : 12) + '.',
+    cost: [{ id: 'scrap', n: 4 }],
+    apply(p) {
+      const cap = (typeof WALL_MAX_RESERVE !== 'undefined') ? WALL_MAX_RESERVE : 12;
+      p.ammo.wall.reserve = Math.min(cap, p.ammo.wall.reserve + 2);
+      setNotice('+2 walls', 1.2);
+    },
+  },
+  {
+    id: 'pistol_mag',
+    label: 'Pistol Mag',
+    desc: '12 pistol rounds — keeps the fallback weapon fed.',
+    cost: [{ id: 'scrap', n: 6 }],
+    apply(p) {
+      p.ammo.pistol.reserve += 12;
+      setNotice('+12 pistol rounds', 1.2);
+    },
+  },
+  {
+    id: 'shotgun_shells',
+    label: 'Shotgun Shells',
+    desc: '8 shells. Unlocks the shotgun if it is still locked.',
+    cost: [{ id: 'scrap', n: 10 }],
+    apply(p) {
+      if (!p.unlocked.shotgun) unlockWeapon('shotgun', 8, 'SHOTGUN CRAFTED');
+      else { p.ammo.shotgun.reserve += 8; setNotice('+8 shells', 1.2); }
+    },
+  },
+  {
+    id: 'smg_rounds',
+    label: 'SMG Rounds',
+    desc: '40 rounds. Unlocks the SMG if it is still locked.',
+    cost: [{ id: 'scrap', n: 14 }],
+    apply(p) {
+      if (!p.unlocked.smg) unlockWeapon('smg', 40, 'SMG CRAFTED');
+      else { p.ammo.smg.reserve += 40; setNotice('+40 rounds', 1.2); }
+    },
+  },
+  {
+    id: 'barrel_pair',
+    label: 'Explosive Barrel',
+    desc: 'One placeable explosive — chain-explodes when hit.',
+    cost: [{ id: 'scrap', n: 8 }],
+    apply(p) {
+      if (!p.unlocked.barrel) unlockWeapon('barrel', 1, 'BARRELS CRAFTED');
+      else { p.ammo.barrel.reserve += 1; setNotice('+1 barrel', 1.2); }
+    },
+  },
+  {
+    id: 'bandage_kit',
+    label: 'Bandage',
+    desc: 'Restores 25 HP. Stacks of up to 10 in inventory.',
+    cost: [{ id: 'scrap', n: 5 }],
+    apply(p) {
+      const left = addItem(p.inventory, 'bandage', 1);
+      if (left === 0) setNotice('+1 bandage', 1.2);
+      else setNotice('Inventory full — bandage lost', 1.5);
+    },
+  },
+];
 
 // ---------- Procedural item icons ----------
 // Mirrors the weapon-slot-icon caching pattern in render.js so the

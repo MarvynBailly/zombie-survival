@@ -48,6 +48,10 @@ function saveGame() {
       weapon: p.weapon,
       unlocked: { ...p.unlocked },
       ammo,
+      inventory: p.inventory ? {
+        capacity: p.inventory.capacity,
+        slots: p.inventory.slots.map(s => s ? { id: s.id, count: s.count } : null),
+      } : null,
     },
     walls: Game.walls.map(w => ({ x: w.x, y: w.y, w: w.w, h: w.h, hp: w.hp, maxHp: w.maxHp })),
     barrels: Game.barrels.map(b => ({ x: b.x, y: b.y, hp: b.hp })),
@@ -58,6 +62,18 @@ function saveGame() {
       .map(([k]) => k),
     discoveredPOIs: Array.from(Game.discoveredPOIs || []),
     exploredChunks: Array.from(Game.exploredChunks || []),
+    perks: Game.perks ? {
+      points: Game.perks.points,
+      unlocked: Array.from(Game.perks.unlocked),
+      totalEarned: Game.perks.totalEarned,
+    } : null,
+    squad: Game.squad ? Game.squad.map(s => ({
+      x: s.x, y: s.y, cls: s.cls, name: s.name, backstory: s.backstory,
+      hp: s.hp, maxHp: s.maxHp, holdMode: !!s.holdMode,
+    })) : null,
+    worldSurvivors: Game.worldSurvivors ? Game.worldSurvivors.map(s => ({
+      x: s.x, y: s.y, cls: s.cls, name: s.name, backstory: s.backstory, hp: s.hp, maxHp: s.maxHp,
+    })) : null,
   };
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch {}
 }
