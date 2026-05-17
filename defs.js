@@ -305,6 +305,62 @@ const ZOMBIES = {
     color: '#7a9a55', score: 30,
     onDeathSplit: { type: 'walker', count: 2, hpPct: 0.5 },
   },
+
+  // ---------- Phase 2 — Sprite-only enemies ----------
+  // Heavy frontal armor walker. Reuses Riot's frontDR damage code in
+  // dealDamageToZombie — bullets hitting the front 180° arc lose 95% damage,
+  // so flanking is mandatory. Saw bypasses (cleavesArmor). Day 8+ rare.
+  juggernaut: {
+    hp: 350, speed: 35, damage: 22, radius: 22,
+    color: '#4a4640', score: 80,
+    frontDR: 0.95,
+    frontDRAngle: Math.PI, // 180° — full frontal half-plane.
+  },
+  // Wall-jumping spider-zombie. In updateZombies, when the path to the player
+  // is blocked by a wall/obstacle and z.leapCd <= 0, the leap branch arcs the
+  // zombie over a short distance (leapDist). While `leaping`, collision
+  // checks are skipped. Day 5+, moderate rarity.
+  leaper: {
+    hp: 60, speed: 110, damage: 12, radius: 11,
+    color: '#3a2a32', score: 30,
+    canLeap: true, leapDist: 80, leapCd: 3.0,
+  },
+  // Disguised tree ambusher — sits dormant as a tree-style sprite until the
+  // player crosses triggerR (50px), then unfolds into a thorn-covered
+  // humanoid. Bite applies bleedOnHit (player.bleeding DPS for N seconds).
+  // POI-bound, forest-flavored — emitted in lumber_camp / cottage POIs.
+  husk: {
+    hp: 90, speed: 0, damage: 25, radius: 14,
+    color: '#3a2a18', score: 40,
+    stationary: true, disguised: true,
+    ambushBite: 25, triggerR: 50,
+    bleedOnHit: { dps: 4, sec: 5 },
+    biome: 'forest',
+  },
+  // Plague Rat — tiny infection-swarmer. POI-only (poiOnly:true) so the spawn
+  // director never edge-spawns lone rats. Garrisoned in clusters of 8 in
+  // mining outposts (the closest thing to a sewer/basement chunk today).
+  // Reuses Phase 0 infectionOnHit plumbing in damagePlayer.
+  rat: {
+    hp: 6, speed: 100, damage: 1, radius: 5,
+    color: '#1a1410', score: 2,
+    swarm: true, poiOnly: true,
+    infectionOnHit: 1,
+  },
+  // Wildlife charger. Reuses the existing charger AI branch — same z.charge
+  // shape, just with a wildlife faction tag (hostile to player + zombies,
+  // per FACTION_HOSTILE) and a longer range. One per forest zone per run,
+  // tracked in Game.flags.stagsSlain. Drops item_antler on kill.
+  stag: {
+    hp: 200, speed: 60, damage: 25, radius: 17,
+    color: '#7a5a3a', score: 60,
+    faction: 'wildlife',
+    charge: {
+      speed: 320, stunMs: 1000, telegraph: 0.8,
+      cooldown: 4.0, range: 500,
+    },
+    dropsAntler: true,
+  },
 };
 
 // ---------- Levels (terrain region presets) ----------

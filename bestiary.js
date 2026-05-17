@@ -1152,6 +1152,434 @@
   }
 
   // ============================================================
+  // 15 · JUGGERNAUT — heavy frontal-armor walker (Phase 2.1)
+  // Reads frontDR via the existing Riot damage path — sprite leaves the back
+  // visibly exposed so the player can read "shoot from behind".
+  // ============================================================
+  function drawJuggernaut(ctx, z) {
+    const x = z.x, y = z.y, ang = z.angle || 0;
+    const walk = z.walkPhase || 0;
+    shadow(ctx, x, y, z.r + 4, (z.r + 4) * 0.5);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    // Big lumbering frame — exposed back first so the front plates overlay it.
+    ctx.fillStyle = C.walkerSkinLo;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, z.r * 1.0, z.r * 0.92, 0, 0, TAU);
+    ctx.fill();
+    // Back / spine — visible exposed skin and a torn shirt strap. This is
+    // the visual tell that the rear is the weak point.
+    ctx.fillStyle = C.walkerSkin;
+    ctx.beginPath();
+    ctx.ellipse(-z.r * 0.45, 0, z.r * 0.55, z.r * 0.75, 0, 0, TAU);
+    ctx.fill();
+    // Stitched gash down the spine (red).
+    ctx.strokeStyle = C.bloodDeep;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-z.r * 0.85, -z.r * 0.45);
+    ctx.lineTo(-z.r * 0.75, z.r * 0.45);
+    ctx.stroke();
+    // Scrap-plate skirt around front + sides (3 welded panels).
+    ctx.fillStyle = '#3a3a40';
+    ctx.beginPath();
+    ctx.moveTo(z.r * 0.95, -z.r * 0.85);
+    ctx.lineTo(z.r * 1.05, z.r * 0.85);
+    ctx.lineTo(-z.r * 0.05, z.r * 1.0);
+    ctx.lineTo(-z.r * 0.1, -z.r * 1.0);
+    ctx.closePath();
+    ctx.fill();
+    // Highlight + rivets on the chest plate
+    ctx.strokeStyle = '#5a5a60';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(z.r * 0.95, -z.r * 0.85);
+    ctx.lineTo(z.r * 1.05, z.r * 0.85);
+    ctx.lineTo(-z.r * 0.05, z.r * 1.0);
+    ctx.lineTo(-z.r * 0.1, -z.r * 1.0);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fillStyle = '#1a1a1c';
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.arc(z.r * 0.6, i * z.r * 0.32, 1, 0, TAU);
+      ctx.fill();
+    }
+    // Welded shoulder pauldrons
+    ctx.fillStyle = '#2a2a30';
+    ctx.beginPath();
+    ctx.ellipse(z.r * 0.2, -z.r * 0.85, z.r * 0.45, z.r * 0.3, -0.2, 0, TAU);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(z.r * 0.2, z.r * 0.85, z.r * 0.45, z.r * 0.3, 0.2, 0, TAU);
+    ctx.fill();
+    // Welded helmet — small slit, glowing eyes through.
+    ctx.fillStyle = '#1c1c20';
+    ctx.beginPath();
+    ctx.arc(z.r * 0.7, 0, z.r * 0.45, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = '#4a4a50';
+    ctx.lineWidth = 1.1;
+    ctx.stroke();
+    // Eye slit + red glow
+    ctx.fillStyle = '#0a0a0c';
+    ctx.fillRect(z.r * 0.78, -z.r * 0.18, z.r * 0.18, z.r * 0.36);
+    ctx.fillStyle = C.bloodLight;
+    ctx.beginPath();
+    ctx.arc(z.r * 0.88, -z.r * 0.10, 1.4, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(z.r * 0.88,  z.r * 0.10, 1.4, 0, TAU); ctx.fill();
+    // Heavy boots (lumbering walk cycle)
+    const lph = Math.sin(walk * TAU);
+    ctx.fillStyle = '#1a1a1c';
+    ctx.fillRect(-z.r * 0.95, -z.r * 0.55 + lph * 1.5, z.r * 0.5, z.r * 0.25);
+    ctx.fillRect(-z.r * 0.95,  z.r * 0.32 - lph * 1.5, z.r * 0.5, z.r * 0.25);
+    ctx.restore();
+  }
+
+  // ============================================================
+  // 16 · LEAPER — low spider-crawler that hops walls (Phase 2.2)
+  // Coiled when leapTelegraph > 0; airborne when leaping is true.
+  // ============================================================
+  function drawLeaper(ctx, z) {
+    const x = z.x, y = z.y, ang = z.angle || 0;
+    const walk = z.walkPhase || 0;
+    const coiled = (z.leapTelegraph || 0) > 0;
+    const airborne = !!z.leaping;
+    // No ground shadow while airborne — it should read as off the ground.
+    if (!airborne) shadow(ctx, x, y, z.r + 1, (z.r + 1) * 0.45);
+    else {
+      // small offset shadow far below
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(x, y + z.r * 1.4, z.r * 0.7, z.r * 0.3, 0, 0, TAU);
+      ctx.fill();
+    }
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    const armScale = coiled ? 0.55 : 1.0;
+    const armPhase = airborne ? 0 : Math.sin(walk * TAU * 2) * 0.4;
+    // 4 spider legs: 2 forward, 2 hind (longer)
+    ctx.strokeStyle = '#1a1014';
+    ctx.lineWidth = 1.6;
+    for (let i = 0; i < 4; i++) {
+      const side = i < 2 ? -1 : 1;
+      const fwd = (i % 2 === 0) ? 1 : -1;
+      const base = z.r * 0.2 * fwd;
+      const reach = (fwd === 1 ? z.r * 0.9 : z.r * 1.1) * armScale;
+      const wobble = armPhase * fwd * side;
+      // bent middle joint
+      const midX = base + reach * 0.55, midY = side * (z.r * 0.55 + wobble * 2);
+      const tipX = base + reach,        tipY = side * (z.r * 0.85 + wobble * 4);
+      ctx.beginPath();
+      ctx.moveTo(0, side * z.r * 0.25);
+      ctx.lineTo(midX, midY);
+      ctx.lineTo(tipX, tipY);
+      ctx.stroke();
+    }
+    // low slung body — squat oval
+    ctx.fillStyle = '#2a1820';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, z.r * 0.85 * (coiled ? 0.9 : 1), z.r * 0.55, 0, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = '#3a2230';
+    ctx.beginPath();
+    ctx.ellipse(z.r * 0.15, 0, z.r * 0.5, z.r * 0.35, 0, 0, TAU);
+    ctx.fill();
+    // head/snout — pointed forward
+    ctx.fillStyle = '#1a1014';
+    ctx.beginPath();
+    ctx.moveTo(z.r * 0.85, 0);
+    ctx.lineTo(z.r * 0.35, -z.r * 0.3);
+    ctx.lineTo(z.r * 0.35, z.r * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    // 4 spider eyes — yellow when stalking, red when coiled
+    ctx.fillStyle = coiled ? C.blood : '#ffd84a';
+    ctx.beginPath(); ctx.arc(z.r * 0.55, -z.r * 0.18, 1.0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(z.r * 0.55,  z.r * 0.18, 1.0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(z.r * 0.7,  -z.r * 0.08, 0.8, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(z.r * 0.7,   z.r * 0.08, 0.8, 0, TAU); ctx.fill();
+    // pre-leap telegraph: small upward chevron behind the head
+    if (coiled) {
+      ctx.strokeStyle = 'rgba(210,75,53,0.7)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-z.r * 0.4, -z.r * 0.5);
+      ctx.lineTo(-z.r * 0.6, -z.r * 0.85);
+      ctx.lineTo(-z.r * 0.4, -z.r * 0.5);
+      ctx.lineTo(-z.r * 0.2, -z.r * 0.85);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // ============================================================
+  // 17 · THORN HUSK — disguised tree ambusher (Phase 2.3)
+  // While `disguised` we render a stylized pine. Once triggered (mimicOpen
+  // ramps to 1 in tier3PreTick), unfold into a thorn-covered humanoid.
+  // ============================================================
+  function drawThornHusk(ctx, z) {
+    const x = z.x, y = z.y;
+    const open = Math.max(0, Math.min(1, z.angle || 0));
+    const t = z.walkPhase || 0;
+    shadow(ctx, x, y, z.r + 2, (z.r + 2) * 0.55);
+    if (open < 0.05) {
+      // ---- TREE DISGUISE (matches the pine style in sprites.js) ----
+      const r = z.r * 1.25;
+      // trunk
+      ctx.fillStyle = '#2c1a08';
+      ctx.fillRect(x - 2, y + 2, 4, 9);
+      // canopy shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath();
+      ctx.moveTo(x + 2, y - r + 2);
+      ctx.lineTo(x + r + 2, y + r * 0.85 + 2);
+      ctx.lineTo(x - r + 2, y + r * 0.85 + 2);
+      ctx.closePath(); ctx.fill();
+      // dark tier
+      ctx.fillStyle = '#1a3a14';
+      ctx.beginPath();
+      ctx.moveTo(x, y - r);
+      ctx.lineTo(x + r, y + r * 0.85);
+      ctx.lineTo(x - r, y + r * 0.85);
+      ctx.closePath(); ctx.fill();
+      // bright tier
+      ctx.fillStyle = '#2a5a24';
+      ctx.beginPath();
+      ctx.moveTo(x, y - r * 0.65);
+      ctx.lineTo(x + r * 0.75, y + r * 0.55);
+      ctx.lineTo(x - r * 0.75, y + r * 0.55);
+      ctx.closePath(); ctx.fill();
+      // top highlight
+      ctx.fillStyle = '#3a7a30';
+      ctx.beginPath();
+      ctx.moveTo(x, y - r * 0.35);
+      ctx.lineTo(x + r * 0.45, y + r * 0.25);
+      ctx.lineTo(x - r * 0.45, y + r * 0.25);
+      ctx.closePath(); ctx.fill();
+      // subtle red blink hidden in the leaves — the "tell"
+      const f = (Math.sin(t * 4) + 1) * 0.5;
+      ctx.fillStyle = `rgba(210,60,40,${f * 0.45})`;
+      ctx.beginPath(); ctx.arc(x + 1, y - r * 0.15, 1.2, 0, TAU); ctx.fill();
+      return;
+    }
+    // ---- UNFOLDED THORN HUSK (humanoid in bark armor) ----
+    const ang = z.angle ? Math.PI * 0.0 : 0; // face out (open is angle 0..1)
+    ctx.save(); ctx.translate(x, y);
+    // bark-armored torso
+    ctx.fillStyle = '#3a2418';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, z.r * 0.85, z.r * 0.75, ang, 0, TAU);
+    ctx.fill();
+    // moss / lichen patches
+    ctx.fillStyle = '#4a6a30';
+    ctx.beginPath();
+    ctx.ellipse(-z.r * 0.3, -z.r * 0.2, z.r * 0.25, z.r * 0.12, 0, 0, TAU);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(z.r * 0.2, z.r * 0.3, z.r * 0.18, z.r * 0.1, 0, 0, TAU);
+    ctx.fill();
+    // gnarled bark cracks
+    ctx.strokeStyle = '#1a0e08';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(-z.r * 0.5, -z.r * 0.4); ctx.lineTo(z.r * 0.3, z.r * 0.5);
+    ctx.moveTo(z.r * 0.2, -z.r * 0.6); ctx.lineTo(-z.r * 0.2, z.r * 0.4);
+    ctx.stroke();
+    // 6 thorny spikes radiating outward — animate slight opening with `open`
+    ctx.fillStyle = '#5e4a2a';
+    ctx.strokeStyle = '#1a0e08';
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU + 0.2;
+      const reach = z.r * (0.7 + 0.5 * open);
+      const baseR = z.r * 0.55;
+      const baseX = Math.cos(a) * baseR, baseY = Math.sin(a) * baseR;
+      const tipX  = Math.cos(a) * reach, tipY  = Math.sin(a) * reach;
+      const perpX = -Math.sin(a) * 2.2,  perpY =  Math.cos(a) * 2.2;
+      ctx.beginPath();
+      ctx.moveTo(baseX + perpX, baseY + perpY);
+      ctx.lineTo(tipX, tipY);
+      ctx.lineTo(baseX - perpX, baseY - perpY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    // bleeding-red claws (two forward arms)
+    ctx.fillStyle = C.bloodDeep;
+    ctx.beginPath();
+    ctx.ellipse(z.r * 0.85 * open, -z.r * 0.5, z.r * 0.18, z.r * 0.08, -0.4, 0, TAU);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(z.r * 0.85 * open,  z.r * 0.5, z.r * 0.18, z.r * 0.08,  0.4, 0, TAU);
+    ctx.fill();
+    // claw tips
+    ctx.fillStyle = C.bloodLight;
+    for (let s = -1; s <= 1; s += 2) {
+      ctx.beginPath();
+      ctx.arc(z.r * 1.0 * open, s * z.r * 0.5, 1.4, 0, TAU);
+      ctx.fill();
+    }
+    // gaping red eye-slit
+    ctx.fillStyle = '#0a0a0c';
+    ctx.fillRect(z.r * 0.25, -z.r * 0.18, z.r * 0.3, z.r * 0.36);
+    ctx.fillStyle = C.blood;
+    ctx.beginPath();
+    ctx.arc(z.r * 0.4, -z.r * 0.05, 1.6, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(z.r * 0.4,  z.r * 0.05, 1.6, 0, TAU); ctx.fill();
+    ctx.restore();
+  }
+
+  // ============================================================
+  // 18 · PLAGUE RAT — tiny infection-swarmer (Phase 2.4)
+  // ============================================================
+  function drawPlagueRat(ctx, z) {
+    const x = z.x, y = z.y, ang = z.angle || 0;
+    const t = z.walkPhase || 0;
+    shadow(ctx, x, y, z.r + 1, (z.r + 1) * 0.45);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    // tiny dark blob body
+    ctx.fillStyle = '#1a1410';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, z.r * 1.1, z.r * 0.8, 0, 0, TAU);
+    ctx.fill();
+    // back highlight (wet/diseased sheen)
+    ctx.fillStyle = '#3a2418';
+    ctx.beginPath();
+    ctx.ellipse(-z.r * 0.1, -z.r * 0.25, z.r * 0.75, z.r * 0.3, 0, 0, TAU);
+    ctx.fill();
+    // tail — thin curl behind
+    ctx.strokeStyle = '#3a2820';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-z.r * 0.9, 0);
+    const tailWob = Math.sin(t * TAU * 2) * z.r * 0.5;
+    ctx.quadraticCurveTo(-z.r * 1.6, tailWob, -z.r * 2.2, -tailWob * 0.6);
+    ctx.stroke();
+    // ear nubs
+    ctx.fillStyle = '#1a1410';
+    ctx.beginPath();
+    ctx.arc(z.r * 0.25, -z.r * 0.5, 1.4, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(z.r * 0.25,  z.r * 0.5, 1.4, 0, TAU); ctx.fill();
+    // 2 yellow eye pixels
+    ctx.fillStyle = '#ffd84a';
+    ctx.beginPath(); ctx.arc(z.r * 0.7, -z.r * 0.25, 0.9, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(z.r * 0.7,  z.r * 0.25, 0.9, 0, TAU); ctx.fill();
+    // tiny green sickness puff occasionally
+    if ((t * 13 | 0) % 7 === 0) {
+      ctx.fillStyle = 'rgba(140,180,60,0.4)';
+      ctx.beginPath();
+      ctx.arc(-z.r * 0.5, -z.r * 0.7, 1.4, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ============================================================
+  // 19 · STAG — wildlife charger (Phase 2.5)
+  // Top-down deer/elk silhouette. When chargeState === 'charging' the
+  // antlers tilt forward and a dust trail streams behind.
+  // ============================================================
+  function drawStag(ctx, z) {
+    const x = z.x, y = z.y, ang = z.angle || 0;
+    const walk = z.walkPhase || 0;
+    const charging = z.chargeState === 'charging';
+    const telegraph = z.chargeState === 'telegraph';
+    shadow(ctx, x, y, z.r + 3, (z.r + 3) * 0.45);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    // dust trail when charging
+    if (charging) {
+      ctx.fillStyle = 'rgba(190,170,140,0.45)';
+      for (let i = 0; i < 5; i++) {
+        const dt2 = (walk + i * 0.18) % 1;
+        ctx.beginPath();
+        ctx.arc(-z.r * (1 + dt2 * 1.0), (i - 2) * 2.5,
+                z.r * 0.36 * (1 - dt2), 0, TAU);
+        ctx.fill();
+      }
+    }
+    // 4 legs — alternating stride
+    const stride = Math.sin(walk * TAU);
+    ctx.fillStyle = '#3a2418';
+    ctx.fillRect(z.r * 0.2, -z.r * 0.75 + stride * 1.5, z.r * 0.2, z.r * 0.35);
+    ctx.fillRect(z.r * 0.2,  z.r * 0.4  - stride * 1.5, z.r * 0.2, z.r * 0.35);
+    ctx.fillRect(-z.r * 0.4, -z.r * 0.7 - stride * 1.5, z.r * 0.2, z.r * 0.35);
+    ctx.fillRect(-z.r * 0.4,  z.r * 0.35 + stride * 1.5, z.r * 0.2, z.r * 0.35);
+    // body — long brown ellipse
+    ctx.fillStyle = '#7a5238';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, z.r * 1.05, z.r * 0.55, 0, 0, TAU);
+    ctx.fill();
+    // back highlight
+    ctx.fillStyle = '#8a6a44';
+    ctx.beginPath();
+    ctx.ellipse(-z.r * 0.1, -z.r * 0.18, z.r * 0.85, z.r * 0.25, 0, 0, TAU);
+    ctx.fill();
+    // white belly patch (visible from above where the legs meet)
+    ctx.fillStyle = '#d4c8a8';
+    ctx.beginPath();
+    ctx.ellipse(-z.r * 0.2, z.r * 0.05, z.r * 0.45, z.r * 0.18, 0, 0, TAU);
+    ctx.fill();
+    // tail — short white flag
+    ctx.fillStyle = '#e8e0c8';
+    ctx.beginPath();
+    ctx.arc(-z.r * 0.95, 0, z.r * 0.16, 0, TAU);
+    ctx.fill();
+    // neck + head — slimmer ellipse forward
+    ctx.fillStyle = '#7a5238';
+    ctx.beginPath();
+    ctx.ellipse(z.r * 0.75, 0, z.r * 0.38, z.r * 0.3, 0, 0, TAU);
+    ctx.fill();
+    // muzzle
+    ctx.fillStyle = '#4a3018';
+    ctx.beginPath();
+    ctx.ellipse(z.r * 1.05, 0, z.r * 0.16, z.r * 0.14, 0, 0, TAU);
+    ctx.fill();
+    // dark eye
+    ctx.fillStyle = '#1a0a08';
+    ctx.beginPath(); ctx.arc(z.r * 0.85, -z.r * 0.16, 1.0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(z.r * 0.85,  z.r * 0.16, 1.0, 0, TAU); ctx.fill();
+    // ANTLERS — 8-point rack. Tilted forward when charging.
+    const tilt = charging ? -0.6 : (telegraph ? -0.3 : 0);
+    ctx.strokeStyle = '#d8c8a4';
+    ctx.lineWidth = 1.7;
+    for (let s = -1; s <= 1; s += 2) {
+      const baseX = z.r * 0.65, baseY = s * z.r * 0.22;
+      // main beam
+      ctx.beginPath();
+      ctx.moveTo(baseX, baseY);
+      ctx.lineTo(baseX + Math.cos(tilt) * z.r * 0.5,
+                 baseY + s * z.r * 0.55 + Math.sin(tilt) * z.r * 0.2);
+      ctx.lineTo(baseX + Math.cos(tilt) * z.r * 0.95,
+                 baseY + s * z.r * 0.85 + Math.sin(tilt) * z.r * 0.35);
+      ctx.stroke();
+      // 4 tines per side
+      for (let k = 0; k < 4; k++) {
+        const along = 0.25 + k * 0.22;
+        const tx = baseX + Math.cos(tilt) * z.r * along;
+        const ty = baseY + s * z.r * (0.18 + along * 0.7) + Math.sin(tilt) * z.r * along * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(tx + Math.cos(tilt + s * 0.5) * z.r * 0.32,
+                   ty + s * z.r * 0.25 + Math.sin(tilt + s * 0.5) * z.r * 0.18);
+        ctx.stroke();
+      }
+    }
+    // Telegraph: small ground scuff in front
+    if (telegraph && Math.random() < 0.5) {
+      ctx.fillStyle = 'rgba(160,140,110,0.5)';
+      const sx = z.r * 1.2 + (Math.random() - 0.5) * 4;
+      const sy = (Math.random() - 0.5) * z.r * 0.8;
+      const sr = 1.2 + Math.random() * 1.2;
+      ctx.beginPath();
+      ctx.arc(sx, sy, sr, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ============================================================
   // DATA
   // ============================================================
   const ENEMIES = [
@@ -1261,6 +1689,12 @@
       cent: drawCentipede,
       hatch: drawHatchling,
       twins: drawConjoined,
+      // ---------- Phase 2 ----------
+      juggernaut: drawJuggernaut,
+      leaper: drawLeaper,
+      husk: drawThornHusk,
+      rat: drawPlagueRat,
+      stag: drawStag,
     },
   };
 })(window);

@@ -152,6 +152,10 @@ function resetRun(levelIndex) {
   Game.smokeClouds = [];
   Game.lightning = [];
   Game.spawnQueue = [];
+  // Per-run flags. Phase 2.5 stores stagsSlain[zoneKey]=true so each forest
+  // zone gets at most one stag per run. Phase 3+ can reuse for boss/event
+  // singletons (apexSpawned, etc.).
+  Game.flags = { stagsSlain: {} };
   Game.time = { day: 1, t: 0, phase: 'day' };
   Game.spawnTimer = 0;
   if (typeof WEATHER !== 'undefined') WEATHER.reset();
@@ -235,6 +239,10 @@ function resetRun(levelIndex) {
     katanaHoldT: 0,    // seconds LMB held while on katana — charges execution
     iframes: 0,        // melee-granted iframes (separate from hit-stun iframe)
     bashCd: 0,         // riot shield bash cooldown (seconds)
+    // Bestiary Phase 2.3 — Bleed status applied by Thorn Husk ambushBite.
+    // While bleeding.sec > 0 the player loses bleeding.dps HP/s (DOT, no
+    // iframe). Refreshed (not stacked) on subsequent hits — highest DPS wins.
+    bleeding: { dps: 0, sec: 0 },
   };
   // Foundry: reset placeable-machine state on every run.
   if (typeof initFoundryState === 'function') initFoundryState();
@@ -285,6 +293,9 @@ function restoreFromSave(d) {
   p.hp = d.player.hp;
   p.infection = (typeof d.player.infection === 'number') ? d.player.infection : 0;
   p.infectionLastHit = 0;
+  p.bleeding = { dps: 0, sec: 0 };
+  Game.flags = { stagsSlain: {}, ...(d.flags || {}) };
+  if (!Game.flags.stagsSlain) Game.flags.stagsSlain = {};
   p.weapon = d.player.weapon || 'pistol';
   p.unlocked = { ...p.unlocked, ...d.player.unlocked };
   for (const k in d.player.ammo) {
@@ -445,7 +456,11 @@ function pickZombieType(phase, day) {
   if (day >= 11 && r < 0.05)  return 'reaper';
   if (day >= 11 && r < 0.08)  return 'charger';
   if (day >= 11 && r < 0.10)  return 'necro';
+  // Phase 2.1 — Juggernaut: rare heavy armor walker from day 8+.
+  if (day >= 8  && r < 0.105) return 'juggernaut';
   if (day >= 8  && r < 0.13)  return 'twins';
+  // Phase 2.2 — Leaper: spider-crawler that hops walls. Day 5+, uncommon.
+  if (day >= 5  && r < 0.155) return 'leaper';
   if (day >= 7  && r < 0.16)  return 'riot';
   if (day >= 7  && r < 0.19)  return 'wraith';
   if (day >= 7  && r < 0.22)  return 'spitter';
@@ -2171,6 +2186,17 @@ function killZombie(z, weapon) {
     }
   }
 
+  // Phase 2.5 — Stag drops an antler item and is marked slain in its zone so
+  // the Phase-3 forest emitter won't re-garrison another one in the same
+  // forest this run. The pickup is a plain inventory item; full crafting
+  // integration is deferred to Phase 8.
+  if (z.dropsAntler || z.type === 'stag') {
+    Game.pickups.push({ x: z.x, y: z.y, r: 12, type: 'item_antler', life: 60 });
+    if (z._stagZoneKey && Game.flags && Game.flags.stagsSlain) {
+      Game.flags.stagsSlain[z._stagZoneKey] = true;
+    }
+  }
+
   // Necromancer / corpse log: any kill registers a corpse so a nearby necro
   // can raise it on the next cycle. Trim happens in tick.
   Game.corpseLog.push({ x: z.x, y: z.y, type: z.type, until: now() + 6 });
@@ -2345,6 +2371,14 @@ function damagePlayer(amount, attacker, opts) {
   if (!isDot && attacker && attacker.infectionOnHit) {
     addPlayerInfection(attacker.infectionOnHit);
   }
+  // Phase 2.3 — Thorn Husk: ambushBite applies a short bleed DOT. Refresh
+  // (don't stack) — keep the higher DPS, reset the timer to the new value.
+  if (!isDot && attacker && attacker.bleedOnHit) {
+    const b = attacker.bleedOnHit;
+    p.bleeding = p.bleeding || { dps: 0, sec: 0 };
+    p.bleeding.dps = Math.max(p.bleeding.dps || 0, b.dps || 0);
+    p.bleeding.sec = Math.max(p.bleeding.sec || 0, b.sec || 0);
+  }
   if (p.hp <= 0) {
     p.hp = 0;
     p.dead = true;
@@ -2379,6 +2413,22 @@ function addPlayerInfection(amount) {
 function updateInfection(dt) {
   const p = Game.player;
   if (!p || p.dead) return;
+  // Bleed DOT (Phase 2.3). Bypasses iframes — same DOT pattern as puddles.
+  if (p.bleeding && p.bleeding.sec > 0) {
+    p.bleeding.sec -= dt;
+    damagePlayer(p.bleeding.dps * dt, null, { dot: true });
+    if (Math.random() < dt * 8) {
+      Game.particles.push({
+        x: p.x + rand(-p.r, p.r), y: p.y + rand(-p.r, p.r),
+        vx: rand(-30, 30), vy: rand(-50, -10),
+        life: rand(0.25, 0.5), color: '#9a1414', r: rand(1.5, 2.5),
+      });
+    }
+    if (p.bleeding.sec <= 0) {
+      p.bleeding.sec = 0;
+      p.bleeding.dps = 0;
+    }
+  }
   if (!p.infection) return;
   const sinceHit = now() - (p.infectionLastHit || 0);
   if (sinceHit < 1.0) return;
@@ -2898,6 +2948,41 @@ function updateZombies(dt) {
       continue;
     }
 
+    // Phase 2.2 — Leaper leap state. While leapT > 0 the zombie arcs over the
+    // obstacle that blocked it, ignoring collisions. ignoreCollisionT mirrors
+    // leapT in tier3PreTick so future ranged code can also gate on it.
+    if (z.canLeap) {
+      if ((z.leapCd || 0) > 0) z.leapCd -= dt;
+      if ((z.leapTelegraph || 0) > 0) z.leapTelegraph -= dt;
+    }
+    if (z.leaping && (z.leapT || 0) > 0) {
+      z.leapT -= dt;
+      const total = z.leapDur || 0.3;
+      const tNorm = 1 - Math.max(0, z.leapT) / total;
+      const stepT = Math.min(dt, z.leapT + dt);
+      z.x += (z.leapVx || 0) * stepT;
+      z.y += (z.leapVy || 0) * stepT;
+      // Arc indicator: small dust particles trailing.
+      if (Math.random() < 8 * dt) {
+        Game.particles.push({
+          x: z.x + rand(-z.r * 0.5, z.r * 0.5),
+          y: z.y + z.r * 0.4,
+          vx: rand(-20, 20), vy: rand(-20, 5),
+          life: rand(0.2, 0.4), color: '#a09080', r: rand(1, 2.2),
+        });
+      }
+      z.walkPhase = tNorm; // sprite uses this to draw a curl-up
+      if (z.leapT <= 0) {
+        z.leaping = false;
+        z.leapT = 0;
+        z.leapCd = z.leapCdMax || 3.0;
+      }
+      // Clamp to world; skip collision so we can clear the wall.
+      z.x = clamp(z.x, z.r, WORLD_W - z.r);
+      z.y = clamp(z.y, z.r, WORLD_H - z.r);
+      continue;
+    }
+
     // Charger override: while charging, move along the locked vector and
     // skip the normal flow-field steering.
     if (z.charge && z.chargeState === 'charging') {
@@ -2957,6 +3042,35 @@ function updateZombies(dt) {
     }
     if (mode !== 'bash') z.bashWall = null;
     z.blocked = blocked;
+    // Phase 2.2 — Leaper initiates a leap when its path to the player is
+    // blocked (bash mode or NAV-cutoff). On first detection we set
+    // leapTelegraph (decremented at the top of the next tick); once that hits
+    // 0 (handled here on a subsequent frame) we launch. The leap motion
+    // itself is handled by the `z.leaping` branch above on the next tick.
+    if (z.canLeap && (z.leapCd || 0) <= 0 && !z.leaping
+        && (mode === 'bash' || blocked)) {
+      if (!z._leapArmed) {
+        z.leapTelegraph = 0.35;
+        z._leapArmed = true;
+      } else if ((z.leapTelegraph || 0) <= 0) {
+        // Telegraph elapsed — launch.
+        const pdx = p.x - z.x, pdy = p.y - z.y;
+        const pd = Math.hypot(pdx, pdy) || 1;
+        const dist = Math.min(z.leapDist || 80, Math.max(40, pd));
+        z.leaping = true;
+        z.leapDur = 0.3;
+        z.leapT = 0.3;
+        const v = dist / 0.3;
+        z.leapVx = (pdx / pd) * v;
+        z.leapVy = (pdy / pd) * v;
+        z.leapCdMax = ZOMBIES.leaper.leapCd || 3.0;
+        z._leapArmed = false;
+      }
+    } else if (z.canLeap && !blocked && mode !== 'bash') {
+      // Clear armed state once the path opens back up so the next block-event
+      // re-arms with a fresh telegraph.
+      z._leapArmed = false;
+    }
     const d = Math.hypot(dx, dy) || 1;
     dx /= d; dy /= d;
     // Phase 1.1 — Pack Flanking offset. Tagged flankers slide perpendicular
@@ -3314,6 +3428,12 @@ function applyPickup(type) {
     case 'sledge':
       if (!p.unlocked.sledge) unlockWeapon('sledge', Infinity, 'SLEDGEHAMMER PICKED UP');
       setNotice('Sledgehammer equipped', 1.5); break;
+    // Bestiary Phase 2.5 — Stag drop. Stored on p.items counter (not the
+    // generic inventory), pending future crafting wiring.
+    case 'item_antler':
+      p.items = p.items || {};
+      p.items.antler = (p.items.antler || 0) + 1;
+      setNotice('Antler harvested', 2); break;
     default:
       // F16: synthetic journal pickups bypass the inventory and write to
       // the meta-progression lore set (prefs.lore).
@@ -3416,9 +3536,23 @@ function activateChunkIfNeeded() {
       if (chunk.garrison && chunk.garrison.length) {
         for (const e of chunk.garrison) {
           if (e._done) continue;
+          // Phase 2.5 — skip stag spawn if this zone's stag has already
+          // been killed this run.
+          if (e.meta && e.meta.stagZoneKey
+              && Game.flags && Game.flags.stagsSlain
+              && Game.flags.stagsSlain[e.meta.stagZoneKey]) {
+            e._done = true;
+            continue;
+          }
           const exdx = e.x - p.x, exdy = e.y - p.y;
           if (exdx * exdx + exdy * exdy < safeSq) { anyDeferred = true; continue; }
-          if (!inObstacle(e.x, e.y, 14)) spawnZombieAt(e.type, e.x, e.y);
+          if (!inObstacle(e.x, e.y, 14)) {
+            const spawned = spawnZombieAt(e.type, e.x, e.y);
+            // Apply garrison meta (Phase 2.5 stag zone tag, etc).
+            if (spawned && e.meta) {
+              if (e.meta.stagZoneKey) spawned._stagZoneKey = e.meta.stagZoneKey;
+            }
+          }
           e._done = true;
         }
       }

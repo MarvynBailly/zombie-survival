@@ -498,9 +498,11 @@ function makeSinks(chunk, cx, cy) {
         });
       }
     },
-    garrison(type, x, y) {
+    garrison(type, x, y, meta) {
       if (_inChunk(x, y, cx, cy)) {
-        chunk.garrison.push({ type, x, y });
+        const entry = { type, x, y };
+        if (meta) entry.meta = meta;
+        chunk.garrison.push(entry);
       }
     },
     barrel(x, y) {
@@ -917,6 +919,16 @@ function emitCottage(poi, rng, sinks) {
     const baseY = poi.centerY + rrange(rng, -60, 60);
     for (let i = 0; i < rint(rng, 2, 4); i++) {
       sinks.garrison('hivesac', baseX + rrange(rng, -40, 40), baseY + rrange(rng, -40, 40));
+    }
+  }
+  // Phase 2.3 — Thorn Husk(s): a forest cottage occasionally has 1–2
+  // tree-disguised ambushers staked along the tree-line just outside.
+  if (rng() < 0.5) {
+    const huskCount = rint(rng, 1, 3);
+    for (let i = 0; i < huskCount; i++) {
+      sinks.garrison('husk',
+        poi.centerX + rrange(rng, -180, 180),
+        poi.centerY + rrange(rng, -180, 180));
     }
   }
 }
@@ -1440,6 +1452,26 @@ function emitLumberCamp(poi, rng, sinks) {
         baseY + rrange(rng, -50, 50));
     }
   }
+  // Phase 2.3 — Thorn Husks: lumber camps cut into the woods, so they're
+  // a natural ambush spot. 1–3 husks along the tree-line.
+  {
+    const huskCount = rint(rng, 1, 4);
+    for (let i = 0; i < huskCount; i++) {
+      sinks.garrison('husk',
+        poi.centerX + rrange(rng, -200, 200),
+        poi.centerY + rrange(rng, -180, 180));
+    }
+  }
+  // Phase 2.5 — Stag: one per forest zone per run. We tag the garrison entry
+  // with the zone key so activateChunkIfNeeded can skip the spawn if the
+  // stag has already been slain. Stags wander the clearings outside the camp.
+  {
+    const zKey = poi.zx + ',' + poi.zy;
+    sinks.garrison('stag',
+      poi.centerX + rrange(rng, -240, 240),
+      poi.centerY + rrange(rng, -200, 200),
+      { stagZoneKey: zKey });
+  }
 }
 
 function emitMiningOutpost(poi, rng, sinks) {
@@ -1473,6 +1505,18 @@ function emitMiningOutpost(poi, rng, sinks) {
     sinks.garrison('cluster',
       poi.centerX + rrange(rng, -140, 140),
       poi.centerY + rrange(rng, -100, 100));
+  }
+  // Phase 2.4 — Plague Rats: tight cluster of 8 rats in/near the mine
+  // entrance. Mining outpost is the closest thing we have to a sewer/
+  // basement chunk today. ~70% of outposts host a rat nest.
+  if (rng() < 0.7) {
+    const ratX = poi.centerX + rrange(rng, -120, 120);
+    const ratY = poi.centerY + rrange(rng, -80, 80);
+    for (let i = 0; i < 8; i++) {
+      sinks.garrison('rat',
+        ratX + rrange(rng, -30, 30),
+        ratY + rrange(rng, -30, 30));
+    }
   }
 }
 
