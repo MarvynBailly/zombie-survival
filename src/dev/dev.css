@@ -140,10 +140,243 @@ input[type=number]:focus, select:focus {
 /* ---------- Preview area ---------- */
 #dev-preview-host {
   display: flex; flex-direction: column;
-  align-items: center; justify-content: flex-start;
-  padding: 24px;
-  overflow: auto;
+  align-items: stretch; justify-content: flex-start;
+  padding: 0;
+  overflow: hidden;
   background: radial-gradient(ellipse at center, #14161a 0%, #07080a 80%);
+}
+
+/* Tab bar */
+#dev-tabs {
+  display: flex;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+#dev-tabs button {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: var(--f-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.1s, border-color 0.1s;
+}
+#dev-tabs button:hover { color: var(--fg); }
+#dev-tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+#dev-tab-panes {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+.dev-tab-pane {
+  display: none;
+  position: absolute; inset: 0;
+  overflow: auto;
+  padding: 24px;
+}
+.dev-tab-pane.active { display: flex; }
+.dev-tab-pane[data-pane="worldgen"] {
+  flex-direction: column;
+  align-items: center;
+}
+.dev-tab-pane[data-pane="bestiary"],
+.dev-tab-pane[data-pane="arsenal"],
+.dev-tab-pane[data-pane="items"],
+.dev-tab-pane[data-pane="foundry"],
+.dev-tab-pane[data-pane="pois"] {
+  flex-direction: column;
+}
+
+/* ---------- Card grid (bestiary / arsenal / items) ---------- */
+.dev-tab-toolbar {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 16px;
+}
+.dev-tab-toolbar input[type=search] {
+  flex: 1;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--f-mono);
+  font-size: 12px;
+  padding: 6px 10px;
+}
+.dev-tab-toolbar input[type=search]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.dev-tab-toolbar .dev-tab-count {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dev-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.dev-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--border-hi);
+  padding: 8px;
+  display: flex; flex-direction: column;
+  font-family: var(--f-mono);
+  font-size: 11px;
+}
+.dev-card:hover { border-top-color: var(--accent); }
+.dev-card-sprite {
+  background: #06080a;
+  border: 1px solid var(--border);
+  align-self: center;
+  margin-bottom: 6px;
+  image-rendering: pixelated;
+}
+.dev-card-title {
+  font-family: var(--f-display);
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  color: var(--fg);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.dev-card-stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1px 6px;
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+.dev-card-stats span:nth-child(even) {
+  color: var(--fg);
+  text-align: right;
+}
+.dev-card-traits {
+  display: flex; flex-wrap: wrap; gap: 3px;
+  margin-bottom: 6px;
+}
+.dev-card-trait {
+  font-size: 9px;
+  color: var(--warn);
+  background: rgba(227,168,58,0.08);
+  border: 1px solid rgba(227,168,58,0.3);
+  padding: 1px 5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.dev-card-actions {
+  display: flex; gap: 4px;
+  margin-top: auto;
+}
+.dev-card-actions button {
+  flex: 1;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--f-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.dev-card-actions button:hover {
+  border-color: var(--accent);
+  color: var(--accent-hi);
+}
+.dev-card-actions input[type=number] {
+  width: 48px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--f-mono);
+  font-size: 11px;
+  padding: 3px 5px;
+}
+.dev-card-actions input[type=number]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ---------- Foundry list ---------- */
+.dev-foundry-tree {
+  display: flex; flex-direction: column;
+  gap: 18px;
+}
+.dev-foundry-cluster h3 {
+  margin: 0 0 8px;
+  font-family: var(--f-display);
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.dev-foundry-machines {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+}
+.dev-foundry-machine {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--border-hi);
+  padding: 10px 12px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+}
+.dev-foundry-machine:hover { border-left-color: var(--accent); }
+.dev-foundry-head {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: 4px;
+}
+.dev-foundry-name {
+  font-family: var(--f-display);
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  color: var(--fg);
+  text-transform: uppercase;
+}
+.dev-foundry-fp {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+.dev-foundry-desc {
+  color: var(--muted);
+  font-size: 10px;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+.dev-foundry-cost {
+  color: var(--warn);
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+.dev-foundry-recipes {
+  display: flex; flex-direction: column;
+  gap: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.dev-foundry-recipe {
+  color: var(--fg);
+  font-size: 11px;
+}
+.dev-foundry-recipe:nth-child(odd) {
+  background: rgba(255,255,255,0.02);
 }
 #dev-preview {
   border: 1px solid var(--border-hi);

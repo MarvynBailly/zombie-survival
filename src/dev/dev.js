@@ -169,6 +169,46 @@
     }, true);
   }
 
+  // ---- Tabs ----
+  // Tabs swap the central content (preview canvas vs bestiary cards vs ...).
+  // Sidebar stays as the worldgen panel because LAUNCH always respects those
+  // params regardless of which tab is active. Modules mount lazily — the
+  // first time you visit a tab is when its content is built.
+  const tabMounted = new Set(['worldgen']); // worldgen is mounted at boot
+  const tabModules = {
+    bestiary: () => window.TabBestiary,
+    arsenal:  () => window.TabArsenal,
+    items:    () => window.TabItems,
+    foundry:  () => window.TabFoundry,
+    pois:     () => window.TabPois,
+  };
+
+  function setTab(name) {
+    document.querySelectorAll('#dev-tabs button').forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === name);
+    });
+    document.querySelectorAll('.dev-tab-pane').forEach(p => {
+      p.classList.toggle('active', p.dataset.pane === name);
+    });
+    if (!tabMounted.has(name)) {
+      const factory = tabModules[name];
+      const mod = factory && factory();
+      if (mod && typeof mod.mount === 'function') {
+        const pane = document.querySelector(`.dev-tab-pane[data-pane="${name}"]`);
+        if (pane) {
+          try { mod.mount(pane); } catch (e) { console.error(`[dev] ${name} mount failed`, e); }
+        }
+      }
+      tabMounted.add(name);
+    }
+  }
+
+  function wireTabs() {
+    document.querySelectorAll('#dev-tabs button').forEach(b => {
+      b.addEventListener('click', () => setTab(b.dataset.tab));
+    });
+  }
+
   // ---- Boot ----
   function boot() {
     seedInitialState();
@@ -186,6 +226,7 @@
 
     wirePreviewTooltip();
     wireMapClickTeleport();
+    wireTabs();
     renderPreview();
   }
 

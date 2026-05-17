@@ -140,8 +140,8 @@ const DevConsole = (function () {
   // POI kinds — from POI_SIZES in world.js. Hardcoded so tab-completion works
   // before the world is generated; mismatch would just show "no POI matched".
   const POI_KINDS = [
-    'hut', 'cottage', 'campsite', 'house', 'gas_station',
-    'mining_outpost', 'farm', 'lumber_camp', 'fishing_dock',
+    'hut', 'cottage', 'campsite', 'house', 'gas_station', 'warehouse',
+    'town', 'city', 'mining_outpost', 'farm', 'lumber_camp', 'fishing_dock',
   ];
 
   function toggle() {

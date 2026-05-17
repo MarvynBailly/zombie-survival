@@ -38,13 +38,30 @@
       <div id="dev-panel-body"></div>
     </aside>
     <main id="dev-preview-host">
-      <canvas id="dev-preview" width="720" height="720"></canvas>
-      <div class="dev-stats">
-        <div>seed:<span id="dev-stat-seed">—</span></div>
-        <div>water:<span id="dev-stat-water">—</span></div>
-        <div>forest:<span id="dev-stat-forest">—</span></div>
-        <div>mountain:<span id="dev-stat-mountain">—</span></div>
-        <div>POIs:<span id="dev-stat-pois">—</span></div>
+      <nav id="dev-tabs">
+        <button type="button" data-tab="worldgen" class="active">World Preview</button>
+        <button type="button" data-tab="bestiary">Bestiary</button>
+        <button type="button" data-tab="arsenal">Arsenal</button>
+        <button type="button" data-tab="items">Items</button>
+        <button type="button" data-tab="foundry">Foundry</button>
+        <button type="button" data-tab="pois">POIs</button>
+      </nav>
+      <div id="dev-tab-panes">
+        <div class="dev-tab-pane active" data-pane="worldgen">
+          <canvas id="dev-preview" width="720" height="720"></canvas>
+          <div class="dev-stats">
+            <div>seed:<span id="dev-stat-seed">—</span></div>
+            <div>water:<span id="dev-stat-water">—</span></div>
+            <div>forest:<span id="dev-stat-forest">—</span></div>
+            <div>mountain:<span id="dev-stat-mountain">—</span></div>
+            <div>POIs:<span id="dev-stat-pois">—</span></div>
+          </div>
+        </div>
+        <div class="dev-tab-pane" data-pane="bestiary"></div>
+        <div class="dev-tab-pane" data-pane="arsenal"></div>
+        <div class="dev-tab-pane" data-pane="items"></div>
+        <div class="dev-tab-pane" data-pane="foundry"></div>
+        <div class="dev-tab-pane" data-pane="pois"></div>
       </div>
     </main>
   </div>
@@ -134,6 +151,11 @@
 <script src="src/dev/console.js"></script>
 <script src="src/dev/worldgen-preview.js"></script>
 <script src="src/dev/worldgen-panel.js"></script>
+<script src="src/dev/tab-bestiary.js"></script>
+<script src="src/dev/tab-arsenal.js"></script>
+<script src="src/dev/tab-items.js"></script>
+<script src="src/dev/tab-foundry.js"></script>
+<script src="src/dev/tab-pois.js"></script>
 <script src="src/dev/dev.js"></script>
 </body>
 </html>
