@@ -1,233 +1,249 @@
 'use strict';
 
 // ---------- Weather ----------
-// Daily weather forecast rolled at the dawn -> day boundary. Provides:
-//  - Multiplier helpers consulted by game.js (player speed, sprint drain,
-//    zombie speed, aggro radius, flamer ignite proc gate).
-//  - A screen-space draw() called from render.js after the world but before
-//    the HUD: thick fog vignette, slanted rain streaks, drifting snow.
+// Per-day rolled weather state. F4a foundation for D·02 Decay (rain doubles
+// wall decay — weatherDecayMult()) and B·02 Garden (rain auto-waters plants
+// — isRaining()).
 //
-// State: WEATHER.current ('clear' | 'fog' | 'heatwave' | 'rainstorm' |
-// 'blizzard'). WEATHER.rolledForDay tracks which day the current forecast
-// was rolled for so a resumed run keeps its forecast for the day in progress.
-const WEATHER = (() => {
-  const KINDS = ['clear', 'fog', 'heatwave', 'rainstorm', 'blizzard'];
+// State on Game.weather: { state, intensity, durationLeft, reducedVision,
+// moveMultiplier }. `state` ∈ 'clear'|'rain'|'fog'|'blizzard'. Rolled once
+// per game day at the dawn→day rollover.
+//
+// Particles are owned locally (recycled pool) so we don't pollute
+// Game.particles.
 
-  // Persistent particle pools so visuals stay coherent frame-to-frame instead
-  // of strobing. Initialised lazily the first time draw() needs them.
-  let rainDrops = null;
-  let snowFlakes = null;
+// Probability table — biome-agnostic global roll (the world spans many
+// biomes in a run; a global mood reads cleaner than per-tile flips).
+const WEATHER_PROB = [
+  { state: 'clear',    p: 0.60 },
+  { state: 'rain',     p: 0.25 },
+  { state: 'fog',      p: 0.10 },
+  { state: 'blizzard', p: 0.05 },
+];
 
-  function ensureRain() {
-    if (rainDrops) return;
-    rainDrops = [];
-    const W = (typeof VIEW_W === 'number') ? VIEW_W : 1024;
-    const H = (typeof VIEW_H === 'number') ? VIEW_H : 768;
-    for (let i = 0; i < 120; i++) {
-      rainDrops.push({
-        x: Math.random() * W,
-        y: Math.random() * H,
-        l: 8 + Math.random() * 10,
-        v: 720 + Math.random() * 320,
-      });
-    }
-  }
-  function ensureSnow() {
-    if (snowFlakes) return;
-    snowFlakes = [];
-    const W = (typeof VIEW_W === 'number') ? VIEW_W : 1024;
-    const H = (typeof VIEW_H === 'number') ? VIEW_H : 768;
-    for (let i = 0; i < 150; i++) {
-      snowFlakes.push({
-        x: Math.random() * W,
-        y: Math.random() * H,
-        r: 1 + Math.random() * 1.8,
-        vx: 24 + Math.random() * 26,
-        vy: 36 + Math.random() * 40,
-      });
-    }
-  }
+const RAIN_PARTICLE_CAP    = 220;
+const RAIN_SPAWN_PER_FRAME = 8;     // ~120/sec at 60fps with life ≈ 1.5
+const FOG_BLOB_COUNT       = 6;
+const SNOW_PARTICLE_CAP    = 180;
+const SNOW_SPAWN_PER_FRAME = 6;
 
-  function isHighland() {
-    return !!(typeof World !== 'undefined' && World && World.region && World.region.name === 'highland');
-  }
+// Local particle pools — never pushed into Game.particles.
+const weatherParticles = [];
+let fogBlobs = null;       // lazily initialized; drifts in screen-space
+let lastRolledDay = -1;    // tracks day rollover so we only roll once/day
 
-  function rollKind() {
-    const r = Math.random();
-    // 50 / 15 / 12 / 13 / 10
-    if (r < 0.50) return 'clear';
-    if (r < 0.65) return 'fog';
-    if (r < 0.77) return 'heatwave';
-    if (r < 0.90) return 'rainstorm';
-    // Blizzard tail: only legal in the highland biome. Outside highland,
-    // fall back to clear/fog (split the 10% evenly).
-    if (isHighland()) return 'blizzard';
-    return Math.random() < 0.5 ? 'clear' : 'fog';
-  }
-
-  function rollForToday() {
-    api.current = rollKind();
-    api.rolledForDay = (typeof Game !== 'undefined' && Game && Game.time) ? Game.time.day : 1;
-    return api.current;
-  }
-
-  function bannerText() {
-    switch (api.current) {
-      case 'fog':       return 'A THICK FOG ROLLS IN';
-      case 'heatwave':  return 'HEATWAVE — air shimmers';
-      case 'rainstorm': return 'RAINSTORM — fires sputter out';
-      case 'blizzard':  return 'BLIZZARD — whiteout';
-      default:          return 'CLEAR SKIES';
-    }
-  }
-
-  // ---- Multiplier helpers ----
-  function zombieSpeedMult() {
-    if (api.current === 'heatwave') return 0.7;
-    if (api.current === 'blizzard') return 0.8;
-    return 1;
-  }
-  function playerSpeedMult() {
-    if (api.current === 'blizzard') return 0.8;
-    return 1;
-  }
-  function aggroMult() {
-    if (api.current === 'fog') return 0.7; // ~30% reduction in hearing radius
-    return 1;
-  }
-  function flamerProcOK() {
-    return api.current !== 'rainstorm';
-  }
-  function sprintDrainMult() {
-    if (api.current === 'heatwave') return 2;
-    return 1;
-  }
-
-  // ---- Visuals ----
-  function draw(c) {
-    if (!c) return;
-    const W = (typeof VIEW_W === 'number') ? VIEW_W : c.canvas.width;
-    const H = (typeof VIEW_H === 'number') ? VIEW_H : c.canvas.height;
-    const dt = (typeof Game !== 'undefined' && Game && typeof Game.frameDt === 'number')
-      ? Game.frameDt : 1 / 60;
-
-    if (api.current === 'fog') drawFog(c, W, H);
-    else if (api.current === 'rainstorm') drawRain(c, W, H, dt);
-    else if (api.current === 'blizzard') drawBlizzard(c, W, H, dt);
-    else if (api.current === 'heatwave') drawHeatwave(c, W, H);
-    // 'clear' draws nothing.
-  }
-
-  function drawFog(c, W, H) {
-    // Player-centred radial halving render distance. Fully opaque near the
-    // edges, near-clear at the player's feet so they can see immediately
-    // around them.
-    let cx = W / 2, cy = H / 2;
-    if (typeof Game !== 'undefined' && Game && Game.player && Game.camera) {
-      cx = Game.player.x - Game.camera.x;
-      cy = Game.player.y - Game.camera.y;
-    }
-    // Halve render distance: typical view radius ~ sqrt((W/2)^2+(H/2)^2).
-    const fullR = Math.hypot(W, H) * 0.5;
-    const inner = fullR * 0.18;
-    const outer = fullR * 0.55;
-    const grad = c.createRadialGradient(cx, cy, inner, cx, cy, outer);
-    grad.addColorStop(0, 'rgba(190,196,205,0.05)');
-    grad.addColorStop(0.55, 'rgba(190,196,205,0.55)');
-    grad.addColorStop(1, 'rgba(178,184,194,0.92)');
-    c.save();
-    c.fillStyle = grad;
-    c.fillRect(0, 0, W, H);
-    // Faint uniform haze on top to grey out distant terrain too.
-    c.fillStyle = 'rgba(190,196,205,0.10)';
-    c.fillRect(0, 0, W, H);
-    c.restore();
-  }
-
-  function drawRain(c, W, H, dt) {
-    ensureRain();
-    // Dark vignette
-    c.save();
-    const grad = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35,
-                                        W / 2, H / 2, Math.hypot(W, H) * 0.55);
-    grad.addColorStop(0, 'rgba(8,12,18,0)');
-    grad.addColorStop(1, 'rgba(8,12,18,0.55)');
-    c.fillStyle = grad;
-    c.fillRect(0, 0, W, H);
-    // Cool blue tint
-    c.fillStyle = 'rgba(40,55,75,0.18)';
-    c.fillRect(0, 0, W, H);
-
-    // Streaks: slanted (slight wind), thin, low alpha.
-    c.strokeStyle = 'rgba(180,200,225,0.55)';
-    c.lineWidth = 1;
-    const slantX = 0.35;
-    c.beginPath();
-    for (let i = 0; i < rainDrops.length; i++) {
-      const d = rainDrops[i];
-      d.y += d.v * dt;
-      d.x += d.v * dt * slantX;
-      if (d.y > H + 20 || d.x > W + 20) {
-        d.x = Math.random() * W - 40;
-        d.y = -20;
-      }
-      c.moveTo(d.x, d.y);
-      c.lineTo(d.x - d.l * slantX, d.y - d.l);
-    }
-    c.stroke();
-    c.restore();
-  }
-
-  function drawBlizzard(c, W, H, dt) {
-    ensureSnow();
-    c.save();
-    // White-out wash
-    c.fillStyle = 'rgba(225,232,240,0.35)';
-    c.fillRect(0, 0, W, H);
-    // Soft cold tint
-    c.fillStyle = 'rgba(180,200,225,0.10)';
-    c.fillRect(0, 0, W, H);
-    // Drifting flakes (south-east-ish — positive vx, positive vy)
-    c.fillStyle = 'rgba(255,255,255,0.92)';
-    for (let i = 0; i < snowFlakes.length; i++) {
-      const s = snowFlakes[i];
-      s.x += s.vx * dt;
-      s.y += s.vy * dt;
-      if (s.y > H + 6) { s.y = -6; s.x = Math.random() * W; }
-      if (s.x > W + 6) { s.x = -6; s.y = Math.random() * H; }
-      c.beginPath();
-      c.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      c.fill();
-    }
-    c.restore();
-  }
-
-  function drawHeatwave(c, W, H) {
-    // Subtle warm wash — no particles, just a hint that conditions are harsh.
-    c.save();
-    c.fillStyle = 'rgba(255,140,60,0.08)';
-    c.fillRect(0, 0, W, H);
-    c.restore();
-  }
-
-  const api = {
-    current: 'clear',
-    rolledForDay: 0,
-    KINDS,
-    rollForToday,
-    bannerText,
-    zombieSpeedMult,
-    playerSpeedMult,
-    aggroMult,
-    flamerProcOK,
-    sprintDrainMult,
-    draw,
-    // For persistence: restore a saved forecast without rolling.
-    restore(kind, day) {
-      if (typeof kind === 'string' && KINDS.indexOf(kind) !== -1) api.current = kind;
-      if (typeof day === 'number') api.rolledForDay = day;
-    },
-    reset() { api.current = 'clear'; api.rolledForDay = 0; },
+function initWeather() {
+  Game.weather = {
+    state: 'clear',
+    intensity: 0,
+    durationLeft: DAY_LENGTH,
+    reducedVision: false,
+    moveMultiplier: 1,
   };
-  return api;
-})();
+  weatherParticles.length = 0;
+  fogBlobs = null;
+  lastRolledDay = Game.time ? Game.time.day : 1;
+}
+
+// Pick a weather state from the global probability table.
+function rollWeatherForDay() {
+  const r = Math.random();
+  let acc = 0, picked = 'clear';
+  for (const row of WEATHER_PROB) {
+    acc += row.p;
+    if (r < acc) { picked = row.state; break; }
+  }
+  setWeatherState(picked);
+}
+
+function setWeatherState(state) {
+  if (!Game.weather) initWeather();
+  const w = Game.weather;
+  w.state = state;
+  w.intensity = state === 'clear' ? 0 : (state === 'blizzard' ? 1 : 0.7);
+  w.durationLeft = DAY_LENGTH; // one game-day
+  w.reducedVision = (state === 'fog' || state === 'blizzard');
+  w.moveMultiplier = state === 'blizzard' ? 0.85 : 1;
+  // Reset particles so the new state starts clean.
+  weatherParticles.length = 0;
+  if (state === 'fog') ensureFogBlobs();
+  // Small banner so the player notices on day rollover.
+  if (typeof setNotice === 'function') {
+    if (state === 'rain')     setNotice('Rain rolls in', 2);
+    else if (state === 'fog') setNotice('Fog settles over the world', 2);
+    else if (state === 'blizzard') setNotice('A blizzard is brewing', 2.5);
+  }
+}
+
+function ensureFogBlobs() {
+  fogBlobs = [];
+  for (let i = 0; i < FOG_BLOB_COUNT; i++) {
+    fogBlobs.push({
+      x: Math.random() * VIEW_W,
+      y: Math.random() * VIEW_H,
+      r: rand(180, 320),
+      vx: rand(-12, 12),
+      vy: rand(-4, 4),
+    });
+  }
+}
+
+function updateWeather(dt) {
+  if (!Game.weather) initWeather();
+  const w = Game.weather;
+
+  // Roll fresh weather on every day rollover. Game.time.day ticks up
+  // inside advanceDayPhase; we just observe the change here so weather.js
+  // stays decoupled from the day-phase callsites.
+  if (Game.time && Game.time.day !== lastRolledDay) {
+    lastRolledDay = Game.time.day;
+    rollWeatherForDay();
+  }
+
+  w.durationLeft = Math.max(0, w.durationLeft - dt);
+
+  if (w.state === 'rain')     tickRain(dt);
+  else if (w.state === 'blizzard') tickBlizzard(dt);
+  else if (w.state === 'fog') tickFog(dt);
+}
+
+function tickRain(dt) {
+  // Spawn new line-particles up to cap; they fall down-right in screen space
+  // (camera-relative). Slight angle reads as wind.
+  const toSpawn = Math.min(RAIN_SPAWN_PER_FRAME, RAIN_PARTICLE_CAP - weatherParticles.length);
+  for (let i = 0; i < toSpawn; i++) {
+    weatherParticles.push({
+      x: Math.random() * (VIEW_W + 200) - 100,
+      y: -20 - Math.random() * 40,
+      vx: 80,
+      vy: 600,
+      life: 1.5,
+      kind: 'rain',
+    });
+  }
+  for (let i = weatherParticles.length - 1; i >= 0; i--) {
+    const p = weatherParticles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+    if (p.life <= 0 || p.y > VIEW_H + 20) weatherParticles.splice(i, 1);
+  }
+}
+
+function tickBlizzard(dt) {
+  const toSpawn = Math.min(SNOW_SPAWN_PER_FRAME, SNOW_PARTICLE_CAP - weatherParticles.length);
+  for (let i = 0; i < toSpawn; i++) {
+    weatherParticles.push({
+      x: Math.random() * (VIEW_W + 200) - 100,
+      y: -20 - Math.random() * 40,
+      vx: rand(40, 140),
+      vy: rand(180, 280),
+      r: rand(1.5, 3),
+      life: 3.5,
+      drift: rand(-1, 1),
+      kind: 'snow',
+    });
+  }
+  for (let i = weatherParticles.length - 1; i >= 0; i--) {
+    const p = weatherParticles[i];
+    p.x += (p.vx + Math.sin((p.life + p.drift) * 4) * 25) * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+    if (p.life <= 0 || p.y > VIEW_H + 20) weatherParticles.splice(i, 1);
+  }
+}
+
+function tickFog(dt) {
+  if (!fogBlobs) ensureFogBlobs();
+  for (const b of fogBlobs) {
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    // Wrap horizontally so the curtain keeps drifting.
+    if (b.x < -b.r) b.x = VIEW_W + b.r;
+    if (b.x > VIEW_W + b.r) b.x = -b.r;
+    if (b.y < -b.r) b.y = VIEW_H + b.r;
+    if (b.y > VIEW_H + b.r) b.y = -b.r;
+  }
+}
+
+// Render is screen-space. Caller is expected to call this AFTER the world
+// has been drawn (camera restored) and BEFORE the HUD draws over it.
+function drawWeatherOverlay(ctx, canvasW, canvasH /*, camX, camY */) {
+  if (!Game.weather || Game.weather.state === 'clear') return;
+  const state = Game.weather.state;
+  ctx.save();
+  if (state === 'rain') drawRain(ctx);
+  else if (state === 'fog') drawFog(ctx, canvasW, canvasH);
+  else if (state === 'blizzard') drawBlizzard(ctx, canvasW, canvasH);
+  ctx.restore();
+}
+
+function drawRain(ctx) {
+  ctx.strokeStyle = 'rgba(180,210,235,0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (const p of weatherParticles) {
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x + p.vx * 0.04, p.y + p.vy * 0.04);
+  }
+  ctx.stroke();
+}
+
+function drawFog(ctx, canvasW, canvasH) {
+  // Base curtain.
+  ctx.fillStyle = 'rgba(200,205,215,0.15)';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+  // Drifting blobs sit on top via soft radial gradients.
+  if (!fogBlobs) return;
+  for (const b of fogBlobs) {
+    const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+    g.addColorStop(0, 'rgba(220,225,235,0.18)');
+    g.addColorStop(1, 'rgba(220,225,235,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawBlizzard(ctx, canvasW, canvasH) {
+  // Heavier white curtain.
+  ctx.fillStyle = 'rgba(220,228,238,0.22)';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+  ctx.fillStyle = 'rgba(245,250,255,0.85)';
+  for (const p of weatherParticles) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// ---------- Public helpers (read by other modules) ----------
+function isRaining() {
+  return !!(Game.weather && Game.weather.state === 'rain');
+}
+function weatherDecayMult() {
+  // D·02 Decay: rain doubles wall decay. Future code multiplies its decay
+  // rate by this value so the perk wiring stays local.
+  return isRaining() ? 2.0 : 1.0;
+}
+
+// ---------- Save / Load ----------
+function saveWeather() {
+  if (!Game.weather) return null;
+  const w = Game.weather;
+  return {
+    state: w.state,
+    intensity: w.intensity,
+    durationLeft: w.durationLeft,
+    lastRolledDay,
+  };
+}
+function loadWeather(data) {
+  initWeather();
+  if (!data) return;
+  setWeatherState(data.state || 'clear');
+  Game.weather.intensity    = data.intensity != null ? data.intensity : Game.weather.intensity;
+  Game.weather.durationLeft = data.durationLeft != null ? data.durationLeft : DAY_LENGTH;
+  lastRolledDay = data.lastRolledDay != null ? data.lastRolledDay : (Game.time ? Game.time.day : 1);
+}

@@ -142,6 +142,16 @@ function resetRun(levelIndex) {
   Game.mapOpen = false;
   Game.subworld = null;
   Game.filesOpen = false;
+  // Perks reset every run (the brainstorm explicitly calls this out — the
+  // power fantasy is rebuilt each time).
+  Game.perks = makePerks();
+  // Day 1 starter point so the perk tree has something for first-time players
+  // to spend right away — otherwise nothing happens until day 2.
+  grantPerkPoint(1);
+  // Squad / world survivors — empty on every run. Names are randomized at
+  // spawn time so each run feels fresh.
+  Game.squad = [];
+  Game.worldSurvivors = [];
   Game.startTime = now();
   Game.elapsed = 0;
   Game.scoreSubmitted = false;
@@ -177,6 +187,8 @@ function resetRun(levelIndex) {
     fireCd: 0, reloading: 0, placeCd: 0, openCd: 0,
     walkPhase: 0, muzzleFlash: 0,
     dead: false,
+    // Generic carry-anything inventory (items.js). Separate from per-weapon
+    // ammo reserves so weapons keep their fast HUD path.
     inventory: makeInventory(),
     // Expansion weapon state — used by tier-3 fireWeapon branches.
     minigunSpin: 0,    // seconds the trigger has been held with the minigun
@@ -244,7 +256,8 @@ function restoreFromSave(d) {
   // finite defaults so the player still has to scavenge after resuming.
   if (p.ammo.pistol.mag === Infinity) p.ammo.pistol.mag = WEAPONS.pistol.magSize;
   if (p.ammo.pistol.reserve === Infinity) p.ammo.pistol.reserve = WEAPONS.pistol.reserve;
-  // Inventory restore — drop entries for unknown ids in case items were removed.
+  // Inventory — accept the saved slot list, drop entries for unknown ids
+  // (in case a future item is removed). Capacity is fixed in items.js.
   if (d.player.inventory && Array.isArray(d.player.inventory.slots)) {
     const cap = p.inventory.capacity;
     const slots = Array.from({ length: cap }, () => null);
@@ -282,7 +295,7 @@ function restoreFromSave(d) {
   Game.discoveredPOIs = new Set(d.discoveredPOIs || []);
   Game.exploredChunks = new Set(d.exploredChunks || []);
   Game.mapOpen = false;
-  // Perks
+  // Perks — restoring also re-applies side-effects so max-HP bumps land.
   if (d.perks) {
     Game.perks = {
       points: d.perks.points | 0,
@@ -431,6 +444,8 @@ function advanceDayPhase(prevPhase, newPhase) {
     Game.time.day += 1;
     setBanner(`DAY ${Game.time.day}`, 2);
     Audio.sfx.wave();
+    // One perk point awarded for surviving a day. grantPerkPoint also raises
+    // a notice + sound so the player knows to open the tree.
     grantPerkPoint(1);
     // Weather: re-roll forecast at the dawn->day boundary, with a chained
     // 2s announcement banner so DAY-NN and the forecast are both visible.
@@ -602,7 +617,7 @@ function updatePlayer(dt) {
   speed *= perkMult('speedMult');
   // Weather: blizzard slows everyone (0.8x).
   if (typeof WEATHER !== 'undefined') speed *= WEATHER.playerSpeedMult();
-  if (hasPerk('s_sprint') && (input.keys.has('shift'))) {
+  if (hasPerk('s_sprint') && (input.keys.has('shift') || input.keys.has('Shift'))) {
     p.sprintEnergy = p.sprintEnergy ?? 1;
     if (p.sprintEnergy > 0) {
       speed *= 1.30;
@@ -611,7 +626,7 @@ function updatePlayer(dt) {
       p.sprintEnergy = Math.max(0, p.sprintEnergy - (dt / 5) * drainMult);
     }
   } else if (p.sprintEnergy != null && p.sprintEnergy < 1) {
-    p.sprintEnergy = Math.min(1, p.sprintEnergy + dt / 3);
+    p.sprintEnergy = Math.min(1, p.sprintEnergy + dt / 3);  // 3s to refill
   }
   p.vx = mx * speed; p.vy = my * speed;
   p.x += p.vx * dt;
@@ -659,7 +674,7 @@ function updatePlayer(dt) {
 
   // iframes
   if (p.iframe > 0) p.iframe -= dt;
-  // Field Medic regen — heal slowly if not hit for 3s.
+  // Field Medic regen — restores HP if the player hasn't been hit for 3s.
   const regen = perkSum('regenPerSec');
   if (regen > 0 && p.hp < p.maxHp) {
     const cool = now() - (p.lastHurtAt || -10);
@@ -787,8 +802,9 @@ function updatePlayer(dt) {
     p.placeCd = 0.4;
   }
 
-  // E to open the nearest unopened chest within range, or fall through to
-  // the workbench crafting overlay, or recruit a nearby survivor.
+  // E to open the nearest unopened chest, or fall through to the workbench
+  // crafting overlay if no chest is in reach, or recruit a nearby survivor,
+  // or interact with a nearby manhole (sewers).
   if (input.keys.has('e') && p.openCd <= 0) {
     const chest = findChestNear(p.x, p.y, CHEST_PROMPT_RADIUS);
     if (chest) {
@@ -802,7 +818,8 @@ function updatePlayer(dt) {
       } else if (typeof findSurvivorNear === 'function') {
         const sv = findSurvivorNear(p.x, p.y, SURVIVOR_RECRUIT_RADIUS);
         if (sv) {
-          recruitSurvivor(sv); p.openCd = 0.4;
+          recruitSurvivor(sv);
+          p.openCd = 0.4;
         } else if (typeof Sewers !== 'undefined' && Sewers.trySewerInteract()) {
           p.openCd = 0.4;
         }
@@ -813,10 +830,12 @@ function updatePlayer(dt) {
   }
   if (p.openCd > 0) p.openCd -= dt;
 
-  // H toggles squad HOLD/FOLLOW (edge-triggered so a tap fires once).
+  // H toggles squad HOLD/FOLLOW. Edge-triggered: only fires once per tap.
   if (input.keys.has('h')) {
     if (!p._hHeld) { toggleSquadHold(); p._hHeld = true; }
-  } else { p._hHeld = false; }
+  } else {
+    p._hHeld = false;
+  }
 }
 
 function placeBarrel(x, y) {
@@ -910,7 +929,8 @@ function findChestNear(x, y, radius) {
   return best;
 }
 
-// Returns the closest workbench (style or kind 'workbench') in radius.
+// Returns the closest workbench (an obstacle with style or kind 'workbench')
+// within radius, or null. Workbenches anchor the crafting overlay.
 function findWorkbenchNear(x, y, radius) {
   let best = null, bestD = radius * radius;
   World.forEachActiveObstacle(x, y, (o) => {
@@ -1032,7 +1052,9 @@ function destroyObstacle(o, source) {
       r: 12, type: 'item_journal_' + id, life: 60,
     });
   }
-  // Scrap salvage — yield depends on what got smashed.
+  // Scrap drops — yield depends on the obstacle's kind/style. The world
+  // generator uses both fields (kind for ZExpand/ZProps, style for legacy
+  // pieces) so we consult whichever is set.
   const tag = o.kind || o.style;
   const base = scrapYieldFor(tag);
   const n = Math.round(base * perkMult('scrapMult'));
@@ -1046,6 +1068,8 @@ function destroyObstacle(o, source) {
   NAV.markDirty();
 }
 
+// Salvage value of a destroyed obstacle (in scrap). Returns 0 for items
+// that shouldn't drop anything (cosmetic, furniture not worth dismantling).
 function scrapYieldFor(tag) {
   switch (tag) {
     case 'CarWreck':  return randi(3, 6);
@@ -1057,7 +1081,7 @@ function scrapYieldFor(tag) {
     case 'Jersey':    return randi(1, 2);
     case 'fridge':    return randi(1, 3);
     case 'stove':     return randi(1, 3);
-    case 'workbench': return 0;
+    case 'workbench': return 0; // don't pulp your own workshop
     default:          return 0;
   }
 }
@@ -1081,7 +1105,8 @@ function destroyWall(index, source) {
 // their groan rate so the player hears the horde reacting to noise.
 // Per-shot crit helper (Last Stand) — kicks in under 30% HP.
 function broadcastAggro(x, y) {
-  // Silent Boots perk + weather (fog muffles sound).
+  // Silent Boots perk reduces the audible radius (crossbow is the only
+  // fully silent weapon — weap.silent). Weather (fog) muffles further.
   const wMul = (typeof WEATHER !== 'undefined') ? WEATHER.aggroMult() : 1;
   const r = 280 * perkMult('aggroMult') * wMul;
   const R2 = r * r;
@@ -1091,6 +1116,15 @@ function broadcastAggro(x, y) {
     const dx = z.x - x, dy = z.y - y;
     if (dx * dx + dy * dy <= R2) z.aggroT = Math.max(z.aggroT || 0, 4);
   }
+}
+
+// Per-shot multiplier from the Gunner "Last Stand" perk — kicks in under
+// 30% HP for an extra +50% damage. Returns 1 when the perk isn't taken or
+// the player is healthy.
+function playerLastStandMult(p) {
+  const bonus = perkSum('lastStand');
+  if (bonus <= 0) return 1;
+  return (p.hp / p.maxHp) < 0.30 ? (1 + bonus) : 1;
 }
 
 function fireWeapon(p, weap) {
@@ -1119,6 +1153,8 @@ function fireWeapon(p, weap) {
   const spreadMult = perkMult('spreadMult');
   const explodeMult = perkMult('explodeMult');
   // Rockets + grenade launcher both ride the rocket projectile system.
+  // The GL adds `bounces` so it ricochets off obstacles once before
+  // detonating (see updateRockets).
   if (weap.isRocket || weap.isProjectile) {
     Game.rockets.push({
       x: muzzleX, y: muzzleY,
@@ -1601,17 +1637,25 @@ function killZombie(z, weapon) {
     if (z.type === 'tank') spawnTankDrop(z.x, z.y);
     else spawnPickup(z.x, z.y);
   }
-  // Independent scrap drop scaled by zombie tier.
+  // Independent scrap drop — most zombies have a few coins / belt buckles /
+  // scrap metal on them. Tanks drop more, hatchlings/crawlers drop less.
   const scrapRoll = Math.random();
-  let scrapChance = 0.06; let scrapAmt = 1;
-  if (z.type === 'tank') { scrapChance = 0.85; scrapAmt = randi(3, 6); }
+  let scrapChance = 0.06;
+  let scrapAmt = 1;
+  if (z.type === 'tank')      { scrapChance = 0.85; scrapAmt = randi(3, 6); }
   else if (z.type === 'brood' || z.type === 'cent') { scrapChance = 0.95; scrapAmt = randi(4, 8); }
   else if (z.type === 'riot') { scrapChance = 0.45; scrapAmt = randi(2, 4); }
-  else if (z.type === 'fire' || z.type === 'charger' || z.type === 'reaper') { scrapChance = 0.20; scrapAmt = randi(1, 3); }
-  else if (z.type === 'hatch' || z.type === 'crawler') { scrapChance = 0.03; }
+  else if (z.type === 'fire' || z.type === 'charger' || z.type === 'reaper') {
+    scrapChance = 0.20; scrapAmt = randi(1, 3);
+  }
+  else if (z.type === 'hatch' || z.type === 'crawler') {
+    scrapChance = 0.03;
+  }
   if (scrapRoll < scrapChance) {
     const boosted = Math.max(1, Math.round(scrapAmt * perkMult('scrapMult')));
-    Game.pickups.push({ x: z.x, y: z.y, r: 12, type: `item_scrap_${boosted}`, life: 25 });
+    Game.pickups.push({
+      x: z.x, y: z.y, r: 12, type: `item_scrap_${boosted}`, life: 25,
+    });
   }
   const idx = Game.zombies.indexOf(z);
   if (idx >= 0) Game.zombies.splice(idx, 1);
@@ -1684,6 +1728,7 @@ function damagePlayer(amount, attacker, opts) {
   if (!isDot && p.iframe > 0) return;
   p.hp -= amount;
   if (!isDot) p.iframe = 0.6 + perkSum('iframeBonus');
+  // Tag "recently damaged" so the Field Medic regen perk knows when to pause.
   p.lastHurtAt = now();
   if (!isDot) Audio.sfx.hurt();
   if (!isDot) screenShake(6, 0.2);
@@ -2409,6 +2454,8 @@ function updatePickups(dt) {
     if (pk.life <= 0) { Game.pickups.splice(i, 1); continue; }
     const d = Math.hypot(p.x - pk.x, p.y - pk.y);
     const reach = p.r + pk.r;
+    // Magnet perk: items within (reach * (1 + magnet)) drift toward the player
+    // so they get vacuumed instead of needing a precise step.
     if (magnet > 0 && d < reach * (1 + magnet) && d > reach) {
       const k = 400 * dt / Math.max(1, d);
       pk.x += (p.x - pk.x) * k;
@@ -2423,6 +2470,7 @@ function updatePickups(dt) {
 }
 function applyPickup(type) {
   const p = Game.player;
+  // Big Mags perk: scale all ammo-pickup amounts (not health/walls/scrap).
   const bm = 1 + perkSum('ammoBonus');
   const ammoUp = (n) => Math.round(n * bm);
   switch (type) {
@@ -2483,9 +2531,10 @@ function applyPickup(type) {
         else setNotice('DUPLICATE · ' + title, 1.5);
         break;
       }
-      // Generic item pickups route through the inventory. `item_<id>[_<n>]`
-      // — only a trailing _digits is treated as count, so multi-word ids
-      // (e.g. item_bear_trap) round-trip cleanly.
+      // Generic item pickups route through the inventory. Pickup `type`
+      // strings shaped `item_<id>[_<count>]` resolve to an ITEMS entry.
+      // Only a trailing `_<digits>` is treated as a count, so multi-word
+      // ids like `item_bear_trap` round-trip cleanly.
       if (typeof type === 'string' && type.startsWith('item_')) {
         const rest = type.slice(5);
         let id = rest, n = 1;
@@ -2589,6 +2638,8 @@ function activateChunkIfNeeded() {
           b._done = true;
         }
       }
+      // Seed at most one survivor per chunk on first activation. Internally
+      // a flag on `chunk.survivorSeeded` makes this a one-shot.
       if (typeof maybeSpawnSurvivorsInActiveChunk === 'function') {
         maybeSpawnSurvivorsInActiveChunk(chunk, ccx + ',' + ccy);
       }
@@ -2643,7 +2694,8 @@ function tick(dt) {
   updateExplosions(dt);
   updateParticles(dt);
   updateDayCycle(dt);
-  // Tinker perk: walls auto-repair.
+  // Tinker perk: walls auto-repair when not being chewed. Skipped if no
+  // perks gives the buff so it costs nothing on the common path.
   const wallRep = perkSum('wallRepair');
   if (wallRep > 0) {
     for (const w of Game.walls) {

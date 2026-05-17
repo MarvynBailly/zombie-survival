@@ -869,10 +869,13 @@
         break;
       }
       default: {
-        // Generic inventory-item pickups — `item_<id>[_<n>]`.
+        // Generic inventory-item pickups — `item_<id>[_<n>]`. Render a
+        // tiny stand-in glyph; the precise look is handled by the
+        // inventory icon when it lands in the bag.
         if (typeof pk.type === 'string' && pk.type.startsWith('item_')) {
           const sub = pk.type.slice(5).replace(/_\d+$/, '');
           if (sub === 'scrap') {
+            // bent metal plate + wire kink
             ctx.fillStyle = '#43464d';
             ctx.fillRect(-5, -1, 9, 4);
             ctx.fillStyle = '#a3a4ac';
@@ -895,6 +898,7 @@
             ctx.fillStyle = '#ece7d7';
             ctx.fillRect(-4, -3, 8, 7);
           } else {
+            // unknown item — neutral box
             ctx.fillStyle = '#7a7e88';
             ctx.fillRect(-4, -4, 8, 8);
           }
