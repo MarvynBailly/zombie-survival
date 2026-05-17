@@ -185,6 +185,7 @@ setInterval(() => {
 //  Key handlers — F for build menu, E close to a machine to open it.
 // ─────────────────────────────────────────────────────────────────
 window.addEventListener('keydown', e => {
+  if (isTextInputFocused()) return;
   if (Game.mode !== 'playing') return;
   const k = e.key.toLowerCase();
   if (k === FOUNDRY_BUILD_KEY) {

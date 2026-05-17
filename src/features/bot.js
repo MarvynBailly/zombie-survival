@@ -802,6 +802,7 @@ Bot.toggle = function () { if (this.enabled) this.stop(); else this.start(); };
 window.bot = Bot;
 
 window.addEventListener('keydown', (e) => {
+  if (isTextInputFocused()) return;
   if (e.key && e.key.toLowerCase() === 'b' && Game.mode === 'playing') {
     Bot.toggle();
   }

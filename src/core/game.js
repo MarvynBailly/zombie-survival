@@ -45,6 +45,7 @@ const input = {
   wx: 0, wy: 0,
 };
 window.addEventListener('keydown', e => {
+  if (isTextInputFocused()) return;
   input.keys.add(e.key.toLowerCase());
   if (['w','a','s','d','r','e','i','p','h','j','b',' ','escape',
        '1','2','3','4','5','6','7','8','9','0','-','=',
@@ -53,6 +54,9 @@ window.addEventListener('keydown', e => {
   }
 });
 window.addEventListener('keyup', e => {
+  // keyup is NOT guarded — if a key was held before an input grabbed focus,
+  // we still want its release to clear the entry from input.keys so the
+  // player doesn't keep moving forever.
   input.keys.delete(e.key.toLowerCase());
 });
 canvas.addEventListener('mousemove', e => {

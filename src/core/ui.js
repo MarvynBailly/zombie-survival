@@ -793,6 +793,7 @@ function openFiles() {
 
 // ---------- Esc + M + I + P + J handling ----------
 window.addEventListener('keydown', e => {
+  if (isTextInputFocused()) return;
   if (e.key === 'Escape') {
     if (Game.filesOpen) { Game.filesOpen = false; clearOverlay(); e.preventDefault(); return; }
     if (isPerkTreeOpen()) { closePerkTree(); e.preventDefault(); return; }

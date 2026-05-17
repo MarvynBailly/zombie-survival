@@ -1,5 +1,23 @@
 'use strict';
 
+// Guard used by every window-level keydown handler to bail out while a text
+// input/textarea is focused — otherwise typing into the dev console or the
+// death-screen name field also fires game keybinds (P opens perks, etc.).
+// Function declaration so it's visible across classic scripts.
+function isTextInputFocused() {
+  const a = document.activeElement;
+  if (!a) return false;
+  const t = a.tagName;
+  if (t === 'TEXTAREA') return true;
+  if (t === 'INPUT') {
+    // Buttons/checkboxes/etc. don't swallow keys; only true text fields do.
+    const type = (a.type || 'text').toLowerCase();
+    return type === 'text' || type === 'search' || type === 'number' ||
+           type === 'email' || type === 'password' || type === 'tel' || type === 'url';
+  }
+  return !!a.isContentEditable;
+}
+
 // ---------- Constants ----------
 // World is bounded but very large (32000 x 32000). Generated lazily as 800px
 // chunks; only the active 5x5 chunk window around the player is updated and

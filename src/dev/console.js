@@ -148,6 +148,13 @@ const DevConsole = (function () {
     visible = !visible;
     root.classList.toggle('hidden', !visible);
     if (visible) {
+      // Drop any keys that were held before the console grabbed focus —
+      // otherwise the player would keep moving while you type. keyup events
+      // for those keys won't fire on the canvas anymore, so they'd stick.
+      // `input` is `const` in game.js, visible as a bare identifier here.
+      if (typeof input !== 'undefined' && input.keys && typeof input.keys.clear === 'function') {
+        input.keys.clear();
+      }
       inputEl.focus();
       inputEl.select();
     } else {
