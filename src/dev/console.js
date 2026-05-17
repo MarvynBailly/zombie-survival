@@ -198,6 +198,10 @@ const DevConsole = (function () {
         const on = parseToggle(args[0], window.__dev.fly);
         return C.setFly(on);
       }
+      case 'freecam': {
+        const on = parseToggle(args[0], window.__dev.freecam);
+        return C.setFreecam(on);
+      }
       case 'speed': {
         if (args.length === 0) return `speed is x${window.__dev.speedMul}`;
         return C.setSpeed(args[0]);
@@ -297,6 +301,7 @@ const DevConsole = (function () {
     'player',
     '  god [on|off]              invuln (toggle if no arg)',
     '  fly [on|off]              noclip (toggle if no arg)',
+    '  freecam [on|off]          detach camera (WASD moves cam; shift = fast)',
     '  speed <n>                 move-speed multiplier (1 = normal)',
     '  heal                      refill hp + ammo',
     '  pos                       print player coords + hp',

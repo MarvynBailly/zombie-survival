@@ -750,6 +750,9 @@ function updatePlayer(dt) {
   if (input.keys.has('a')) mx -= 1;
   if (input.keys.has('d')) mx += 1;
   if (mx || my) { const [nx, ny] = norm(mx, my); mx = nx; my = ny; }
+  // Dev freecam: WASD steers the camera instead of the player. Suppress
+  // player movement so the player stays put while the cam scouts ahead.
+  if (window.__dev && window.__dev.freecam) { mx = 0; my = 0; }
 
   // Movement speed modifiers:
   //  - Frost chill (from Frost Walker / Charger stun): multiplies until expiry.
@@ -826,10 +829,24 @@ function updatePlayer(dt) {
   input.wy = input.mouseY + Game.camera.y;
 
   // camera follow
-  const targetCx = clamp(p.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
-  const targetCy = clamp(p.y - VIEW_H / 2, 0, WORLD_H - VIEW_H);
-  Game.camera.x = lerp(Game.camera.x, targetCx, 0.15);
-  Game.camera.y = lerp(Game.camera.y, targetCy, 0.15);
+  let targetCx = clamp(p.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
+  let targetCy = clamp(p.y - VIEW_H / 2, 0, WORLD_H - VIEW_H);
+  let camLerp = 0.15;
+  if (window.__dev && window.__dev.freecam) {
+    // Read raw WASD and advance the freecam position. Player input above is
+    // already zero'd; we re-read keys here for the cam.
+    const fmx = (input.keys.has('d') ? 1 : 0) - (input.keys.has('a') ? 1 : 0);
+    const fmy = (input.keys.has('s') ? 1 : 0) - (input.keys.has('w') ? 1 : 0);
+    const len = Math.hypot(fmx, fmy) || 1;
+    const fspeed = 600 * ((input.keys.has('shift') || input.keys.has('Shift')) ? 3 : 1);
+    window.__dev.freecamX = clamp((window.__dev.freecamX || p.x) + (fmx / len) * fspeed * dt, 0, WORLD_W);
+    window.__dev.freecamY = clamp((window.__dev.freecamY || p.y) + (fmy / len) * fspeed * dt, 0, WORLD_H);
+    targetCx = clamp(window.__dev.freecamX - VIEW_W / 2, 0, WORLD_W - VIEW_W);
+    targetCy = clamp(window.__dev.freecamY - VIEW_H / 2, 0, WORLD_H - VIEW_H);
+    camLerp = 0.30;
+  }
+  Game.camera.x = lerp(Game.camera.x, targetCx, camLerp);
+  Game.camera.y = lerp(Game.camera.y, targetCy, camLerp);
 
   // iframes
   if (p.iframe > 0) p.iframe -= dt;

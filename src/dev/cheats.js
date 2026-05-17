@@ -11,6 +11,9 @@ window.__dev = window.__dev || {
   fly: false,
   speedMul: 1,
   timescale: 1,
+  freecam: false,
+  freecamX: 0,
+  freecamY: 0,
 };
 
 const DEV_SLOT_PREFIX = 'zombie-survival:dev-slot:';
@@ -30,6 +33,21 @@ const Cheats = {
     if (!isFinite(m) || m <= 0) return `bad speed: ${mult}`;
     window.__dev.speedMul = m;
     return `speed x${m}`;
+  },
+  // Freecam detaches the camera from the player and steers it with WASD.
+  // On enable, seed freecamX/Y to the player's current position so the cam
+  // doesn't snap. Toggle the on-screen badge so the user can tell which mode
+  // they're in.
+  setFreecam(on) {
+    const enable = !!on;
+    if (enable && window.Game && window.Game.player) {
+      window.__dev.freecamX = window.Game.player.x;
+      window.__dev.freecamY = window.Game.player.y;
+    }
+    window.__dev.freecam = enable;
+    const badge = document.getElementById('dev-freecam-badge');
+    if (badge) badge.style.display = enable ? '' : 'none';
+    return `freecam ${enable ? 'ON' : 'OFF'}`;
   },
 
   // ---- world ----
