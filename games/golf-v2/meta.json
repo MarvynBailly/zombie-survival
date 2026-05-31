@@ -1,0 +1,25 @@
+{
+  "slug": "golf-v2",
+  "title": "PAR+ — Tour Edition",
+  "genre": "Mini-Golf",
+  "tagline": "27 holes, 3 greens, slopes that curve every roll.",
+  "blurb": "PAR grows up: three themed nine-hole greens, portals, boosts, conveyors, magnets, moving gates and slopes — plus a predicted aim-arc and per-green letter grades.",
+  "controls": [
+    {"key": "Click + Drag", "action": "aim & set power (pull back from ball)"},
+    {"key": "Release", "action": "putt"},
+    {"key": "R", "action": "re-putt from last rest (mulligan)"},
+    {"key": "Space / Enter", "action": "skip to next hole when sunk"},
+    {"key": "Esc / P", "action": "pause"},
+    {"key": "M", "action": "mute"}
+  ],
+  "accent": "#8ec547",
+  "expandsSlug": "golf",
+  "basedOnTitle": "PAR",
+  "whatsNew": [
+    "Three themed 9-hole greens (27 holes) with a course-select + unlock progression",
+    "New obstacles: portals, boost pads, conveyors, magnets and moving walls",
+    "Slopes/elevation that curve the roll, with directional shading you can read",
+    "Predicted bounce aim-arc plus a fading shot-trail and crisper feedback",
+    "Per-green scorecard with par totals, letter grade (S-F) and saved course records"
+  ]
+}

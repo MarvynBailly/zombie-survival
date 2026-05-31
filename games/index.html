@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>OUTBREAK ARCADE — A cabinet of games grown from a zombie engine</title>
+<title>OUTBREAK ARCADE — Originals &amp; their expansions, grown from a zombie engine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
@@ -56,7 +56,7 @@
     -webkit-background-clip:text; background-clip:text;
   }
   .intro{
-    max-width:680px; margin:20px auto 0; color:#c9c7be; font-size:clamp(14px,1.6vw,17px);
+    max-width:720px; margin:20px auto 0; color:#c9c7be; font-size:clamp(14px,1.6vw,17px);
   }
   .intro b{ color:var(--fg); font-weight:600; }
   .meta-row{
@@ -74,16 +74,20 @@
 
   /* ---------- section label ---------- */
   .section-label{
-    display:flex; align-items:center; gap:16px; margin:46px 0 22px;
+    display:flex; align-items:center; gap:16px; margin:52px 0 22px;
   }
   .section-label h2{
     font-family:var(--disp); font-size:30px; letter-spacing:0.1em; text-transform:uppercase;
     color:var(--fg); white-space:nowrap;
   }
+  .section-label .sub{
+    font-family:var(--body); font-size:12px; color:var(--muted); letter-spacing:0.04em;
+    text-transform:none; margin-left:-6px; white-space:nowrap;
+  }
   .section-label .line{ flex:1; height:1px; background:var(--border); }
   .section-label .count{
     font-family:var(--mono); font-size:13px; color:var(--muted);
-    border:1px solid var(--border); border-radius:99px; padding:3px 12px;
+    border:1px solid var(--border); border-radius:99px; padding:3px 12px; white-space:nowrap;
   }
 
   /* ---------- featured origin card ---------- */
@@ -104,7 +108,7 @@
     box-shadow:0 18px 50px -22px rgba(210,75,53,0.55);
   }
   .featured .shot{
-    position:relative; min-height:300px; overflow:hidden; background:#000;
+    position:relative; min-height:320px; overflow:hidden; background:#000;
   }
   .featured .shot img{
     position:absolute; inset:0; width:100%; height:100%;
@@ -126,7 +130,7 @@
     -webkit-background-clip:text; background-clip:text; color:transparent;
   }
   .featured .genre{ width:max-content; }
-  .featured p{ color:#c4c2ba; font-size:15px; max-width:52ch; }
+  .featured p{ color:#c4c2ba; font-size:15px; max-width:54ch; }
   .featured p .hl{ color:var(--fa); font-weight:600; }
   .featured .feats{ display:flex; flex-wrap:wrap; gap:8px; margin-top:2px; }
   .feat{
@@ -171,8 +175,8 @@
     text-align:center; padding:14px;
   }
   .ph .pht{
-    font-family:var(--disp); font-size:clamp(34px,6vw,52px); letter-spacing:0.05em;
-    text-transform:uppercase; color:rgba(255,255,255,0.92);
+    font-family:var(--disp); font-size:clamp(30px,5.2vw,48px); letter-spacing:0.05em;
+    text-transform:uppercase; color:rgba(255,255,255,0.92); line-height:0.92;
     filter:drop-shadow(0 3px 0 rgba(0,0,0,0.5));
   }
   .badge{
@@ -181,10 +185,14 @@
     text-transform:uppercase; color:var(--ink);
     background:var(--ca); border-radius:3px; padding:4px 8px;
   }
+  .badge.v2{
+    left:10px; right:auto; background:var(--ca); color:var(--ink);
+    box-shadow:0 0 0 1px rgba(0,0,0,0.4), 0 2px 10px -2px color-mix(in srgb, var(--ca) 80%, transparent);
+  }
   .card .body{ padding:18px 18px 20px; display:flex; flex-direction:column; gap:12px; flex:1; }
   .card .top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
   .card h3{
-    font-family:var(--disp); font-size:38px; line-height:0.9; letter-spacing:0.03em;
+    font-family:var(--disp); font-size:36px; line-height:0.9; letter-spacing:0.03em;
     text-transform:uppercase; color:var(--fg);
   }
   .genre{
@@ -195,7 +203,35 @@
     border-radius:99px; padding:4px 10px; white-space:nowrap;
   }
   .tagline2{ color:var(--fg); font-weight:600; font-size:14px; }
-  .blurb{ color:var(--muted); font-size:13px; line-height:1.55; flex:1; }
+  .blurb{ color:var(--muted); font-size:13px; line-height:1.55; }
+
+  /* builds-on line (expansions) */
+  .buildson{
+    display:flex; align-items:center; gap:8px; font-size:12px; color:#b7b5ad;
+    background:color-mix(in srgb, var(--ca) 8%, var(--panel2));
+    border:1px solid color-mix(in srgb, var(--ca) 35%, var(--border));
+    border-radius:4px; padding:8px 11px;
+  }
+  .buildson .tag{
+    font-family:var(--mono); font-size:9.5px; font-weight:700; letter-spacing:0.14em;
+    text-transform:uppercase; color:var(--ca); flex-shrink:0;
+  }
+  .buildson b{ color:var(--fg); font-weight:600; }
+
+  /* what's new bullets */
+  .whatsnew{ display:flex; flex-direction:column; gap:6px; }
+  .whatsnew .wn-h{
+    font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:0.16em;
+    text-transform:uppercase; color:var(--ca);
+  }
+  .whatsnew ul{ list-style:none; display:flex; flex-direction:column; gap:5px; }
+  .whatsnew li{
+    position:relative; padding-left:18px; font-size:12.5px; color:#c4c2ba; line-height:1.45;
+  }
+  .whatsnew li::before{
+    content:"+"; position:absolute; left:2px; top:0; font-family:var(--mono);
+    font-weight:700; color:var(--ca);
+  }
 
   .legend{
     display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px 12px;
@@ -213,6 +249,8 @@
     white-space:nowrap;
   }
 
+  .spacer{ flex:1; }
+
   .play{
     display:flex; align-items:center; justify-content:center; gap:10px;
     margin-top:4px; padding:13px 16px; border-radius:4px; cursor:pointer;
@@ -224,6 +262,22 @@
   .play:active{ transform:translateY(1px); }
   .play .arrow{ font-size:16px; transform:translateY(-1px); }
   .featured .play{ max-width:280px; font-size:26px; margin-top:8px; }
+
+  /* play row for expansions: big v2 play + small v1 link */
+  .playrow{ display:flex; align-items:stretch; gap:10px; margin-top:4px; }
+  .playrow .play{ flex:1; margin-top:0; }
+  .playv1{
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    padding:0 16px; border-radius:4px; cursor:pointer; white-space:nowrap;
+    font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:0.1em;
+    text-transform:uppercase; color:var(--muted);
+    background:transparent; border:1px solid var(--border);
+    transition:color .15s ease, border-color .15s ease, background .15s ease;
+  }
+  .playv1:hover{
+    color:var(--fg); border-color:color-mix(in srgb, var(--ca) 55%, var(--border));
+    background:color-mix(in srgb, var(--ca) 8%, transparent);
+  }
 
   /* ---------- footer ---------- */
   footer{
@@ -241,6 +295,7 @@
     .featured .shot::after{ background:linear-gradient(0deg, rgba(20,22,26,0.95) 2%, transparent 55%); }
     .featured .body{ padding:26px 22px; }
     .featured .play{ max-width:none; }
+    .section-label .sub{ display:none; }
   }
 </style>
 </head>
@@ -250,13 +305,14 @@
   <div class="kicker">Outbreak Arcade</div>
   <h1 class="title">OUTBREAK <span class="arc">ARCADE</span></h1>
   <p class="intro">
-    One <b>zombie-survival engine</b> grew a whole cabinet of games — towers, dungeons, drifters,
-    rhythm, sand, and sieges, all sharing the same warm-red DNA. Pick a machine and press start.
+    One <b>zombie-survival engine</b> grew a whole cabinet of games — and then those games
+    <b>grew up</b>. Ten originals share the same warm-red DNA; seven now ship an
+    <b>expanded V2</b>. Pick a machine, press start, and watch the progression.
   </p>
   <div class="meta-row">
-    <div class="stat"><span class="num" id="gcount">0</span><span class="lbl">Games in the cabinet</span></div>
+    <div class="stat"><span class="num" id="gcount">0</span><span class="lbl">Games</span></div>
+    <div class="stat alt2"><span class="num" id="xcount">0</span><span class="lbl">Expansions</span></div>
     <div class="stat alt"><span class="num">1</span><span class="lbl">Shared engine</span></div>
-    <div class="stat alt2"><span class="num">100%</span><span class="lbl">Keyboard &amp; mouse</span></div>
   </div>
 </header>
 
@@ -295,31 +351,43 @@
   <!-- THE CABINET -->
   <div class="section-label">
     <h2>The Cabinet</h2>
+    <span class="sub">every original machine</span>
     <span class="line"></span>
     <span class="count" id="cabinet-count">0 machines</span>
   </div>
 
-  <div class="grid" id="grid"></div>
+  <div class="grid" id="grid-originals"></div>
+
+  <!-- EXPANSIONS -->
+  <div class="section-label">
+    <h2>Expansions — The Progression</h2>
+    <span class="sub">each original, taken further</span>
+    <span class="line"></span>
+    <span class="count" id="exp-count">0 V2s</span>
+  </div>
+
+  <div class="grid" id="grid-expansions"></div>
 
   <footer>
     <div class="brand">OUTBREAK <span class="dot">/</span> ARCADE</div>
     <div>Grown from a <code>zombie-survival</code> engine. Built to run on a Raspberry Pi over the tailnet.</div>
-    <div><span id="fcount">0</span> games &middot; one shared accent &middot; all keyboard &amp; mouse</div>
+    <div><span id="fcount">0</span> games &middot; <span id="fxcount">0</span> expansions &middot; all keyboard &amp; mouse</div>
   </footer>
 </div>
 
 <script>
-  // Game data baked from each game's meta.json. Covers load from ./<slug>/cover.png,
-  // falling back to a CSS accent placeholder if the image is missing.
-  var GAMES = [
+  // Data baked from each game's meta.json. ORIGINALS load covers from
+  // ./<slug>/cover.png ; EXPANSIONS (slug ends -v2) from ./<slug>/cover.png too,
+  // both falling back to a CSS accent placeholder if the image is missing.
+  var ORIGINALS = [
     {slug:"towers", title:"Ironline", genre:"Tower Defense", accent:"#7fc8ff",
       tagline:"Build the line. Hold the canyon. Outlast 20 waves.",
       blurb:"Place gun, frost, and mortar towers on the ridges, upgrade them mid-fight, and stop the swarm before it reaches your reactor. Tight, juicy, 3-minute runs.",
       controls:[["1 2 3","choose tower"],["Click","build / select"],["U","upgrade selected"],["S","sell selected"],["Space","start next wave"],["Esc / P","pause"]]},
-    {slug:"crawler", title:"Gravecrawl", genre:"Roguelike Crawler", accent:"#8ec547",
+    {slug:"crawler", title:"Gravecrawl", genre:"Roguelike Dungeon Crawler", accent:"#8ec547",
       tagline:"Bump to fight, step to descend, die in the dark.",
       blurb:"A tight turn-based roguelike: seeded dungeons, fog-of-war, bump combat, hungry monsters, loot, and stairs down into worse. Permadeath, every run new.",
-      controls:[["WASD","move & bump-attack"],["Q E Z C","move diagonally"],["Space / .","wait a turn"],["G","grab item"],["F","descend stairs"],["H","quaff potion"],["J","rest to heal"],["P / Esc","pause"]]},
+      controls:[["WASD / Arrows","Move & bump-attack"],["Q E Z C","Move diagonally"],["Space / .","Wait a turn"],["G","Grab item"],["F","Descend stairs"],["H","Quaff potion"],["J","Rest to heal"],["P / Esc","Pause"]]},
     {slug:"racer", title:"Drift Circuit", genre:"Top-Down Racer", accent:"#7fc8ff",
       tagline:"Tail-out arcade drifting against your own ghost.",
       blurb:"Real momentum + handbrake drift physics on procedural circuits. Bank clean checkpoint laps, smoke the tires, and chase the ghost of your best run.",
@@ -331,50 +399,151 @@
     {slug:"blocks", title:"FLUX", genre:"Falling-Block Puzzle", accent:"#b07fff",
       tagline:"Match four, detonate, chain the cascade.",
       blurb:"A color-merge twist on falling blocks: clusters of 4+ same-color cells explode, survivors fall and chain into combos. Clear rows for bonuses. Speed ramps fast.",
-      controls:[["A / D","move left / right"],["W / Up / J","rotate"],["S / Down","soft drop"],["Space","hard drop"],["Esc / P","pause"],["M","mute"]]},
+      controls:[["A / D / Arrows","move left / right"],["W / Up / J","rotate"],["S / Down","soft drop"],["Space","hard drop"],["Esc / P","pause"],["M","mute"]]},
     {slug:"platformer", title:"Vaultrunner", genre:"Precision Platformer", accent:"#34d6c2",
       tagline:"Run, vault, and beat the clock to the flag.",
       blurb:"A tight precision platformer with float-perfect jumps, coyote time and buffered hops. Dodge spikes and spinning saws, bank gems, and chase your best time.",
-      controls:[["A / D","run left / right"],["Space / W","jump (hold higher)"],["R","respawn at checkpoint"],["Esc / P","pause"],["M","mute"]]},
+      controls:[["A / D / Arrows","run left / right"],["Space / W / Up","jump (hold for higher)"],["R","respawn at checkpoint"],["Esc / P","pause"],["M","mute"]]},
     {slug:"stealth", title:"Nightfall Protocol", genre:"Stealth Infiltration", accent:"#3fd6c0",
       tagline:"Slip past the cones. Steal the intel. Vanish.",
       blurb:"Sneak through a guarded compound where vision cones are blocked by walls. Sneak silent or sprint loud — fill the alarm and you're made. Beat your clear time.",
-      controls:[["WASD","move"],["Shift","hold to sneak"],["Space","hold to sprint"],["P / Esc","pause"],["M","mute"]]},
+      controls:[["WASD / Arrows","move"],["Shift","hold to sneak"],["Space","hold to sprint"],["P / Esc","pause"],["M","mute"]]},
     {slug:"sandbox", title:"Powder", genre:"Falling-Sand Sandbox", accent:"#ffb84a",
       tagline:"Paint living matter. Watch it collide.",
       blurb:"A powder game: pour sand, water, oil and acid, then set it ablaze. Fire eats wood, water makes steam, acid dissolves all. Pure emergent, mesmerizing chaos.",
-      controls:[["L-Click","paint material"],["R-Click","erase"],["1-9 / 0","pick material"],["[ ] / Wheel","brush size"],["Space / P","pause sim"],["N","step one tick"],["G","flip gravity"],["C","clear world"]]},
+      controls:[["L-Click","paint material"],["R-Click","erase"],["1-9 / 0","pick material"],["[ / ] / Wheel","brush size"],["Space / P","pause sim"],["N","step one tick"],["G","flip gravity"],["C","clear world"]]},
     {slug:"golf", title:"PAR", genre:"Mini-Golf", accent:"#8ec547",
       tagline:"Drag, putt, bank the bumpers, beat par.",
       blurb:"Top-down mini-golf with click-drag aiming and a real rolling ball. Nine holes of bumpers, sand, and water. Sink it under par and brag forever.",
-      controls:[["Click+Drag","aim & set power"],["Release","putt"],["R","re-putt from last spot"],["Space","next hole when sunk"],["Esc / P","pause"],["M","mute"]]},
+      controls:[["Click + Drag","aim & set power"],["Release","putt"],["R","re-putt from last spot"],["Space","next hole when sunk"],["Esc / P","pause"],["M","mute"]]},
     {slug:"colony", title:"Emberhold", genre:"Colony Builder", accent:"#f0c24b",
       tagline:"Build by day. Hold the line by night.",
       blurb:"Place farms, lumberyards and quarries to feed and arm your colony, then ring it with turrets and palisades before the husks swarm in at dusk. Survive the long siege.",
-      controls:[["1-7","select a building"],["L-Click","place building"],["R-Click / X","sell / cancel"],["Space","fast-forward (hold)"],["Tab","cycle 1x/2x/3x"],["Esc / P","pause"]]}
+      controls:[["1-7","select a building"],["L-Click","place building"],["R-Click / X","sell / cancel"],["Space","fast-forward (hold)"],["Tab","cycle 1x/2x/3x speed"],["Esc / P","pause"],["M","mute"]]}
+  ];
+
+  var EXPANSIONS = [
+    {slug:"crawler-v2", title:"Gravecrawl II: Deeper Dark", genre:"Roguelike Dungeon Crawler", accent:"#8ec547",
+      expandsSlug:"crawler", basedOnTitle:"Gravecrawl",
+      tagline:"Pick a class, loot the dark, fall to the Throne of Ash.",
+      blurb:"Gravecrawl, deepened: classes, equipable gear, scrolls & potions, ranged and poisonous foes, themed biomes and a boss every fourth floor down to depth 12.",
+      whatsNew:[
+        "Three classes (Warrior / Rogue / Sorcerer) with distinct kits & perks",
+        "Inventory + equipment: weapons, armor, potions & scrolls in a 5-slot belt",
+        "New foes incl. ranged archers/imps and poison/weaken/burn status appliers",
+        "Three themed biomes — Crypt, Caverns, Inferno — each tougher than the last",
+        "A boss every 4 floors, ending at the Ashen Throne (depth 12)",
+        "Risk/reward shrines & trapped chests scattered through the dark"
+      ],
+      controls:[["WASD / Arrows","Move & bump-attack"],["Q E Z C","Move diagonally"],["Space / .","Wait a turn"],["G","Grab / shrine / chest"],["F","Descend stairs"],["I","Inventory (equip / use)"],["1-5","Quick-use belt slot"],["H","Quaff health potion"],["J","Rest to heal"],["Y / N","Accept / decline"],["P / Esc","Pause"]]},
+    {slug:"racer-v2", title:"Drift Circuit 2: Championship", genre:"Top-Down Racer", accent:"#d24b35",
+      expandsSlug:"racer", basedOnTitle:"Drift Circuit",
+      tagline:"Drift a five-track season against a rival field.",
+      blurb:"Drift Circuit grown up: 5 themed circuits, a points-scoring championship, an AI field with rubber-banding, selectable cars, and nitro boost.",
+      whatsNew:[
+        "5 themed circuits with distinct layouts (Speedway, Switchback, Coil, Dunes, Tempest)",
+        "Championship season: race a 5-round series for points and the title",
+        "AI rival field (3/5/7 cars) with three difficulty tiers and mild rubber-banding",
+        "Car selection with speed/grip/accel trade-offs, plus unlockable machines",
+        "Nitro boost meter, refilled by drifting and clean laps",
+        "Per-track best laps and ghosts saved separately under a new save key"
+      ],
+      controls:[["W / Up","throttle"],["S / Down","brake / reverse"],["A / D","steer"],["Space","handbrake drift"],["J / Shift","nitro boost"],["Esc / P","pause"],["R","reset to track"],["Enter","start / continue"]]},
+    {slug:"rhythm-v2", title:"Pulse Code II — Signal Drift", genre:"Rhythm", accent:"#34e0d8",
+      expandsSlug:"rhythm", basedOnTitle:"Pulse Code",
+      tagline:"Five seeded signals. Pick your track, hold the line.",
+      blurb:"The Pulse Code core, expanded: five distinct generated tracks, three difficulties, hold notes, layered synths, and per-track letter-grade high scores.",
+      whatsNew:[
+        "Song-select screen with five distinct seeded tracks (tempo/key/mood)",
+        "Easy / Normal / Hard difficulties change note density and fall speed",
+        "Hold / sustained notes alongside taps",
+        "Layered synth voices: drums + bass + lead + per-mood arp & pads",
+        "Per-track, per-difficulty high scores with S-D letter grades",
+        "Accuracy breakdown (Perfect / Good / Miss / Holds) on results"
+      ],
+      controls:[["D","lane 1"],["F","lane 2"],["J","lane 3"],["K","lane 4"],["Hold D/F/J/K","sustain holds"],["Arrows","pick track / diff"],["Enter","confirm / play"],["Esc / P","pause"],["M","mute"]]},
+    {slug:"stealth-v2", title:"Nightfall Protocol II — Deep Cover", genre:"Stealth Infiltration", accent:"#3fd6c0",
+      expandsSlug:"stealth", basedOnTitle:"Nightfall Protocol",
+      tagline:"Five ops. Cameras, dogs, locked vaults. Vanish unseen.",
+      blurb:"The cone-and-shadow stealth core, expanded: a 5-mission campaign with rotating cameras, investigators, a pursuit dog, keycard doors, terminal hacks, noise lures, silent takedowns, scoring and a GHOST bonus.",
+      whatsNew:[
+        "5-mission campaign with level select, unlocks and rising complexity",
+        "New threats: rotating cameras, an investigator that hunts your last-known spot, and a pursuit dog",
+        "Gadgets: thrown noise lure and silent behind-the-back takedowns",
+        "Keycard-locked doors plus multi-terminal hack objectives gating the intel",
+        "Light/shadow stealth deepened against every watcher type",
+        "End-of-mission scoring with letter grades and a no-detection GHOST bonus"
+      ],
+      controls:[["WASD / Arrows","Move"],["Shift","Hold to sneak (silent)"],["Space","Hold to sprint (loud)"],["E","Hack / keycard / door"],["F","Silent takedown"],["Q","Throw noise lure"],["P / Esc","Pause"],["M","Mute"]]},
+    {slug:"sandbox-v2", title:"Powder II — Thermal Falling-Sand", genre:"Falling-Sand Sandbox", accent:"#d24b35",
+      expandsSlug:"sandbox", basedOnTitle:"Powder",
+      tagline:"A falling-sand world that runs on heat.",
+      blurb:"25+ materials with a real temperature system: melt, freeze, boil, burn, electrify, and detonate. Heat/cool tools, clone & emitter sources, 3 save slots.",
+      whatsNew:[
+        "Full temperature system: heat spreads cell-to-cell so things melt, freeze, boil and ignite",
+        "13 new materials incl. lava, ice, glass, gunpowder, nitro, salt/brine, seeds, metal+wire electricity",
+        "Heat & Cool tools plus a thermal (temperature) view overlay",
+        "Clone and Emitter source tools for infinite material fountains",
+        "3 localStorage save slots with RLE-compressed world snapshots",
+        "Brush shapes (circle / square / spray) and a live cell/temperature probe"
+      ],
+      controls:[["L-Click","Paint / use tool"],["R-Click","Erase"],["1-9, 0","Pick material"],["Tab","Cycle material page"],["[ ] / Wheel","Brush size"],["B","Cycle brush shape"],["X / Z","Heat / Cool tool"],["H","Thermal view"],["G","Flip gravity"],["Space / P","Pause sim"],["N","Step one tick"],["F5-F8","Save / load slots"],["C","Clear world"],["Esc","Menu"]]},
+    {slug:"golf-v2", title:"PAR+ — Tour Edition", genre:"Mini-Golf", accent:"#8ec547",
+      expandsSlug:"golf", basedOnTitle:"PAR",
+      tagline:"27 holes, 3 greens, slopes that curve every roll.",
+      blurb:"PAR grows up: three themed nine-hole greens, portals, boosts, conveyors, magnets, moving gates and slopes — plus a predicted aim-arc and per-green letter grades.",
+      whatsNew:[
+        "Three themed 9-hole greens (27 holes) with a course-select + unlock progression",
+        "New obstacles: portals, boost pads, conveyors, magnets and moving walls",
+        "Slopes/elevation that curve the roll, with directional shading you can read",
+        "Predicted bounce aim-arc plus a fading shot-trail and crisper feedback",
+        "Per-green scorecard with par totals, letter grade (S-F) and saved course records"
+      ],
+      controls:[["Click + Drag","aim & set power"],["Release","putt"],["R","re-putt (mulligan)"],["Space / Enter","next hole when sunk"],["Esc / P","pause"],["M","mute"]]},
+    {slug:"colony-v2", title:"Emberhold II — Embers of the Long Night", genre:"Colony Builder", accent:"#f0c24b",
+      expandsSlug:"colony", basedOnTitle:"Emberhold",
+      tagline:"Build the chain. Hold the line. Outlast the dark moon.",
+      blurb:"Mine, farm and forge along the river, research new tech, grow your settlers, then ring the hold with arrow, frost and cannon towers before the husks — and the Warlord — swarm in.",
+      whatsNew:[
+        "Day-1 onboarding: a starter settlement plus a step-by-step Getting Started guide",
+        "Balance pass — gentler first nights and a fairer, beatable dark-moon WARLORD",
+        "Production chains: 5 resources feed a workshop, powder mill, tools & ammo economy",
+        "A 7-node research tree gating fisheries, cannons, frost towers, manors & infirmaries",
+        "Terrain map with forest, ore and water nodes you build beside for +50% bonuses",
+        "Richer nights: spitters, stalkers, brutes plus an escalating WARLORD boss",
+        "Events — wandering traders, refugees to shelter, and disasters (blight, fire, quakes)"
+      ],
+      controls:[["1-5","switch build category"],["Q / E","cycle item in category"],["L-Click","place / pick / confirm"],["R-Click","sell building"],["X","cancel current tool"],["R","open research lab"],["Space","fast-forward (hold)"],["Tab","cycle 1x/2x/3x speed"],["Esc / P","pause"],["M","mute"]]}
   ];
 
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
-  function cardHTML(g){
+  function coverHTML(g, badgeHTML){
     var a = g.accent;
-    var legendRows = g.controls.slice(0,8).map(function(c){
-      return '<div class="row"><span class="k">'+esc(c[0])+'</span><span class="a">'+esc(c[1])+'</span></div>';
-    }).join('');
     // CSS gradient placeholder, shown only if the cover image fails to load
     var phStyle = 'background:'+
       'radial-gradient(120% 120% at 80% 0%, '+a+'55, transparent 60%),'+
       'linear-gradient(135deg, '+a+'33, #0e1014 70%);';
-    var cover =
-      '<div class="cover">'+
-        '<span class="badge">'+esc(g.slug)+'</span>'+
+    return '<div class="cover">'+
+        badgeHTML+
         '<img src="./'+esc(g.slug)+'/cover.png" alt="'+esc(g.title)+' cover" loading="lazy" '+
           'onerror="this.parentNode.querySelector(\'.ph\').style.display=\'flex\';this.remove();" />'+
         '<div class="ph" style="display:none;'+phStyle+'"><span class="pht">'+esc(g.title)+'</span></div>'+
       '</div>';
+  }
+
+  function legendHTML(g){
+    var rows = g.controls.slice(0,8).map(function(c){
+      return '<div class="row"><span class="k">'+esc(c[0])+'</span><span class="a">'+esc(c[1])+'</span></div>';
+    }).join('');
+    return '<div class="legend">'+rows+'</div>';
+  }
+
+  function originalCard(g){
+    var a = g.accent;
     return '<article class="card" style="--ca:'+a+'">'+
-      cover+
+      coverHTML(g, '<span class="badge">'+esc(g.slug)+'</span>')+
       '<div class="body">'+
         '<div class="top">'+
           '<h3>'+esc(g.title)+'</h3>'+
@@ -382,19 +551,47 @@
         '</div>'+
         '<div class="tagline2">'+esc(g.tagline)+'</div>'+
         '<div class="blurb">'+esc(g.blurb)+'</div>'+
-        '<div class="legend">'+legendRows+'</div>'+
+        legendHTML(g)+
         '<a class="play" href="./'+esc(g.slug)+'/index.html"><span class="arrow">&#9654;</span> Play</a>'+
       '</div>'+
     '</article>';
   }
 
-  var grid = document.getElementById('grid');
-  grid.innerHTML = GAMES.map(cardHTML).join('');
+  function expansionCard(g){
+    var a = g.accent;
+    var bullets = g.whatsNew.slice(0,7).map(function(b){
+      return '<li>'+esc(b)+'</li>';
+    }).join('');
+    return '<article class="card" style="--ca:'+a+'">'+
+      coverHTML(g, '<span class="badge v2">V2 &middot; Expanded</span>')+
+      '<div class="body">'+
+        '<div class="top">'+
+          '<h3>'+esc(g.title)+'</h3>'+
+          '<span class="genre">'+esc(g.genre)+'</span>'+
+        '</div>'+
+        '<div class="buildson"><span class="tag">Builds on</span><span><b>'+esc(g.basedOnTitle)+'</b></span></div>'+
+        '<div class="tagline2">'+esc(g.tagline)+'</div>'+
+        '<div class="whatsnew"><div class="wn-h">What’s new</div><ul>'+bullets+'</ul></div>'+
+        legendHTML(g)+
+        '<div class="spacer"></div>'+
+        '<div class="playrow">'+
+          '<a class="play" href="./'+esc(g.slug)+'/index.html"><span class="arrow">&#9654;</span> Play V2</a>'+
+          '<a class="playv1" href="./'+esc(g.expandsSlug)+'/index.html" title="Play the original to compare">Play V1</a>'+
+        '</div>'+
+      '</div>'+
+    '</article>';
+  }
 
-  var n = GAMES.length;
-  document.getElementById('gcount').textContent = n;
-  document.getElementById('fcount').textContent = n;
-  document.getElementById('cabinet-count').textContent = n + (n===1?' machine':' machines');
+  document.getElementById('grid-originals').innerHTML = ORIGINALS.map(originalCard).join('');
+  document.getElementById('grid-expansions').innerHTML = EXPANSIONS.map(expansionCard).join('');
+
+  var nO = ORIGINALS.length, nX = EXPANSIONS.length;
+  document.getElementById('gcount').textContent = nO;
+  document.getElementById('xcount').textContent = nX;
+  document.getElementById('fcount').textContent = nO;
+  document.getElementById('fxcount').textContent = nX;
+  document.getElementById('cabinet-count').textContent = nO + (nO===1?' machine':' machines');
+  document.getElementById('exp-count').textContent = nX + (nX===1?' V2':' V2s');
 
   // origin cover fallback -> CSS placeholder
   (function(){

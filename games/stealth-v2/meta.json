@@ -1,0 +1,28 @@
+{
+  "slug": "stealth-v2",
+  "title": "NIGHTFALL PROTOCOL II — Deep Cover",
+  "genre": "Stealth Infiltration",
+  "tagline": "Five ops. Cameras, dogs, locked vaults. Vanish unseen.",
+  "blurb": "The cone-and-shadow stealth core, expanded: a 5-mission campaign with rotating cameras, investigators, a pursuit dog, keycard doors, terminal hacks, noise lures, silent takedowns, scoring and a GHOST bonus.",
+  "controls": [
+    {"key": "WASD / Arrows", "action": "Move"},
+    {"key": "Shift", "action": "Hold to sneak (silent, small profile, hacks faster)"},
+    {"key": "Space", "action": "Hold to sprint (fast but loud)"},
+    {"key": "E", "action": "Hold to hack terminal / grab keycard / use door"},
+    {"key": "F", "action": "Silent takedown when behind a guard or dog"},
+    {"key": "Q", "action": "Throw a noise lure to draw guards"},
+    {"key": "P / Esc", "action": "Pause"},
+    {"key": "M", "action": "Mute"}
+  ],
+  "accent": "#3fd6c0",
+  "expandsSlug": "stealth",
+  "basedOnTitle": "Nightfall Protocol",
+  "whatsNew": [
+    "5-mission campaign with level select, unlocks and rising complexity",
+    "New threats: rotating cameras, an investigator that hunts your last-known spot, and a pursuit dog",
+    "Gadgets: thrown noise lure and silent behind-the-back takedowns",
+    "Keycard-locked doors plus multi-terminal hack objectives gating the intel",
+    "Light/shadow stealth deepened against every watcher type",
+    "End-of-mission scoring with letter grades and a no-detection GHOST bonus"
+  ]
+}

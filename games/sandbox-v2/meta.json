@@ -1,0 +1,36 @@
+{
+  "slug": "sandbox-v2",
+  "title": "Powder II — Thermal Falling-Sand",
+  "genre": "Falling-Sand Sandbox",
+  "tagline": "A falling-sand world that runs on heat.",
+  "blurb": "25+ materials with a real temperature system: melt, freeze, boil, burn, electrify, and detonate. Heat/cool tools, clone & emitter sources, 3 save slots.",
+  "controls": [
+    {"key": "L-Click", "action": "Paint material / use tool"},
+    {"key": "R-Click", "action": "Erase"},
+    {"key": "1-9, 0", "action": "Pick material on current page"},
+    {"key": "Tab", "action": "Cycle material page (solids / liquids / energy)"},
+    {"key": "[ ] / Wheel", "action": "Brush size"},
+    {"key": "B", "action": "Cycle brush shape (circle / square / spray)"},
+    {"key": "X / Z", "action": "Heat tool / Cool tool"},
+    {"key": "H", "action": "Toggle thermal (temperature) view"},
+    {"key": "G", "action": "Flip gravity"},
+    {"key": "Space / P", "action": "Pause simulation"},
+    {"key": "N", "action": "Step one tick while paused"},
+    {"key": "F5-F7", "action": "Quick-save to slot 1-3"},
+    {"key": "F8", "action": "Load last save"},
+    {"key": "C", "action": "Clear world"},
+    {"key": "Esc", "action": "Menu"},
+    {"key": "M", "action": "Mute"}
+  ],
+  "accent": "#d24b35",
+  "expandsSlug": "sandbox",
+  "basedOnTitle": "Powder",
+  "whatsNew": [
+    "Full temperature system: heat spreads cell-to-cell so things melt, freeze, boil and ignite",
+    "13 new materials incl. lava, ice, glass, gunpowder, nitro, salt/brine, seeds, metal+wire electricity",
+    "Heat & Cool tools plus a thermal (temperature) view overlay",
+    "Clone and Emitter source tools for infinite material fountains",
+    "3 localStorage save slots with RLE-compressed world snapshots",
+    "Brush shapes (circle / square / spray) and a live cell/temperature probe"
+  ]
+}

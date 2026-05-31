@@ -1,0 +1,29 @@
+{
+  "slug": "rhythm-v2",
+  "title": "Pulse Code II — Signal Drift",
+  "genre": "Rhythm",
+  "tagline": "Five seeded signals. Pick your track, hold the line.",
+  "blurb": "The Pulse Code core, expanded: five distinct generated tracks, three difficulties, hold notes, layered synths, and per-track letter-grade high scores.",
+  "controls": [
+    {"key": "D", "action": "lane 1"},
+    {"key": "F", "action": "lane 2"},
+    {"key": "J", "action": "lane 3"},
+    {"key": "K", "action": "lane 4"},
+    {"key": "Hold D/F/J/K", "action": "sustain hold notes"},
+    {"key": "Arrows", "action": "pick track / difficulty"},
+    {"key": "Enter", "action": "confirm / play"},
+    {"key": "Esc / P", "action": "pause"},
+    {"key": "M", "action": "mute"}
+  ],
+  "accent": "#34e0d8",
+  "expandsSlug": "rhythm",
+  "basedOnTitle": "Pulse Code",
+  "whatsNew": [
+    "Song-select screen with five distinct seeded tracks (tempo/key/mood)",
+    "Easy / Normal / Hard difficulties change note density and fall speed",
+    "Hold / sustained notes alongside taps",
+    "Layered synth voices: drums + bass + lead + per-mood arp & pads",
+    "Per-track, per-difficulty high scores with S-D letter grades",
+    "Accuracy breakdown (Perfect / Good / Miss / Holds) on results"
+  ]
+}

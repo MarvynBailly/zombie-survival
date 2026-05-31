@@ -1,0 +1,2054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EMBERHOLD II — Embers of the Long Night</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#0b0c0e; --panel:#14161a; --panel2:#1c1f25; --border:#2a2e36;
+    --fg:#e8e6df; --muted:#7a7e88; --accent:#d24b35; --toxic:#8ec547;
+    --warn:#e3a83a; --danger:#c83232; --blue:#7fc8ff; --gold:#f0c24b; --purple:#b58ad6;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%; width:100%; overflow:hidden; background:var(--ink); color:var(--fg);
+    font-family:"Manrope", system-ui, sans-serif; -webkit-font-smoothing:antialiased; user-select:none;}
+  #game{display:block; position:absolute; inset:0; touch-action:none; cursor:default;}
+  .display{font-family:"Bebas Neue", Impact, sans-serif; letter-spacing:.06em; text-transform:uppercase;}
+  .mono{font-family:"JetBrains Mono", ui-monospace, monospace;}
+
+  .overlay{position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    z-index:20; pointer-events:none; padding:20px;}
+  .overlay.show{display:flex; pointer-events:auto;}
+  .panel{background:rgba(16,18,22,.95); border:1px solid var(--border);
+    backdrop-filter:blur(6px); padding:30px 40px; max-width:min(94vw,720px); max-height:94vh; overflow:auto;
+    box-shadow:0 20px 70px rgba(0,0,0,.6); border-radius:3px;}
+
+  .title{font-family:"Bebas Neue", Impact, sans-serif; letter-spacing:.04em;
+    font-size:clamp(56px,13vw,128px); line-height:.84; text-transform:uppercase;
+    background:linear-gradient(160deg,#fff 0%, var(--gold) 42%, var(--accent) 108%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 0 44px rgba(240,194,75,.22); margin-bottom:2px;}
+  .subtitle{color:var(--muted); font-size:14px; letter-spacing:.32em; text-transform:uppercase;
+    margin-bottom:18px; font-weight:600;}
+  .subtitle b{color:var(--accent);}
+  .tag{color:var(--fg); font-size:15.5px; line-height:1.55; margin-bottom:18px; max-width:56ch;}
+  .tag b{color:var(--gold);} .tag .a{color:var(--accent);} .tag .t{color:var(--toxic);} .tag .b{color:var(--blue);}
+
+  .controls{display:grid; grid-template-columns:auto 1fr auto 1fr; gap:7px 14px; margin:14px auto 20px;
+    font-size:13.5px; align-items:center; max-width:620px; text-align:left;}
+  .controls .k{display:inline-flex; gap:5px; flex-wrap:wrap;}
+  kbd{font-family:"JetBrains Mono", monospace; background:var(--panel2); border:1px solid var(--border);
+    border-bottom-width:2px; border-radius:4px; padding:3px 7px; font-size:11.5px; color:var(--fg);
+    min-width:24px; text-align:center; display:inline-block;}
+  .controls .act{color:var(--muted);}
+
+  .btn{display:inline-block; cursor:pointer; pointer-events:auto; border:1px solid var(--accent);
+    background:linear-gradient(180deg, rgba(210,75,53,.24), rgba(210,75,53,.08));
+    color:var(--fg); font-family:"Bebas Neue", Impact, sans-serif; letter-spacing:.14em;
+    font-size:24px; padding:11px 32px; text-transform:uppercase; border-radius:3px;
+    transition:transform .08s ease, background .15s ease, box-shadow .15s ease;}
+  .btn:hover{background:linear-gradient(180deg, rgba(210,75,53,.42), rgba(210,75,53,.16));
+    box-shadow:0 6px 24px rgba(210,75,53,.3); transform:translateY(-1px);}
+  .btn:active{transform:translateY(1px);}
+  .btn.ghost{border-color:var(--border); background:var(--panel2);}
+  .btn.ghost:hover{background:#23272f; box-shadow:none;}
+  .btn.gold{border-color:var(--gold); background:linear-gradient(180deg, rgba(240,194,75,.22), rgba(240,194,75,.06));}
+  .btn.gold:hover{background:linear-gradient(180deg, rgba(240,194,75,.4), rgba(240,194,75,.14)); box-shadow:0 6px 24px rgba(240,194,75,.25);}
+
+  .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap;}
+  .center{justify-content:center;}
+  .best{color:var(--warn); font-family:"JetBrains Mono", monospace; font-size:14px; margin-top:14px;
+    letter-spacing:.08em;}
+  .best b{color:var(--fg);}
+  .go-num{font-family:"Bebas Neue", Impact, sans-serif; font-size:clamp(54px,11vw,96px); line-height:.9;
+    color:var(--gold);}
+  .go-label{color:var(--muted); letter-spacing:.3em; text-transform:uppercase; font-size:13px; font-weight:600;}
+  .newbest{color:var(--warn); font-weight:800; letter-spacing:.2em; text-transform:uppercase;
+    font-size:14px; margin-top:6px; animation:pulse 1s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+  .hint{color:var(--muted); font-size:12.5px; margin-top:12px; letter-spacing:.04em; line-height:1.5;}
+  .footer{position:absolute; bottom:8px; left:0; right:0; text-align:center; color:#44484f;
+    font-size:11px; letter-spacing:.18em; z-index:5; text-transform:uppercase; pointer-events:none;}
+  #touchNote{display:none; color:var(--warn); margin-top:12px; font-size:13px;}
+  @media (pointer:coarse){ #touchNote{display:block;} }
+
+  .statgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:16px 0;}
+  .stat{background:var(--panel2); border:1px solid var(--border); border-radius:3px; padding:10px 6px;}
+  .stat .v{font-family:"Bebas Neue",Impact,sans-serif; font-size:32px; line-height:1; color:var(--fg);}
+  .stat .l{color:var(--muted); font-size:10px; letter-spacing:.14em; text-transform:uppercase; margin-top:3px;}
+
+  .diffmode{display:flex; gap:8px; justify-content:center; margin:6px 0 16px;}
+  .diffmode .opt{cursor:pointer; pointer-events:auto; border:1px solid var(--border); background:var(--panel2);
+    border-radius:3px; padding:8px 16px; font-family:"Bebas Neue",Impact,sans-serif; letter-spacing:.1em;
+    font-size:18px; color:var(--muted); transition:all .12s;}
+  .opt small{display:block; font-family:"Manrope",sans-serif; font-size:10px; letter-spacing:.04em; color:#5a5e66; margin-top:2px;}
+  .diffmode .opt.sel{border-color:var(--gold); color:var(--gold); background:rgba(240,194,75,.08);}
+  .diffmode .opt:hover{border-color:var(--fg); color:var(--fg);}
+
+  .whatsnew{text-align:left; background:var(--panel2); border:1px solid var(--border); border-radius:3px;
+    padding:12px 16px; margin:6px 0 4px; font-size:13px; color:var(--muted);}
+  .whatsnew b{color:var(--toxic); letter-spacing:.16em; text-transform:uppercase; font-size:11px; display:block; margin-bottom:6px;}
+  .whatsnew li{margin:3px 0 3px 16px; line-height:1.4;}
+  .whatsnew li b{color:var(--fg); display:inline; letter-spacing:0; text-transform:none; font-size:13px;}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- MENU -->
+<div class="overlay show" id="menu">
+  <div class="panel" style="text-align:center;">
+    <div class="title">EMBERHOLD II</div>
+    <div class="subtitle">Embers of the <b>Long Night</b></div>
+    <div class="tag">By <b>day</b> you build along the river — <span class="t">farms</span> &amp; fisheries to feed,
+      <span class="a">lumberyards &amp; mines</span> for materials, a <b>workshop</b> to forge tools and <b>munitions</b>.
+      <b>Research</b> new tech, grow your settlers, and ring the hold with <span class="a">arrow</span>, <span class="b">frost</span>
+      and cannon towers behind stout walls. By <b>night</b> the <a>husks</a> swarm — and on the dark moons, a <span class="b">horror</span> comes.</div>
+    <div class="controls">
+      <span class="k"><kbd>1</kbd>&hellip;<kbd>5</kbd></span><span class="act">Switch build category</span>
+      <span class="k"><kbd>Q</kbd> <kbd>E</kbd></span><span class="act">Cycle item in category</span>
+      <span class="k"><kbd>L-Click</kbd></span><span class="act">Place / confirm / pick</span>
+      <span class="k"><kbd>R-Click</kbd></span><span class="act">Sell building</span>
+      <span class="k"><kbd>X</kbd></span><span class="act">Cancel current tool</span>
+      <span class="k"><kbd>R</kbd></span><span class="act">Open research lab</span>
+      <span class="k"><kbd>Space</kbd></span><span class="act">Fast-forward (hold)</span>
+      <span class="k"><kbd>Tab</kbd></span><span class="act">Cycle 1&times;/2&times;/3&times; speed</span>
+      <span class="k"><kbd>Esc</kbd> <kbd>P</kbd></span><span class="act">Pause</span>
+      <span class="k"><kbd>M</kbd></span><span class="act">Mute</span>
+    </div>
+    <div class="diffmode" id="diffMode">
+      <div class="opt" data-diff="calm">Settler<small>relaxed siege</small></div>
+      <div class="opt sel" data-diff="normal">Warden<small>the true tale</small></div>
+      <div class="opt" data-diff="grim">Grim<small>no mercy</small></div>
+    </div>
+    <div class="row center">
+      <button class="btn gold" id="playBtn">Build</button>
+    </div>
+    <div class="best mono" id="menuBest">Best&nbsp; <b>0 days</b></div>
+    <div id="touchNote">Desktop only — this game needs a mouse &amp; keyboard.</div>
+  </div>
+</div>
+
+<!-- PAUSE -->
+<div class="overlay" id="pause">
+  <div class="panel" style="text-align:center;">
+    <div class="title" style="font-size:clamp(44px,10vw,88px);">Paused</div>
+    <div class="hint" style="margin-bottom:16px;">The watchfires hold for now.</div>
+    <div class="row center">
+      <button class="btn" id="resumeBtn">Resume</button>
+      <button class="btn ghost" id="quitBtn">Abandon</button>
+    </div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div class="overlay" id="over">
+  <div class="panel" style="text-align:center;">
+    <div class="go-label" id="overTitle">The Hold Has Fallen</div>
+    <div class="go-num" id="overDays">0</div>
+    <div class="go-label">days survived</div>
+    <div id="overTier" class="newbest" style="display:none;">—</div>
+    <div id="overBestWrap" class="newbest" style="display:none;">New Record!</div>
+    <div class="statgrid" id="overStats"></div>
+    <div class="hint" id="overReason"></div>
+    <div class="row center" style="margin-top:16px;">
+      <button class="btn" id="againBtn">Rebuild</button>
+      <button class="btn ghost" id="menuBtn">Menu</button>
+    </div>
+    <div class="best mono" id="overBest">Best&nbsp; <b>0 days</b></div>
+  </div>
+</div>
+
+<div class="footer">EMBERHOLD II &middot; Build by day &middot; Hold by night &middot; Outlast the Long Night</div>
+
+<script>
+"use strict";
+(function(){
+// ============================================================ utils
+const rand=(a,b)=>a+Math.random()*(b-a);
+const randi=(a,b)=>Math.floor(rand(a,b));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const len=(x,y)=>Math.hypot(x,y);
+const choice=a=>a[Math.floor(Math.random()*a.length)];
+const TAU=Math.PI*2;
+function mulberry32(seed){ return function(){ let t=seed+=0x6D2B79F5; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
+
+// ============================================================ persistence
+const SAVE_KEY="arcade:colony-v2";
+function loadSave(){
+  try{ const r=JSON.parse(localStorage.getItem(SAVE_KEY)); return (r&&typeof r==="object")?r:{}; }
+  catch{ return {}; }
+}
+function saveBest(rec){
+  try{ const cur=loadSave(); localStorage.setItem(SAVE_KEY, JSON.stringify(Object.assign({},cur,rec))); }catch{}
+}
+let SAVE=loadSave();
+let MUTED=!!SAVE.muted;
+let DIFF=SAVE.diff||"normal";
+
+// ============================================================ audio
+const Sound=(()=>{
+  let ctx=null, master=null;
+  function ensure(){
+    if(ctx) return;
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC) return;
+    ctx=new AC();
+    master=ctx.createGain();
+    master.gain.value=MUTED?0:0.3;
+    master.connect(ctx.destination);
+  }
+  function setMuted(m){ MUTED=m; if(master) master.gain.value=m?0:0.3; saveBest({muted:m}); }
+  function tone(freq,dur,type="square",vol=0.2,slide=0){
+    if(MUTED) return; ensure(); if(!ctx) return;
+    const osc=ctx.createOscillator(), g=ctx.createGain();
+    osc.type=type; osc.frequency.value=freq;
+    if(slide) osc.frequency.exponentialRampToValueAtTime(Math.max(40,freq+slide),ctx.currentTime+dur);
+    g.gain.value=vol; g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+dur);
+    osc.connect(g); g.connect(master); osc.start(); osc.stop(ctx.currentTime+dur);
+  }
+  function noise(dur,vol=0.3,bp=1200){
+    if(MUTED) return; ensure(); if(!ctx) return;
+    const buf=ctx.createBuffer(1,Math.max(1,ctx.sampleRate*dur),ctx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length);
+    const src=ctx.createBufferSource(); src.buffer=buf;
+    const f=ctx.createBiquadFilter(); f.type="bandpass"; f.frequency.value=bp; f.Q.value=0.8;
+    const g=ctx.createGain(); g.gain.value=vol;
+    src.connect(f); f.connect(g); g.connect(master); src.start();
+  }
+  const sfx={
+    place:()=>{ tone(380,0.07,"square",0.16); setTimeout(()=>tone(520,0.07,"square",0.14),55); },
+    sell:()=>{ tone(440,0.06,"triangle",0.12,-160); },
+    deny:()=>{ tone(150,0.1,"square",0.14); },
+    shoot:()=>{ tone(620,0.04,"square",0.06,-180); noise(0.03,0.05,3200); },
+    cannon:()=>{ tone(160,0.12,"sawtooth",0.16,-70); noise(0.12,0.16,500); },
+    frost:()=>{ tone(900,0.06,"sine",0.08,260); tone(1300,0.05,"sine",0.05,200); },
+    hitMonster:()=>{ tone(160,0.06,"sawtooth",0.07,-40); },
+    monsterHit:()=>{ noise(0.06,0.11,900); tone(120,0.07,"sawtooth",0.09,-30); },
+    buildingHit:()=>{ noise(0.08,0.13,500); tone(90,0.09,"sawtooth",0.11,-20); },
+    explode:()=>{ noise(0.4,0.4,260); tone(70,0.35,"sawtooth",0.24,-30); },
+    groan:()=>{ tone(80+Math.random()*24,0.3,"sawtooth",0.055,-26); },
+    nightStart:()=>{ tone(180,0.4,"sawtooth",0.16,-60); setTimeout(()=>tone(120,0.5,"sawtooth",0.14,-40),180); },
+    bossNight:()=>{ tone(70,0.7,"sawtooth",0.22,-20); setTimeout(()=>tone(55,0.9,"sawtooth",0.2,-12),300); setTimeout(()=>tone(90,0.5,"square",0.12,-30),700); },
+    dayStart:()=>{ tone(440,0.18,"triangle",0.12); setTimeout(()=>tone(660,0.22,"triangle",0.12),140); setTimeout(()=>tone(880,0.3,"triangle",0.1),300); },
+    coin:()=>{ tone(720,0.06,"square",0.1); setTimeout(()=>tone(960,0.08,"square",0.08),50); },
+    research:()=>{ tone(520,0.09,"sine",0.12); setTimeout(()=>tone(740,0.09,"sine",0.11),90); setTimeout(()=>tone(1040,0.18,"sine",0.1),190); },
+    build2:()=>{ tone(300,0.06,"square",0.1); setTimeout(()=>tone(440,0.06,"square",0.09),50); setTimeout(()=>tone(600,0.1,"square",0.08),110); },
+    starve:()=>{ tone(220,0.3,"sawtooth",0.15,-90); },
+    event:()=>{ tone(620,0.1,"triangle",0.12); setTimeout(()=>tone(820,0.12,"triangle",0.1),110); },
+    click:()=>{ tone(820,0.03,"square",0.07); },
+    dead:()=>{ tone(200,0.45,"sawtooth",0.26,-130); setTimeout(()=>tone(100,0.7,"sawtooth",0.26,-70),220); },
+    win:()=>{ tone(520,0.12,"square",0.12); setTimeout(()=>tone(660,0.12,"square",0.12),120); setTimeout(()=>tone(880,0.3,"square",0.12),260); setTimeout(()=>tone(1100,0.4,"square",0.1),440); },
+    nightClear:()=>{ tone(523,0.12,"triangle",0.12); setTimeout(()=>tone(659,0.14,"triangle",0.12),110); setTimeout(()=>tone(784,0.26,"triangle",0.1),240); },
+  };
+  return {sfx,setMuted,ensure};
+})();
+
+// ============================================================ canvas / DPR
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+let DPR=1, VW=1280, VH=800;
+function resize(){
+  DPR=Math.min(2, window.devicePixelRatio||1);
+  VW=window.innerWidth; VH=window.innerHeight;
+  canvas.width=Math.floor(VW*DPR); canvas.height=Math.floor(VH*DPR);
+  canvas.style.width=VW+"px"; canvas.style.height=VH+"px";
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  layout();
+}
+window.addEventListener("resize",resize);
+
+// ============================================================ grid + layout
+const GRID=17;
+let CELL=40;
+let BOARD=GRID*CELL;
+let ORX=0, ORY=0;
+const HUD_H=66;
+const TRAY_H=104;
+function layout(){
+  const availW=VW-26;
+  const availH=VH-HUD_H-TRAY_H-22;
+  CELL=Math.max(18,Math.floor(Math.min(availW,availH)/GRID));
+  BOARD=GRID*CELL;
+  ORX=Math.floor((VW-BOARD)/2);
+  ORY=Math.floor(HUD_H+8+(availH-BOARD)/2);
+  if(ORY<HUD_H+8) ORY=HUD_H+8;
+}
+function cellToScreen(cx,cy){ return [ORX+cx*CELL, ORY+cy*CELL]; }
+function screenToCell(sx,sy){ return [Math.floor((sx-ORX)/CELL), Math.floor((sy-ORY)/CELL)]; }
+const cellCenter=(cx,cy)=>[ORX+cx*CELL+CELL/2, ORY+cy*CELL+CELL/2];
+
+// ============================================================ input
+const input={keys:new Set(),mx:VW/2,my:VH/2,down:false};
+function isTypingTarget(){
+  const a=document.activeElement;
+  return a && (a.tagName==="INPUT"||a.tagName==="TEXTAREA"||a.isContentEditable);
+}
+window.addEventListener("keydown",e=>{
+  if(isTypingTarget()) return;
+  const k=e.key.toLowerCase();
+  if([" ","arrowup","arrowdown","arrowleft","arrowright","tab"].includes(k)) e.preventDefault();
+  input.keys.add(k);
+  handleKey(k,e);
+});
+window.addEventListener("keyup",e=>{ input.keys.delete(e.key.toLowerCase()); });
+function canvasCoords(e){
+  const r=canvas.getBoundingClientRect();
+  return [ (e.clientX-r.left)*(VW/r.width), (e.clientY-r.top)*(VH/r.height) ];
+}
+canvas.addEventListener("mousemove",e=>{ const c=canvasCoords(e); input.mx=c[0]; input.my=c[1]; });
+canvas.addEventListener("mousedown",e=>{
+  const c=canvasCoords(e); input.mx=c[0]; input.my=c[1];
+  Sound.ensure();
+  if(e.button===0){ input.down=true; handleClick(c[0],c[1]); }
+  else if(e.button===2){ handleRightClick(c[0],c[1]); }
+});
+canvas.addEventListener("mouseup",()=>{ input.down=false; });
+canvas.addEventListener("contextmenu",e=>e.preventDefault());
+canvas.addEventListener("mouseleave",()=>{ input.mx=-999; input.my=-999; });
+
+// ============================================================ resources
+// wood = lumber/materials, stone, food, tools (advanced), ammo (advanced)
+const RES=["food","wood","stone","tools","ammo"];
+const RES_META={
+  food:  {color:"#8ec547", label:"FOOD",   icon:"food"},
+  wood:  {color:"#c98b4a", label:"WOOD",   icon:"wood"},
+  stone: {color:"#9aa0aa", label:"STONE",  icon:"stone"},
+  tools: {color:"#7fc8ff", label:"TOOLS",  icon:"tools"},
+  ammo:  {color:"#e3a83a", label:"AMMO",   icon:"ammo"},
+};
+
+// ============================================================ research / tech
+// Tiered unlocks. Each tech costs tools (+sometimes others) and unlocks buildings/bonuses.
+const TECH={
+  masonry:    {name:"Masonry",       cost:{tools:6,stone:20}, needs:[],            desc:"Stone walls, gates & the Quarry upgrade. +20% wall HP.", unlocks:["sgate"]},
+  husbandry:  {name:"Husbandry",     cost:{tools:6,food:20},  needs:[],            desc:"Granary storage & the Fishery. Farms yield +25% food.", unlocks:["granary","fishery"]},
+  gunnery:    {name:"Gunnery",       cost:{tools:10,stone:18}, needs:[],            desc:"Cannon Tower & Powder Mill. Towers gain +1 range.", unlocks:["cannon","powder"]},
+  cryo:       {name:"Cryotech",      cost:{tools:14,stone:14}, needs:["gunnery"],   desc:"Frost Tower that slows the swarm in an icy field.", unlocks:["frost"]},
+  medicine:   {name:"Field Medicine",cost:{tools:12,food:14}, needs:["husbandry"], desc:"Infirmary heals nearby buildings between waves.", unlocks:["infirmary"]},
+  fortify:    {name:"Fortification", cost:{tools:18,stone:30}, needs:["masonry"],  desc:"Bastion (heavy wall) & +25% turret damage.", unlocks:["bastion"]},
+  logistics:  {name:"Logistics",     cost:{tools:16,wood:20}, needs:["husbandry"], desc:"Manor housing tier & Warehouse. Settlers eat 15% less.", unlocks:["manor","warehouse"]},
+};
+const TECH_ORDER=["masonry","husbandry","gunnery","cryo","medicine","fortify","logistics"];
+
+// ============================================================ building defs
+// categories: house, prod, defense, util
+// Some buildings require tech; some require adjacency to a terrain node.
+const BUILDINGS={
+  // --- HOUSING ---
+  tent:     {cat:"house", name:"Tent",        cost:{wood:10},               color:"#9aa6b2", icon:"tent",    hp:40,  pop:2,  desc:"Quick shelter. +2 settler capacity."},
+  house:    {cat:"house", name:"Cabin",       cost:{wood:20},               color:"#7fb0d8", icon:"house",   hp:60,  pop:4,  desc:"+4 settler capacity. Settlers work your jobs."},
+  manor:    {cat:"house", name:"Manor",       cost:{wood:30,stone:18},      color:"#b58ad6", icon:"manor",   hp:90,  pop:8,  tech:"logistics", desc:"Grand housing. +8 settler capacity."},
+  // --- PRODUCTION ---
+  farm:     {cat:"prod",  name:"Farm",        cost:{wood:14},               color:"#8ec547", icon:"farm",    hp:50,  job:"food",  base:1.3, desc:"Grows food. Needs a worker."},
+  fishery:  {cat:"prod",  name:"Fishery",     cost:{wood:18},               color:"#7fc8ff", icon:"fishery", hp:50,  job:"food",  base:1.9, near:"water", tech:"husbandry", desc:"Big food. Must sit beside Water."},
+  lumber:   {cat:"prod",  name:"Lumberyard",  cost:{wood:12},               color:"#c98b4a", icon:"lumber",  hp:50,  job:"wood",  base:1.0, near:"forest", boost:"forest", desc:"Cuts wood. +50% beside a Forest."},
+  quarry:   {cat:"prod",  name:"Quarry",      cost:{wood:22},               color:"#9aa0aa", icon:"quarry",  hp:70,  job:"stone", base:1.2, near:"ore", boost:"ore", desc:"Mines stone. +50% beside Ore."},
+  workshop: {cat:"prod",  name:"Workshop",    cost:{wood:24,stone:10},      color:"#e3a83a", icon:"workshop",hp:60,  job:"tools", base:0.55, eat:{wood:0.6}, desc:"Forges Tools from wood. Needs a worker."},
+  powder:   {cat:"prod",  name:"Powder Mill", cost:{wood:18,stone:14},      color:"#d24b35", icon:"powder",  hp:55,  job:"ammo",  base:0.7, eat:{stone:0.4}, tech:"gunnery", desc:"Mills Ammo from stone. Needs a worker."},
+  // --- DEFENSE ---
+  turret:   {cat:"def",   name:"Arrow Tower", cost:{wood:30},               color:"#d24b35", icon:"turret",  hp:55,  range:3.2, dmg:7,  rate:0.55, ttype:"arrow", desc:"Rapid arrows at the nearest husk."},
+  cannon:   {cat:"def",   name:"Cannon",      cost:{wood:28,stone:20,ammo:6},color:"#c98b4a",icon:"cannon",  hp:70,  range:3.0, dmg:26, rate:1.7, ttype:"cannon", splash:1.1, ammoUse:0.5, tech:"gunnery", desc:"Slow, heavy splash. Uses Ammo."},
+  frost:    {cat:"def",   name:"Frost Tower", cost:{wood:26,stone:14,ammo:8},color:"#7fc8ff",icon:"frost",   hp:55,  range:2.7, dmg:4,  rate:0.9, ttype:"frost", slow:0.5, ammoUse:0.25, tech:"cryo", desc:"Chills foes in range, slowing them."},
+  wall:     {cat:"def",   name:"Palisade",    cost:{wood:6},                color:"#6b5536", icon:"wall",    hp:130, blocks:true, desc:"Wooden wall. Blocks & soaks hits."},
+  swall:    {cat:"def",   name:"Stone Wall",  cost:{stone:8},               color:"#9aa0aa", icon:"swall",   hp:260, blocks:true, tech:"masonry", desc:"Far tougher. Blocks the swarm."},
+  bastion:  {cat:"def",   name:"Bastion",     cost:{stone:16,wood:8},       color:"#cfd6e6", icon:"bastion", hp:460, blocks:true, tech:"fortify", desc:"Heaviest wall. Anchors a defense line."},
+  sgate:    {cat:"def",   name:"Gate",        cost:{wood:10,stone:6},       color:"#b58a4a", icon:"gate",    hp:200, blocks:true, tech:"masonry", desc:"A wall your settlers can pass — looks the part."},
+  // --- UTILITY ---
+  granary:  {cat:"util",  name:"Granary",     cost:{wood:16,stone:6},       color:"#8ec547", icon:"granary", hp:60,  storage:{food:120}, tech:"husbandry", desc:"+120 Food storage cap."},
+  warehouse:{cat:"util",  name:"Warehouse",   cost:{wood:20,stone:16},      color:"#c98b4a", icon:"warehouse",hp:70, storage:{wood:120,stone:120}, tech:"logistics", desc:"+120 Wood & Stone storage."},
+  lab:      {cat:"util",  name:"Research Lab",cost:{wood:22,stone:10},      color:"#7fc8ff", icon:"lab",     hp:55,  job:"research", base:0.5, desc:"Generates Research. Needs a worker. Press R to spend."},
+  infirmary:{cat:"util",  name:"Infirmary",   cost:{wood:20,stone:8},       color:"#e8e6df", icon:"infirmary",hp:55, heal:7, healR:2.6, tech:"medicine", desc:"Heals nearby damaged buildings."},
+  hearth:   {cat:"util",  name:"Hearth",      cost:{},                       color:"#f0c24b", icon:"hearth",  hp:400, core:true, storage:{food:80,wood:80,stone:60,tools:40,ammo:40}, desc:"Your colony heart — protect it at all cost."},
+};
+// category -> ordered list of placeable types
+const CATS=[
+  {key:"house", name:"Housing", items:["tent","house","manor"]},
+  {key:"prod",  name:"Industry",items:["farm","fishery","lumber","quarry","workshop","powder","lab"]},
+  {key:"def",   name:"Defense", items:["turret","cannon","frost","wall","swall","bastion","sgate"]},
+  {key:"util",  name:"Support", items:["granary","warehouse","infirmary"]},
+];
+const SELL_REFUND=0.55;
+function buildCostStr(def){
+  return RES.filter(r=>def.cost&&def.cost[r]).map(r=>def.cost[r]+RES_GLYPH[r]).join(" ");
+}
+const RES_GLYPH={food:"⚘",wood:"⬢",stone:"◈",tools:"⚒",ammo:"◉"};
+
+// ============================================================ terrain
+// terrain nodes occupy cells you can't build on but build NEXT to for bonuses.
+// types: forest, ore, water
+function genTerrain(seed){
+  const rng=mulberry32(seed);
+  const terr=[]; for(let y=0;y<GRID;y++){ const row=[]; for(let x=0;x<GRID;x++) row.push(null); terr.push(row); }
+  const c=Math.floor(GRID/2);
+  function clearCenter(x,y){ return Math.abs(x-c)<=1 && Math.abs(y-c)<=1; }
+  // a river of water (vertical-ish wander) on one side
+  let rx=2+Math.floor(rng()*3);
+  for(let y=0;y<GRID;y++){
+    rx=clamp(rx+ (rng()<0.5?-1:1)*(rng()<0.5?1:0),1,5);
+    if(!clearCenter(rx,y)) terr[y][rx]="water";
+    if(rng()<0.4 && !clearCenter(rx+1,y)) terr[y][rx+1]="water";
+  }
+  // forest clusters
+  const clusters=3+Math.floor(rng()*2);
+  for(let i=0;i<clusters;i++){
+    const cx=randiR(rng,GRID-4,2), cy=randiR(rng,GRID-4,2);
+    const n=4+Math.floor(rng()*4);
+    for(let j=0;j<n;j++){
+      const x=clamp(cx+Math.floor(rng()*4-1.5),0,GRID-1), y=clamp(cy+Math.floor(rng()*4-1.5),0,GRID-1);
+      if(!clearCenter(x,y)&&!terr[y][x]) terr[y][x]="forest";
+    }
+  }
+  // ore veins
+  const veins=2+Math.floor(rng()*2);
+  for(let i=0;i<veins;i++){
+    const cx=randiR(rng,GRID-3,GRID-7), cy=randiR(rng,GRID-3,1);
+    const n=3+Math.floor(rng()*3);
+    for(let j=0;j<n;j++){
+      const x=clamp(cx+Math.floor(rng()*3-1),0,GRID-1), y=clamp(cy+Math.floor(rng()*3-1),0,GRID-1);
+      if(!clearCenter(x,y)&&!terr[y][x]) terr[y][x]="ore";
+    }
+  }
+  return terr;
+}
+function randiR(rng,hi,lo){ lo=lo||0; return lo+Math.floor(rng()*(hi-lo)); }
+
+function terrainAt(cx,cy){ if(cx<0||cy<0||cx>=GRID||cy>=GRID) return null; return G.terr[cy][cx]; }
+function adjacentTerrain(cx,cy,kind){
+  const ns=[[1,0],[-1,0],[0,1],[0,-1]];
+  for(const [dx,dy] of ns){ if(terrainAt(cx+dx,cy+dy)===kind) return true; }
+  return false;
+}
+
+// ============================================================ game state
+let G=null;
+function difficultyMods(){
+  if(DIFF==="calm")   return {hp:0.78, count:0.8,  spd:0.92, win:14, startRes:1.3, eat:0.85};
+  if(DIFF==="grim")   return {hp:1.32, count:1.28, spd:1.08, win:24, startRes:0.85,eat:1.15};
+  return {hp:1, count:1, spd:1, win:20, startRes:1, eat:1};
+}
+let DM=difficultyMods();
+
+function newGame(){
+  layout();
+  DM=difficultyMods();
+  const cells=[]; for(let y=0;y<GRID;y++){ const row=[]; for(let x=0;x<GRID;x++) row.push(null); cells.push(row); }
+  const seed=(Date.now()&0xffffff)^randi(0,99999);
+  const sr=DM.startRes;
+  G={
+    seed, terr:genTerrain(seed),
+    cells, buildings:[], monsters:[], particles:[], floaters:[], bullets:[], frostFields:[],
+    res:{food:Math.round(40*sr), wood:Math.round(70*sr), stone:Math.round(15*sr), tools:Math.round(6*sr), ammo:0},
+    cap:{food:80,wood:80,stone:60,tools:40,ammo:40}, // from hearth; storage adds
+    rates:{food:0,wood:0,stone:0,tools:0,ammo:0},
+    research:0, tech:{},
+    pop:0, popCap:0, jobsFilled:0, idle:0,
+    day:1, phase:"day", phaseT:0, dayLen:30,
+    selCat:"house", selIdx:0, selected:"tent",
+    speed:1, fastHold:false,
+    shake:0, flash:0, flashColor:"255,80,40",
+    spawnQueue:[], spawnTimer:0, nightThreat:0, nightClearT:0,
+    isBoss:false, bossAlive:false,
+    monstersKilled:0, bossesKilled:0, builtCount:0, techCount:0,
+    over:false, won:false, reason:"",
+    starveT:0, msg:"", msgT:0, msgColor:"232,230,223",
+    bobT:0,
+    event:null, eventT:0, nextEventDay:2+randi(0,2),
+    notes:[], // notification toasts
+    waveBanner:0, bannerWin:false,
+    seenBoss:false,
+    tutStep:0, tutDone:!!SAVE.tutDone, tipsSeen:{},
+  };
+  const c=Math.floor(GRID/2);
+  // ensure center clear
+  placeBuilding("hearth", c, c, true);
+  // Free starter buildings so the first run is approachable: a cabin (4 pop)
+  // and a starter arrow tower flanked by palisades. The player begins with a
+  // working settlement and learns by extending it rather than from a blank field.
+  placeBuilding("house", c-1, c, true);   // cabin next to hearth → 4 settlers
+  placeBuilding("farm",  c+1, c, true);   // a farm to feed them
+  placeBuilding("lumber",c,   c-1, true); // wood income
+  placeBuilding("turret",c,   c+1, true); // one defender for night 1
+  G.selCat="house"; G.selIdx=0; G.selected="tent";
+  recompute();
+  return G;
+}
+
+function buildingAt(cx,cy){
+  if(cx<0||cy<0||cx>=GRID||cy>=GRID) return null;
+  return G.cells[cy][cx];
+}
+function isOccupied(cx,cy){ return !!buildingAt(cx,cy) || !!terrainAt(cx,cy); }
+
+function placeBuilding(type,cx,cy,free){
+  const def=BUILDINGS[type];
+  const [sx,sy]=cellCenter(cx,cy);
+  const b={ type, def, cx, cy, hp:def.hp, maxHp:def.hp, x:sx, y:sy,
+    cool:0, worked:false, prodT:0, flash:0, born:0, aimA:-Math.PI/2, slowT:0 };
+  // wall HP tech bonus
+  if(def.blocks && G.tech.masonry) b.maxHp=b.hp=Math.round(def.hp*1.2);
+  G.cells[cy][cx]=b;
+  G.buildings.push(b);
+  return b;
+}
+function removeBuilding(b){
+  if(G.cells[b.cy][b.cx]===b) G.cells[b.cy][b.cx]=null;
+  const i=G.buildings.indexOf(b); if(i>=0) G.buildings.splice(i,1);
+}
+function canAfford(cost){ if(!cost) return true; for(const r of RES){ if((cost[r]||0)>G.res[r]) return false; } return true; }
+function payCost(cost){ if(!cost) return; for(const r of RES) G.res[r]-=(cost[r]||0); }
+function techOk(def){ return !def.tech || !!G.tech[def.tech]; }
+
+// ============================================================ notifications
+function note(text,color){
+  G.notes.push({text,color:color||"#e8e6df",life:4.0,y0:0});
+  if(G.notes.length>4) G.notes.shift();
+}
+function flash(msg,color){ G.msg=msg; G.msgT=2.2; G.msgColor=color||"232,230,223"; }
+function floater(x,y,text,color){ G.floaters.push({x,y,text,color:color||"#e8e6df",life:1.1,vy:-26}); }
+function burst(x,y,color,n,spd){
+  n=n||8; spd=spd||90;
+  for(let i=0;i<n;i++){ const a=rand(0,TAU), s=rand(spd*0.3,spd);
+    G.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(0.3,0.7),r:rand(1.5,3.5),color}); }
+}
+function addShake(a){ G.shake=Math.min(18,G.shake+a); }
+
+// ============================================================ tool handling
+function currentCellUnderMouse(){
+  const [cx,cy]=screenToCell(input.mx,input.my);
+  if(cx<0||cy<0||cx>=GRID||cy>=GRID) return null;
+  return [cx,cy];
+}
+function catItems(catKey){
+  const c=CATS.find(c=>c.key===catKey);
+  return c.items.filter(t=>techOk(BUILDINGS[t]) || !BUILDINGS[t].tech || true); // keep all visible (locked greyed)
+}
+function setSelection(catKey, idx){
+  G.selCat=catKey;
+  const items=CATS.find(c=>c.key===catKey).items;
+  G.selIdx=clamp(idx,0,items.length-1);
+  G.selected=items[G.selIdx];
+}
+function cycleItem(dir){
+  const items=CATS.find(c=>c.key===G.selCat).items;
+  G.selIdx=(G.selIdx+dir+items.length)%items.length;
+  G.selected=items[G.selIdx];
+  Sound.sfx.click();
+}
+
+function handleKey(k,e){
+  if(state==="menu"){ if(k==="enter"||k===" ") startGame(); return; }
+  if(state==="over"){ if(k==="enter") startGame(); return; }
+  if(k==="m"){ Sound.setMuted(!MUTED); flash(MUTED?"Muted":"Sound on"); return; }
+  if(k==="escape"||k==="p"){ togglePause(); return; }
+  if(state!=="play") return;
+
+  // category hotkeys 1..5
+  const ci=parseInt(k,10);
+  if(ci>=1 && ci<=CATS.length){ setSelection(CATS[ci-1].key,0); Sound.sfx.click(); return; }
+  if(k==="q"){ cycleItem(-1); return; }
+  if(k==="e"){ cycleItem(1); return; }
+  if(k==="x"){ G.selected=null; Sound.sfx.click(); return; }
+  if(k==="r"){ openResearch(); return; }
+  if(k==="tab"){ G.speed=G.speed>=3?1:G.speed+1; flash(G.speed+"× speed"); return; }
+}
+
+function handleClick(sx,sy){
+  if(state!=="play") return;
+  if(trayClick(sx,sy)) return;
+  if(eventBtnClick(sx,sy)) return;
+  const [cx,cy]=screenToCell(sx,sy);
+  if(cx<0||cy<0||cx>=GRID||cy>=GRID) return;
+  if(!G.selected){ Sound.sfx.click(); return; }
+  const def=BUILDINGS[G.selected];
+  if(!techOk(def)){ Sound.sfx.deny(); flash("Requires research: "+TECH[def.tech].name,"127,200,255"); addShake(1.5); return; }
+  if(isOccupied(cx,cy)){ Sound.sfx.deny(); addShake(1.5); return; }
+  if(def.near && !adjacentTerrain(cx,cy,def.near)){
+    Sound.sfx.deny(); flash("Must build beside "+def.near.toUpperCase(),"227,168,58"); addShake(1.5); return;
+  }
+  if(!canAfford(def.cost)){ Sound.sfx.deny(); flash("Not enough resources","232,168,58"); addShake(1.5); return; }
+  const popBefore=G.popCap;
+  payCost(def.cost);
+  const b=placeBuilding(G.selected,cx,cy);
+  b.flash=0.5; G.builtCount++;
+  Sound.sfx.place(); if(def.cat==="def"||def.cat==="util") Sound.sfx.build2();
+  const [px,py]=cellCenter(cx,cy);
+  burst(px,py,def.color,10,120);
+  recompute();
+  // housing milestone juice — settler capacity grew
+  if(G.popCap>popBefore){
+    const gained=G.popCap-popBefore;
+    floater(px,py-8,"+"+gained+" settlers","#7fb0d8");
+    Sound.sfx.coin();
+  }
+}
+
+function handleRightClick(sx,sy){
+  if(state!=="play") return;
+  const [cx,cy]=screenToCell(sx,sy);
+  const b=buildingAt(cx,cy);
+  if(b && !b.def.core){
+    let refundStr=[];
+    for(const r of RES){ const amt=Math.floor((b.def.cost[r]||0)*SELL_REFUND); if(amt>0){ G.res[r]=Math.min(G.cap[r],G.res[r]+amt); refundStr.push("+"+amt+RES_GLYPH[r]); } }
+    removeBuilding(b);
+    const [px,py]=cellCenter(cx,cy);
+    burst(px,py,"#caa",8,90);
+    if(refundStr.length) floater(px,py,refundStr.join(" "),"#c98b4a");
+    Sound.sfx.sell(); recompute(); return;
+  }
+  G.selected=null;
+}
+
+// ============================================================ economy / pop / jobs
+function recompute(){
+  // population cap from housing
+  let cap=2;
+  // storage caps reset to hearth base
+  const sc={food:80,wood:80,stone:60,tools:40,ammo:40};
+  for(const b of G.buildings){
+    if(b.def.pop) cap+=b.def.pop;
+    if(b.def.storage) for(const r in b.def.storage) sc[r]=(sc[r]||0)+b.def.storage[r];
+  }
+  G.popCap=cap;
+  G.cap=sc;
+  for(const r of RES) if(G.res[r]>G.cap[r]) G.res[r]=G.cap[r];
+}
+
+// Assign settlers to jobs. Priority adapts: keep food positive, then tools (to research/upgrade), then materials.
+function assignWorkers(){
+  let workers=G.popCap;
+  for(const b of G.buildings) b.worked=false;
+  const jobBs=G.buildings.filter(b=>b.def.job);
+  // priority weights
+  const foodLow=G.res.food < G.cap.food*0.22 || G.rates.food<0;
+  function prio(b){
+    if(b.def.job==="food") return foodLow?0:2;
+    if(b.def.job==="research") return 4;
+    if(b.def.job==="tools") return 3;
+    if(b.def.job==="ammo") return G.res.ammo< G.cap.ammo*0.4?1.5:3.2;
+    if(b.def.job==="wood") return 2.4;
+    if(b.def.job==="stone") return 2.6;
+    return 3;
+  }
+  jobBs.sort((a,b)=>prio(a)-prio(b));
+  for(const b of jobBs){ if(workers>0){ b.worked=true; workers--; } }
+  G.idle=workers;
+  G.jobsFilled=G.popCap-workers;
+}
+
+// ============================================================ night / waves
+const WAVE_TYPES={
+  husk:   {r:11, hp:18, spd:32, dmg:6,  color:"#6f7d4e", color2:"#4c5836", drop:1},
+  runner: {r:9,  hp:11, spd:64, dmg:5,  color:"#c06a3a", color2:"#7a3f20", drop:2},
+  brute:  {r:16, hp:60, spd:24, dmg:15, color:"#8a5a8f", color2:"#532f57", drop:4},
+  spitter:{r:11, hp:24, spd:30, dmg:4,  color:"#8ec547", color2:"#56792a", drop:3, ranged:true},
+  stalker:{r:10, hp:20, spd:50, dmg:8,  color:"#5a6f8f", color2:"#34415a", drop:3, dodgy:true},
+  WARLORD:{r:30, hp:440,spd:22, dmg:28, color:"#c83232", color2:"#5a1414", drop:48, boss:true},
+};
+function isBossDay(d){ return d>=6 && d%5===0; }
+
+function startNight(){
+  G.phase="night"; G.phaseT=0; G.nightClearT=0;
+  const d=G.day;
+  G.isBoss=isBossDay(d);
+  G.spawnQueue=[];
+  const cm=DM.count, hpm=DM.hp, spm=DM.spd;
+  // Gentle hp ramp: the first nights stay survivable while you learn, the curve
+  // then leans in. (d=1→1.12, d=5→1.95, d=10→3.0, d=15→4.0)
+  const hpScale=(1 + Math.max(0,d-1)*0.205 + 0.12)*hpm;
+  const spdScale=(1 + d*0.035)*spm;
+  if(G.isBoss){
+    Sound.sfx.bossNight();
+    // a horde plus the WARLORD boss. Lighter minion screen so the fight is about
+    // the Warlord, not getting buried before you can focus it.
+    const minions=Math.round((5+d*0.85)*cm);
+    for(let i=0;i<minions;i++){
+      let kind="husk"; const r=Math.random();
+      if(r<0.3) kind="runner"; else if(r<0.5) kind="brute"; else if(r<0.7) kind="spitter"; else if(r<0.8) kind="stalker";
+      G.spawnQueue.push({kind,hpScale,spdScale});
+    }
+    // Warlord HP scales more gently with day (×0.03/day) so the first dark moon
+    // (day 10) is a beatable spike rather than a wall.
+    G.spawnQueue.push({kind:"WARLORD",hpScale:hpScale*(1+d*0.03),spdScale});
+    G.bossAlive=true; G.seenBoss=true;
+    flash("DARK MOON — A WARLORD APPROACHES","200,50,50");
+    note("☠ Boss night! Concentrate fire on the WARLORD.","#c83232");
+  } else {
+    Sound.sfx.nightStart();
+    // Ease the first two nights (×0.7 / ×0.85) so a first-timer can find their
+    // footing; full pressure from night 3 on.
+    const ease=d<=1?0.7:d<=2?0.85:1;
+    const count=Math.round((4 + d*1.7 + Math.pow(d,1.34))*cm*ease);
+    for(let i=0;i<count;i++){
+      let kind="husk"; const r=Math.random();
+      if(d>=2 && r<0.16+d*0.012) kind="runner";
+      if(d>=4 && r>0.84 && r<0.92) kind="brute";
+      if(d>=3 && r>=0.92 && r<0.97) kind="spitter";
+      if(d>=5 && r>=0.97) kind="stalker";
+      G.spawnQueue.push({kind,hpScale,spdScale});
+    }
+    G.bossAlive=false;
+    flash("NIGHT "+G.day+" — they come","210,75,53");
+  }
+  // shuffle so brutes/spitters are spread (keep boss last)
+  const boss=G.spawnQueue.filter(s=>s.kind==="WARLORD");
+  const rest=G.spawnQueue.filter(s=>s.kind!=="WARLORD");
+  for(let i=rest.length-1;i>0;i--){ const j=randi(0,i+1); const t=rest[i]; rest[i]=rest[j]; rest[j]=t; }
+  G.spawnQueue=rest.concat(boss);
+  G.spawnTimer=1.0;
+  G.nightThreat=G.spawnQueue.length;
+  G.waveBanner=2.4; G.bannerWin=false;
+}
+function startDay(){
+  const survivedNight=G.day; // the night we just held
+  G.day++;
+  G.phase="day"; G.phaseT=0;
+  // infirmary heal pulse at dawn
+  healPulse();
+  if(G.day>DM.win){ winGame(); return; }
+  // --- night-survived celebration: a warm dawn flash + sparks over the hearth ---
+  G.flash=0.5; G.flashColor="240,194,75"; addShake(2.5);
+  G.waveBanner=2.0; G.bannerWin=true;
+  const hearth=G.buildings.find(b=>b.def.core);
+  if(hearth){ burst(hearth.x,hearth.y,"#f0c24b",22,170); burst(hearth.x,hearth.y,"#fff2b0",10,120); }
+  Sound.sfx.nightClear();
+  // dawn forage bonus — a small reward for holding, scaling with settlers, so
+  // surviving a night helps you recover and rebuild. Capped to storage.
+  const forage=Math.round(4+G.popCap*0.6);
+  G.res.food=Math.min(G.cap.food,G.res.food+forage);
+  G.res.wood=Math.min(G.cap.wood,G.res.wood+Math.round(forage*0.7));
+  if(hearth) floater(hearth.x,hearth.y-10,"NIGHT "+survivedNight+" HELD","#f0c24b");
+  // event scheduling
+  maybeTriggerEvent();
+  flash("Dawn — Day "+G.day+"  ·  +"+forage+"⚘ forage","142,197,71");
+  note("Dawn breaks. Night "+survivedNight+" held! Day "+G.day+" — rebuild & research.","#8ec547");
+}
+function healPulse(){
+  const inf=G.buildings.filter(b=>b.type==="infirmary");
+  if(!inf.length) return;
+  for(const i of inf){
+    for(const b of G.buildings){
+      if(b===i || b.hp>=b.maxHp) continue;
+      const d=Math.hypot(b.x-i.x,b.y-i.y);
+      if(d<=i.def.healR*CELL){
+        b.hp=Math.min(b.maxHp,b.hp+i.def.heal*4);
+        b.flash=0.3; floater(b.x,b.y-6,"+heal","#e8e6df");
+      }
+    }
+  }
+}
+
+function spawnMonster(spec){
+  const t=WAVE_TYPES[spec.kind];
+  const side=randi(0,4); let x,y; const pad=CELL*1.2;
+  if(side===0){ x=ORX+rand(0,BOARD); y=ORY-pad; }
+  else if(side===1){ x=ORX+BOARD+pad; y=ORY+rand(0,BOARD); }
+  else if(side===2){ x=ORX+rand(0,BOARD); y=ORY+BOARD+pad; }
+  else { x=ORX-pad; y=ORY+rand(0,BOARD); }
+  G.monsters.push({
+    kind:spec.kind, t, x, y, r:t.r,
+    hp:t.hp*spec.hpScale, maxHp:t.hp*spec.hpScale,
+    spd:t.spd*spec.spdScale, baseSpd:t.spd*spec.spdScale,
+    dmg:t.dmg, target:null, attackCool:0, shootCool:rand(1,2.5),
+    flash:0, hitFlash:0, bob:rand(0,TAU), groanT:rand(1,4),
+    slowT:0, dodgeT:0, lunge:0,
+  });
+}
+function pickTarget(m){
+  // Husks favour the nearest building, with a mild pull toward the Hearth and a
+  // mild aversion to walls — so a wall ring genuinely absorbs the swarm and the
+  // core isn't beelined to instant death. Brutes/Warlord prefer to smash walls.
+  let best=null, bd=Infinity;
+  const wallBreaker=m.kind==="brute"||m.kind==="WARLORD";
+  for(const b of G.buildings){
+    const dx=b.x-m.x, dy=b.y-m.y; const d=dx*dx+dy*dy;
+    let w=b.def.core?0.78:(b.def.blocks?(wallBreaker?0.95:1.25):1);
+    const dw=d*w*w;
+    if(dw<bd){ bd=dw; best=b; }
+  }
+  return best;
+}
+
+// ============================================================ events
+const EVENTS=["trader","refugees","disaster"];
+function maybeTriggerEvent(){
+  if(G.event) return;
+  if(G.day<G.nextEventDay) return;
+  if(G.day>=DM.win-1) return;
+  let kind=choice(EVENTS);
+  // bias: early refugees/trader, later disaster
+  if(G.day<5 && kind==="disaster") kind=Math.random()<0.5?"trader":"refugees";
+  triggerEvent(kind);
+  G.nextEventDay=G.day+2+randi(0,2);
+}
+function triggerEvent(kind){
+  Sound.sfx.event();
+  if(kind==="trader"){
+    // offer a trade: give wood/stone for tools or ammo
+    const give=choice(["wood","stone","food"]);
+    const get=choice(["tools","ammo"]);
+    const giveAmt=20+randi(0,16), getAmt=8+randi(0,8);
+    G.event={kind,give,giveAmt,get,getAmt,text:"A caravan offers a trade.",t:18};
+    note("⚖ A wandering trader has arrived.","#e3a83a");
+    flash("A trader arrives","227,168,58");
+  } else if(kind==="refugees"){
+    const n=2+randi(0,4);
+    G.event={kind,n,foodCost:n*8,t:18,text:n+" refugees seek shelter."};
+    note("⚑ Refugees at the gate — take them in?","#7fc8ff");
+    flash("Refugees seek shelter","127,200,255");
+  } else {
+    // disaster: a blight or fire. choose
+    const sub=choice(["blight","fire","quake"]);
+    G.event={kind:"disaster",sub,t:6,text:"Disaster!"};
+    if(sub==="blight"){ G.res.food=Math.max(0,Math.floor(G.res.food*0.5)); note("☠ Blight! Half your food spoiled.","#c83232"); flash("BLIGHT — food spoiled","200,50,50"); }
+    else if(sub==="fire"){ // damage a couple random non-core buildings
+      const cands=G.buildings.filter(b=>!b.def.core);
+      for(let i=0;i<3 && cands.length;i++){ const b=choice(cands); b.hp*=0.45; b.flash=0.6; burst(b.x,b.y,"#e3a83a",10,120); }
+      note("☠ A fire scorched some buildings!","#e3a83a"); flash("FIRE in the hold","227,168,58"); addShake(6);
+    } else { // quake damages walls
+      for(const b of G.buildings){ if(b.def.blocks){ b.hp*=0.6; b.flash=0.4; } }
+      note("☠ A tremor cracked your walls!","#9aa0aa"); flash("EARTH TREMOR","154,160,170"); addShake(8);
+    }
+    G.event=null; // disasters resolve instantly
+  }
+}
+// event accept/decline buttons (drawn near top center during day)
+let eventBtns=[];
+function eventBtnClick(sx,sy){
+  for(const b of eventBtns){
+    if(sx>=b.x&&sx<=b.x+b.w&&sy>=b.y&&sy<=b.y+b.h){
+      resolveEvent(b.action); return true;
+    }
+  }
+  return false;
+}
+function resolveEvent(action){
+  const ev=G.event; if(!ev) return;
+  if(action==="accept"){
+    if(ev.kind==="trader"){
+      if(G.res[ev.give]>=ev.giveAmt){
+        G.res[ev.give]-=ev.giveAmt; G.res[ev.get]=Math.min(G.cap[ev.get],G.res[ev.get]+ev.getAmt);
+        Sound.sfx.coin(); note("Traded "+ev.giveAmt+" "+ev.give+" → "+ev.getAmt+" "+ev.get+".","#8ec547");
+      } else { Sound.sfx.deny(); note("Not enough "+ev.give+" to trade.","#c83232"); return; }
+    } else if(ev.kind==="refugees"){
+      G.res.food=Math.max(0,G.res.food-ev.foodCost);
+      // grant bonus pop cap by spawning a free tent worth of pop via a flag
+      G.refugeeBonus=(G.refugeeBonus||0)+ev.n;
+      G.popCap+=ev.n; // immediate; recompute keeps housing-based but we add refugees on top
+      Sound.sfx.coin(); note("Took in "+ev.n+" refugees. +"+ev.n+" settlers.","#7fc8ff");
+    }
+  } else {
+    note("You let them pass.","#7a7e88");
+  }
+  G.event=null;
+  // re-apply refugee bonus after recompute
+}
+
+// ============================================================ research UI (in-canvas, modal-ish during day)
+let researchOpen=false;
+let techRects=[];
+function openResearch(){
+  if(state!=="play") return;
+  researchOpen=!researchOpen;
+  Sound.sfx.click();
+}
+function tryResearch(id){
+  const t=TECH[id];
+  if(G.tech[id]) return;
+  for(const n of t.needs){ if(!G.tech[n]){ Sound.sfx.deny(); note("Requires "+TECH[n].name+" first.","#e3a83a"); return; } }
+  // cost: research points + resources
+  const rpCost=researchCost(id);
+  if(G.research<rpCost){ Sound.sfx.deny(); note("Need "+rpCost+" research (have "+Math.floor(G.research)+").","#7fc8ff"); return; }
+  if(!canAfford(t.cost)){ Sound.sfx.deny(); note("Not enough resources for "+t.name+".","#e3a83a"); return; }
+  G.research-=rpCost; payCost(t.cost); G.tech[id]=true; G.techCount++;
+  Sound.sfx.research();
+  // apply instant bonuses
+  applyTechBonus(id);
+  note("Researched "+t.name+"!","#7fc8ff");
+  flash(t.name+" unlocked","127,200,255");
+  recompute();
+}
+function researchCost(id){
+  const tier=TECH[id].needs.length;
+  return 10 + tier*10 + TECH_ORDER.indexOf(id)*2;
+}
+function applyTechBonus(id){
+  // wall HP retro-boost from masonry
+  if(id==="masonry"){
+    for(const b of G.buildings){ if(b.def.blocks){ const nm=Math.round(b.def.hp*1.2); b.maxHp=nm; b.hp=Math.min(nm,b.hp*1.2); } }
+  }
+}
+
+// ============================================================ update
+let state="menu";
+
+function update(dt){
+  G.bobT+=dt;
+  G.shake=Math.max(0,G.shake-dt*30);
+  G.flash=Math.max(0,G.flash-dt*2.4);
+  if(G.msgT>0) G.msgT-=dt;
+  if(G.waveBanner>0) G.waveBanner-=dt;
+
+  for(let i=G.notes.length-1;i>=0;i--){ G.notes[i].life-=dt; if(G.notes[i].life<=0) G.notes.splice(i,1); }
+
+  for(let i=G.particles.length-1;i>=0;i--){
+    const p=G.particles[i];
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.95; p.vy*=0.95; p.vy+=40*dt;
+    p.life-=dt; if(p.life<=0) G.particles.splice(i,1);
+  }
+  for(let i=G.floaters.length-1;i>=0;i--){ const f=G.floaters[i]; f.y+=f.vy*dt; f.vy*=0.94; f.life-=dt; if(f.life<=0) G.floaters.splice(i,1); }
+  for(let i=G.bullets.length-1;i>=0;i--){ const b=G.bullets[i]; b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt; if(b.life<=0) G.bullets.splice(i,1); }
+  for(let i=G.frostFields.length-1;i>=0;i--){ const f=G.frostFields[i]; f.life-=dt; if(f.life<=0) G.frostFields.splice(i,1); }
+
+  if(state!=="play") return;
+  if(researchOpen) return; // pause sim while research panel open (like a planning pause)
+
+  G.phaseT+=dt;
+  assignWorkers();
+
+  // production
+  const rates={food:0,wood:0,stone:0,tools:0,ammo:0};
+  const eatRes={food:0,wood:0,stone:0,tools:0,ammo:0};
+  for(const b of G.buildings){
+    if(b.flash>0) b.flash-=dt;
+    if(b.slowT>0) b.slowT-=dt;
+    const def=b.def;
+    if(def.job && b.worked){
+      let out=def.base;
+      // terrain boost
+      if(def.boost && adjacentTerrain(b.cx,b.cy,def.boost)) out*=1.5;
+      // tech bonuses on output
+      if(def.job==="food" && G.tech.husbandry) out*=1.25;
+      if(def.job==="research"){ G.research+=out*dt; }
+      else { rates[def.job]+=out; }
+      // input consumption (workshop eats wood, powder eats stone)
+      if(def.eat){ for(const r in def.eat){
+        const need=def.eat[r]*dt;
+        if(G.res[r]>=need){ eatRes[r]+=def.eat[r]; }
+        else { // starve the converter: no output this tick
+          if(def.job!=="research") rates[def.job]-=out;
+          out=0;
+        }
+      }}
+      // production puff
+      if(out>0){ b.prodT+=dt; if(b.prodT>=1.4){ b.prodT=0; burst(b.x,b.y-2, RES_META[def.job==="research"?"tools":def.job]?RES_META[def.job==="research"?"tools":def.job].color:def.color, 3, 30); } }
+    }
+    if(def.range){ updateTurret(b,dt); }
+  }
+  // settler food consumption
+  const eat=G.popCap*0.15*DM.eat*(G.tech.logistics?0.85:1);
+  rates.food-=eat;
+  // apply rates
+  for(const r of RES){
+    G.res[r]+=(rates[r]-(eatRes[r]||0))*dt;
+    if(G.res[r]>G.cap[r]) G.res[r]=G.cap[r];
+    if(G.res[r]<0) G.res[r]=0;
+  }
+  G.rates={food:rates.food, wood:rates.wood-eatRes.wood, stone:rates.stone-eatRes.stone, tools:rates.tools, ammo:rates.ammo};
+
+  // starvation: hearth morale collapse
+  if(G.res.food<=0 && eat>0 && rates.food<0){
+    G.starveT+=dt;
+    if(G.starveT>0.6){ Sound.sfx.starve(); flash("STARVING — build farms/fisheries!","200,50,50"); G.starveT=0; addShake(2); G.flash=0.4; G.flashColor="200,50,50"; }
+    const hearth=G.buildings.find(b=>b.def.core);
+    if(hearth){ hearth.hp-=6*dt; if(hearth.hp<=0){ loseGame("Your colony starved in the dark."); return; } }
+  } else G.starveT=0;
+
+  // phase transitions
+  if(G.phase==="day"){
+    if(G.event && G.event.kind!=="disaster"){ G.event.t-=dt; if(G.event.t<=0){ note("The "+(G.event.kind==="trader"?"trader":"refugees")+" moved on.","#7a7e88"); G.event=null; } }
+    if(G.phaseT>=G.dayLen) startNight();
+  } else {
+    if(G.spawnQueue.length>0){
+      G.spawnTimer-=dt;
+      if(G.spawnTimer<=0){
+        spawnMonster(G.spawnQueue.shift());
+        const base=Math.max(0.32, 1.4 - G.day*0.04);
+        G.spawnTimer=rand(base*0.55,base);
+      }
+    }
+    if(G.spawnQueue.length===0 && G.monsters.length===0){
+      G.nightClearT+=dt;
+      if(G.nightClearT>1.2){ G.nightClearT=0; startDay(); }
+    } else G.nightClearT=0;
+  }
+
+  updateMonsters(dt);
+  updateTutorial();
+  G.nightThreat=G.spawnQueue.length+G.monsters.length;
+}
+
+function updateTurret(b,dt){
+  if(b.cool>0) b.cool-=dt;
+  const rangePx=(b.def.range + (G.tech.gunnery?1:0))*CELL;
+  let best=null, bd=Infinity;
+  for(const m of G.monsters){
+    const dx=m.x-b.x, dy=m.y-b.y, d=dx*dx+dy*dy;
+    if(d<rangePx*rangePx && d<bd){ bd=d; best=m; }
+  }
+  if(b.def.ttype==="frost"){
+    // frost emits a slow field continuously; no projectile
+    if(best){
+      const ang=Math.atan2(best.y-b.y,best.x-b.x);
+      let da=ang-b.aimA; while(da>Math.PI)da-=TAU; while(da<-Math.PI)da+=TAU; b.aimA+=da*Math.min(1,dt*10);
+    }
+    if(b.cool<=0 && G.monsters.length){
+      b.cool=b.def.rate;
+      // need ammo
+      if(G.res.ammo>=b.def.ammoUse){
+        G.res.ammo-=b.def.ammoUse;
+        G.frostFields.push({x:b.x,y:b.y,r:rangePx,life:b.def.rate*1.1});
+        for(const m of G.monsters){ const d=Math.hypot(m.x-b.x,m.y-b.y); if(d<rangePx){ m.slowT=Math.max(m.slowT,1.0); damageMonster(m,b.def.dmg,b); } }
+        Sound.sfx.frost();
+      }
+    }
+    return;
+  }
+  if(best){
+    const ang=Math.atan2(best.y-b.y,best.x-b.x);
+    let da=ang-b.aimA; while(da>Math.PI)da-=TAU; while(da<-Math.PI)da+=TAU;
+    b.aimA+=da*Math.min(1,dt*12);
+    if(b.cool<=0){
+      // cannon needs ammo
+      if(b.def.ammoUse){ if(G.res.ammo<b.def.ammoUse){ b.cool=0.3; return; } G.res.ammo-=b.def.ammoUse; }
+      b.cool=b.def.rate;
+      fireBullet(b,best);
+    }
+  }
+}
+function fireBullet(b,target){
+  const dmgMul=G.tech.fortify?1.25:1;
+  const ang=Math.atan2(target.y-b.y,target.x-b.x);
+  const spd=b.def.ttype==="cannon"?360:540;
+  const mx=b.x+Math.cos(b.aimA)*(CELL*0.34), my=b.y+Math.sin(b.aimA)*(CELL*0.34);
+  G.bullets.push({x:mx,y:my,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,life:0.7,dmg:b.def.dmg*dmgMul,from:b,
+    splash:b.def.splash||0, ttype:b.def.ttype, r:b.def.ttype==="cannon"?4:2.6});
+  if(b.def.ttype==="cannon"){ Sound.sfx.cannon(); addShake(1.2); burst(mx,my,"#ffb060",4,160); }
+  else { Sound.sfx.shoot(); burst(mx,my,"#ffd27f",2,140); }
+}
+
+function updateMonsters(dt){
+  // bullets hit monsters
+  for(let bi=G.bullets.length-1;bi>=0;bi--){
+    const bl=G.bullets[bi];
+    let hit=null;
+    for(const m of G.monsters){
+      const dx=m.x-bl.x, dy=m.y-bl.y;
+      if(dx*dx+dy*dy < (m.r+bl.r)*(m.r+bl.r)){
+        // stalkers can dodge arrows occasionally
+        if(m.t.dodgy && m.dodgeT<=0 && Math.random()<0.28){ m.dodgeT=0.6; m.x+=rand(-14,14); m.y+=rand(-14,14); floater(m.x,m.y-8,"miss","#9aa6b2"); continue; }
+        hit=m; break;
+      }
+    }
+    if(hit){
+      if(bl.splash){
+        const rp=bl.splash*CELL;
+        burst(bl.x,bl.y,"#ffb060",10,150); addShake(1.4);
+        for(const m of G.monsters){ if(Math.hypot(m.x-bl.x,m.y-bl.y)<rp) damageMonster(m,bl.dmg,bl.from); }
+      } else damageMonster(hit,bl.dmg,bl.from);
+      G.bullets.splice(bi,1);
+    }
+  }
+
+  for(let i=G.monsters.length-1;i>=0;i--){
+    const m=G.monsters[i];
+    if(m.hitFlash>0) m.hitFlash-=dt;
+    if(m.slowT>0) m.slowT-=dt;
+    if(m.dodgeT>0) m.dodgeT-=dt;
+    m.bob+=dt*8;
+    if(m.attackCool>0) m.attackCool-=dt;
+    m.groanT-=dt;
+    if(m.groanT<=0){ m.groanT=rand(2.5,6); if(Math.random()<0.5) Sound.sfx.groan(); }
+    const spd=m.spd*(m.slowT>0?0.45:1);
+
+    if(!m.target || m.target.hp<=0 || G.buildings.indexOf(m.target)<0) m.target=pickTarget(m);
+    if(!m.target) continue;
+    const tx=m.target.x, ty=m.target.y;
+    const dx=tx-m.x, dy=ty-m.y; const d=Math.hypot(dx,dy)||1;
+    const reach=m.r + CELL*0.42;
+
+    // spitter ranged attack
+    if(m.t.ranged){
+      m.shootCool-=dt;
+      const inRange=d< CELL*3.4;
+      if(inRange && m.shootCool<=0){
+        m.shootCool=rand(1.6,2.6);
+        const ang=Math.atan2(dy,dx);
+        G.bullets.push({x:m.x,y:m.y,vx:Math.cos(ang)*200,vy:Math.sin(ang)*200,life:1.0,dmg:m.dmg,enemy:true,r:4,ttype:"spit"});
+      }
+      // keep some distance
+      if(d<CELL*2.4){ m.x-=dx/d*spd*dt; m.y-=dy/d*spd*dt; }
+      else if(d>CELL*3.0){ m.x+=dx/d*spd*dt; m.y+=dy/d*spd*dt; }
+      m.lunge=0;
+    } else if(d>reach){
+      m.x+=dx/d*spd*dt; m.y+=dy/d*spd*dt;
+    } else {
+      if(m.attackCool<=0){ m.attackCool=m.kind==="WARLORD"?0.55:0.7; damageBuilding(m.target,m.dmg); m.lunge=0.2; }
+    }
+    if(m.lunge>0) m.lunge-=dt;
+
+    // separation
+    for(let j=i+1;j<G.monsters.length;j++){
+      const o=G.monsters[j];
+      const ddx=o.x-m.x, ddy=o.y-m.y; const dd=Math.hypot(ddx,ddy); const minD=m.r+o.r;
+      if(dd>0 && dd<minD){ const push=(minD-dd)*0.5; const nx=ddx/dd, ny=ddy/dd; m.x-=nx*push; m.y-=ny*push; o.x+=nx*push; o.y+=ny*push; }
+    }
+  }
+
+  // enemy projectiles (spit) hit buildings
+  for(let bi=G.bullets.length-1;bi>=0;bi--){
+    const bl=G.bullets[bi]; if(!bl.enemy) continue;
+    let hit=false;
+    for(const b of G.buildings){
+      if(Math.abs(bl.x-b.x)<CELL*0.4 && Math.abs(bl.y-b.y)<CELL*0.4){ damageBuilding(b,bl.dmg); hit=true; break; }
+    }
+    if(hit) G.bullets.splice(bi,1);
+  }
+}
+
+function damageMonster(m,dmg,from){
+  m.hp-=dmg; m.hitFlash=0.12;
+  burst(m.x,m.y,m.t.color,3,80);
+  Sound.sfx.hitMonster();
+  if(m.hp<=0) killMonster(m);
+}
+function killMonster(m){
+  const i=G.monsters.indexOf(m); if(i<0) return;
+  G.monsters.splice(i,1);
+  G.monstersKilled++;
+  burst(m.x,m.y,m.t.color2,m.kind==="WARLORD"?40:12,m.kind==="WARLORD"?220:130);
+  burst(m.x,m.y,m.t.color,m.kind==="WARLORD"?24:8,120);
+  Sound.sfx.monsterHit(); addShake(m.kind==="WARLORD"?9:2);
+  // reward: scrap into wood/stone/ammo
+  const drop=m.t.drop;
+  G.res.wood=Math.min(G.cap.wood,G.res.wood+drop);
+  if(m.kind==="WARLORD"){
+    G.bossesKilled++; G.bossAlive=false;
+    G.res.ammo=Math.min(G.cap.ammo,G.res.ammo+12);
+    G.res.stone=Math.min(G.cap.stone,G.res.stone+20);
+    G.research+=20;
+    floater(m.x,m.y,"WARLORD SLAIN","#f0c24b");
+    note("★ Warlord slain! +loot, +20 research.","#f0c24b");
+    flash("WARLORD SLAIN","240,194,75");
+    G.flash=0.6; G.flashColor="240,194,75";
+  } else {
+    floater(m.x,m.y,"+"+drop,"#c98b4a");
+  }
+}
+function damageBuilding(b,dmg){
+  b.hp-=dmg; b.flash=0.25;
+  Sound.sfx.buildingHit();
+  burst(b.x,b.y, b.def.core?"#f0c24b":"#caa", 4, 70);
+  addShake(b.def.core?2.4:1.0);
+  if(b.def.core){ G.flash=0.35; G.flashColor="210,75,53"; }
+  if(b.hp<=0) destroyBuilding(b);
+}
+function destroyBuilding(b){
+  const core=b.def.core;
+  removeBuilding(b);
+  burst(b.x,b.y,"#888",16,150); burst(b.x,b.y,b.def.color,10,110);
+  Sound.sfx.explode(); addShake(6); G.flash=0.5; G.flashColor="255,120,40";
+  for(const m of G.monsters){ if(m.target===b) m.target=null; }
+  recompute();
+  if(core) loseGame("Your Hearth was overrun.");
+}
+
+// ============================================================ end states
+function loseGame(reason){
+  if(G.over) return;
+  G.over=true; G.won=false; G.reason=reason||"The hold has fallen.";
+  Sound.sfx.dead(); addShake(10); G.flash=0.7; G.flashColor="200,40,40";
+  setTimeout(()=>showOver(false),700);
+}
+function winGame(){
+  if(G.over) return;
+  G.over=true; G.won=true;
+  G.reason="You held Emberhold through the Long Night. The colony endures, and dawn is yours.";
+  G.day=DM.win; Sound.sfx.win();
+  setTimeout(()=>showOver(true),500);
+}
+
+// ============================================================ render
+function render(){
+  ctx.clearRect(0,0,VW,VH);
+  drawBackground();
+  ctx.save();
+  if(G && G.shake>0) ctx.translate(rand(-G.shake,G.shake),rand(-G.shake,G.shake));
+  if(G){
+    drawBoard();
+    drawTerrain();
+    drawBuildings();
+    drawFrostFields();
+    drawBullets();
+    drawMonsters();
+    drawParticles();
+    drawGhost();
+    drawFloaters();
+  }
+  ctx.restore();
+  if(G){
+    drawHUD();
+    drawTray();
+    drawEventBanner();
+    drawTutorial();
+    drawNotes();
+    drawWaveBanner();
+    drawCenterMsg();
+    if(researchOpen) drawResearch();
+  }
+  if(G && G.flash>0){ ctx.fillStyle="rgba("+G.flashColor+","+(G.flash*0.5)+")"; ctx.fillRect(0,0,VW,VH); }
+}
+
+function phaseDarkness(){
+  if(!G) return 0;
+  if(G.phase==="day"){ const t=G.phaseT/G.dayLen; return t>0.8? lerp(0,0.5,(t-0.8)/0.2):0; }
+  return 0.55;
+}
+function drawBackground(){
+  const dark=phaseDarkness();
+  const g=ctx.createLinearGradient(0,0,0,VH);
+  if(G && G.phase==="night"){
+    if(G.isBoss){ g.addColorStop(0,"#160a10"); g.addColorStop(1,"#08040a"); }
+    else { g.addColorStop(0,"#0a0c14"); g.addColorStop(1,"#05060a"); }
+  } else if(dark>0){ g.addColorStop(0,lerpHex("#16202c","#0a0c14",dark*2)); g.addColorStop(1,"#08090d"); }
+  else { g.addColorStop(0,"#12161c"); g.addColorStop(1,"#0b0c0e"); }
+  ctx.fillStyle=g; ctx.fillRect(0,0,VW,VH);
+  if(G && G.phase==="night"){
+    ctx.fillStyle="rgba(200,210,255,0.5)";
+    for(let i=0;i<44;i++){ const sx=(i*137.5)%VW, sy=(i*89.3)%(VH*0.5); const tw=0.5+0.5*Math.sin(G.bobT*2+i);
+      ctx.globalAlpha=0.3*tw; ctx.fillRect(sx,sy,2,2); }
+    ctx.globalAlpha=1;
+    // blood moon on boss
+    if(G.isBoss){ ctx.fillStyle="rgba(200,60,50,0.5)"; ctx.beginPath(); ctx.arc(VW*0.82,VH*0.16,34,0,TAU); ctx.fill();
+      ctx.fillStyle="rgba(200,60,50,0.12)"; ctx.beginPath(); ctx.arc(VW*0.82,VH*0.16,70,0,TAU); ctx.fill(); }
+  }
+}
+function lerpHex(a,b,t){ t=clamp(t,0,1); const pa=hx(a), pb=hx(b);
+  return "rgb("+Math.round(lerp(pa[0],pb[0],t))+","+Math.round(lerp(pa[1],pb[1],t))+","+Math.round(lerp(pa[2],pb[2],t))+")"; }
+function hx(h){ h=h.replace("#",""); return [parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)]; }
+
+function drawBoard(){
+  const dark=G.phase==="night"?0.5:phaseDarkness();
+  ctx.fillStyle="#15181a"; roundRect(ORX-4,ORY-4,BOARD+8,BOARD+8,6); ctx.fill();
+  for(let y=0;y<GRID;y++) for(let x=0;x<GRID;x++){
+    const [sx,sy]=cellToScreen(x,y); const checker=((x+y)&1);
+    let base=checker?"#1d2a1c":"#1a261a";
+    if(dark>0.3) base=checker?"#141d16":"#121b14";
+    ctx.fillStyle=base; ctx.fillRect(sx+1,sy+1,CELL-2,CELL-2);
+  }
+  ctx.strokeStyle="rgba(255,255,255,0.04)"; ctx.lineWidth=1; ctx.beginPath();
+  for(let i=0;i<=GRID;i++){ ctx.moveTo(ORX+i*CELL,ORY); ctx.lineTo(ORX+i*CELL,ORY+BOARD); ctx.moveTo(ORX,ORY+i*CELL); ctx.lineTo(ORX+BOARD,ORY+i*CELL); }
+  ctx.stroke();
+  ctx.strokeStyle=G.phase==="night"?(G.isBoss?"rgba(200,50,50,0.6)":"rgba(210,75,53,0.5)"):"rgba(142,197,71,0.32)";
+  ctx.lineWidth=2; roundRect(ORX-4,ORY-4,BOARD+8,BOARD+8,6); ctx.stroke();
+}
+
+function drawTerrain(){
+  for(let y=0;y<GRID;y++) for(let x=0;x<GRID;x++){
+    const t=G.terr[y][x]; if(!t) continue;
+    const [sx,sy]=cellToScreen(x,y); const cx=sx+CELL/2, cy=sy+CELL/2; const w=CELL;
+    if(t==="water"){
+      ctx.fillStyle="#173447"; ctx.fillRect(sx+1,sy+1,CELL-2,CELL-2);
+      ctx.strokeStyle="rgba(127,200,255,0.4)"; ctx.lineWidth=1.5;
+      for(let i=0;i<2;i++){ ctx.beginPath(); const yy=sy+CELL*(0.4+i*0.3)+Math.sin(G.bobT*2+x+i)*1.5;
+        ctx.moveTo(sx+3,yy); ctx.quadraticCurveTo(cx,yy-3,sx+CELL-3,yy); ctx.stroke(); }
+    } else if(t==="forest"){
+      ctx.fillStyle="#16221a"; ctx.fillRect(sx+1,sy+1,CELL-2,CELL-2);
+      ctx.fillStyle="#2f5a2a"; ctx.beginPath(); ctx.moveTo(cx,sy+w*0.12); ctx.lineTo(sx+w*0.78,cy+w*0.05); ctx.lineTo(sx+w*0.22,cy+w*0.05); ctx.closePath(); ctx.fill();
+      ctx.fillStyle="#3a6e33"; ctx.beginPath(); ctx.moveTo(cx,sy+w*0.28); ctx.lineTo(sx+w*0.74,sy+w*0.62); ctx.lineTo(sx+w*0.26,sy+w*0.62); ctx.closePath(); ctx.fill();
+      ctx.fillStyle="#5a3d20"; ctx.fillRect(cx-w*0.05,sy+w*0.6,w*0.1,w*0.28);
+    } else if(t==="ore"){
+      ctx.fillStyle="#1c1f24"; ctx.fillRect(sx+1,sy+1,CELL-2,CELL-2);
+      ctx.fillStyle="#3a3f48"; ctx.beginPath(); ctx.arc(cx,cy+2,w*0.3,0,TAU); ctx.fill();
+      ctx.fillStyle="#7fc8ff"; for(const o of [[-0.12,-0.08],[0.1,0.04],[0.0,0.14]]){ ctx.beginPath(); ctx.arc(cx+o[0]*w,cy+o[1]*w,w*0.06,0,TAU); ctx.fill(); }
+      ctx.fillStyle="#cfe6ff"; ctx.beginPath(); ctx.arc(cx-w*0.1,cy-w*0.06,w*0.025,0,TAU); ctx.fill();
+    }
+  }
+}
+
+function drawBuildings(){ for(const b of G.buildings) drawBuilding(b); }
+function drawBuilding(b){
+  const [sx,sy]=cellToScreen(b.cx,b.cy);
+  const cs=CELL, pad=Math.max(3,CELL*0.10);
+  const x=sx+pad, y=sy+pad, w=cs-pad*2, h=cs-pad*2;
+  const cx=sx+cs/2, cy=sy+cs/2;
+  const flashT=b.flash>0?b.flash:0;
+  ctx.fillStyle="rgba(0,0,0,0.35)"; roundRect(x+2,y+3,w,h,4); ctx.fill();
+  ctx.fillStyle="#0f1113"; roundRect(x,y,w,h,4); ctx.fill();
+  drawBuildingArt(b,x,y,w,h,cx,cy);
+  if(flashT>0){ ctx.fillStyle="rgba(255,255,255,"+(flashT*0.8)+")"; roundRect(x,y,w,h,4); ctx.fill(); }
+  // worker indicator
+  if(b.def.job){
+    ctx.fillStyle=b.worked?"#8ec547":"#55585f"; ctx.beginPath(); ctx.arc(sx+cs-7,sy+7,3,0,TAU); ctx.fill();
+    if(!b.worked){ ctx.strokeStyle="rgba(232,168,58,0.5)"; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(sx+cs-7,sy+7,5,0,TAU); ctx.stroke(); }
+  }
+  if(b.hp<b.maxHp){
+    const bw=cs-10, bx=sx+5, by=sy+cs-6;
+    ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillRect(bx,by,bw,4);
+    const frac=clamp(b.hp/b.maxHp,0,1);
+    ctx.fillStyle=frac>0.5?"#8ec547":frac>0.25?"#e3a83a":"#c83232";
+    ctx.fillRect(bx,by,bw*frac,4);
+  }
+}
+
+function drawBuildingArt(b,x,y,w,h,cx,cy){
+  const icon=b.def.icon, col=b.def.color;
+  if(icon==="hearth"){
+    ctx.fillStyle="#3a3530"; roundRect(x,y,w,h,5); ctx.fill();
+    ctx.fillStyle="#2a2722"; roundRect(x+w*0.16,y+h*0.16,w*0.68,h*0.68,4); ctx.fill();
+    const f=0.7+0.3*Math.sin(G.bobT*9)+0.15*Math.sin(G.bobT*17);
+    const fh=h*0.5*f;
+    const grad=ctx.createRadialGradient(cx,cy+h*0.08,2,cx,cy,w*0.4);
+    grad.addColorStop(0,"#fff2b0"); grad.addColorStop(0.4,"#f0c24b"); grad.addColorStop(0.8,"#d24b35"); grad.addColorStop(1,"rgba(210,75,53,0)");
+    ctx.fillStyle=grad; ctx.beginPath();
+    ctx.moveTo(cx,cy-fh+h*0.1); ctx.quadraticCurveTo(cx+w*0.22,cy,cx+w*0.1,cy+h*0.22);
+    ctx.lineTo(cx-w*0.1,cy+h*0.22); ctx.quadraticCurveTo(cx-w*0.22,cy,cx,cy-fh+h*0.1); ctx.fill();
+    ctx.fillStyle="rgba(240,194,75,0.12)"; ctx.beginPath(); ctx.arc(cx,cy,w*0.6,0,TAU); ctx.fill();
+  } else if(icon==="house"){
+    ctx.fillStyle="#3c4a57"; roundRect(x,y+h*0.34,w,h*0.66,3); ctx.fill();
+    ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(x-1,y+h*0.42); ctx.lineTo(cx,y); ctx.lineTo(x+w+1,y+h*0.42); ctx.closePath(); ctx.fill();
+    ctx.fillStyle="#26303a"; ctx.fillRect(cx-w*0.11,y+h*0.6,w*0.22,h*0.4);
+    ctx.fillStyle="#f0c24b"; ctx.globalAlpha=G.phase==="night"?0.9:0.4; ctx.fillRect(x+w*0.16,y+h*0.5,w*0.16,w*0.16); ctx.globalAlpha=1;
+  } else if(icon==="tent"){
+    ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(cx,y+h*0.12); ctx.lineTo(x+w*0.9,y+h*0.92); ctx.lineTo(x+w*0.1,y+h*0.92); ctx.closePath(); ctx.fill();
+    ctx.fillStyle="#26303a"; ctx.beginPath(); ctx.moveTo(cx,y+h*0.4); ctx.lineTo(cx+w*0.12,y+h*0.92); ctx.lineTo(cx-w*0.12,y+h*0.92); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle="#5a6068"; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(cx,y+h*0.08); ctx.lineTo(cx,y+h*0.2); ctx.stroke();
+  } else if(icon==="manor"){
+    ctx.fillStyle="#3a3344"; roundRect(x,y+h*0.3,w,h*0.7,3); ctx.fill();
+    ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(x-1,y+h*0.38); ctx.lineTo(cx,y); ctx.lineTo(x+w+1,y+h*0.38); ctx.closePath(); ctx.fill();
+    ctx.fillStyle="#f0c24b"; ctx.globalAlpha=G.phase==="night"?0.9:0.45;
+    ctx.fillRect(x+w*0.18,y+h*0.5,w*0.14,w*0.14); ctx.fillRect(x+w*0.5,y+h*0.5,w*0.14,w*0.14); ctx.fillRect(x+w*0.34,y+h*0.72,w*0.14,w*0.2); ctx.globalAlpha=1;
+    ctx.fillStyle="#26303a"; ctx.fillRect(cx-w*0.08,y+h*0.74,w*0.16,h*0.26);
+  } else if(icon==="farm"){
+    ctx.fillStyle="#3a2c1c"; roundRect(x,y,w,h,3); ctx.fill();
+    for(let r=0;r<3;r++){ const ry=y+h*0.2+r*(h*0.26);
+      ctx.fillStyle="#2c220f"; ctx.fillRect(x+2,ry,w-4,h*0.12);
+      ctx.fillStyle=col; const sway=b.worked?Math.sin(G.bobT*3+r)*1.5:0;
+      for(let c=0;c<4;c++){ const px=x+w*0.16+c*(w*0.22)+sway; ctx.beginPath(); ctx.arc(px,ry+h*0.02,w*0.05,0,TAU); ctx.fill(); } }
+  } else if(icon==="fishery"){
+    ctx.fillStyle="#1d3a4a"; roundRect(x,y,w,h,3); ctx.fill();
+    ctx.strokeStyle="#7fc8ff"; ctx.lineWidth=1.5;
+    for(let i=0;i<2;i++){ ctx.beginPath(); const yy=y+h*(0.4+i*0.3)+Math.sin(G.bobT*2+i)*1.5; ctx.moveTo(x+3,yy); ctx.quadraticCurveTo(cx,yy-3,x+w-3,yy); ctx.stroke(); }
+    // fish
+    ctx.fillStyle="#cfe6ff"; const fx=x+w*0.3+Math.sin(G.bobT*2)*w*0.2;
+    ctx.beginPath(); ctx.ellipse(fx,cy,w*0.1,w*0.06,0,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(fx-w*0.1,cy); ctx.lineTo(fx-w*0.16,cy-w*0.05); ctx.lineTo(fx-w*0.16,cy+w*0.05); ctx.closePath(); ctx.fill();
+  } else if(icon==="lumber"){
+    ctx.fillStyle="#2c2418"; roundRect(x,y,w,h,3); ctx.fill();
+    ctx.fillStyle=col;
+    for(let r=0;r<2;r++) for(let c=0;c<3;c++){
+      ctx.fillStyle=col; ctx.beginPath(); ctx.arc(x+w*0.24+c*(w*0.26), y+h*0.34+r*(h*0.34), w*0.11,0,TAU); ctx.fill();
+      ctx.fillStyle="#7a5530"; ctx.beginPath(); ctx.arc(x+w*0.24+c*(w*0.26), y+h*0.34+r*(h*0.34), w*0.05,0,TAU); ctx.fill(); }
+    ctx.strokeStyle="#9aa0aa"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x+w*0.7,y+h*0.2); ctx.lineTo(x+w*0.82,y+h*0.52); ctx.stroke();
+  } else if(icon==="quarry"){
+    ctx.fillStyle="#23262b"; roundRect(x,y,w,h,3); ctx.fill();
+    ctx.fillStyle=col; for(const r of [[0.3,0.6,0.16],[0.6,0.45,0.2],[0.5,0.72,0.13],[0.72,0.68,0.12]]) { ctx.beginPath(); ctx.arc(x+w*r[0],y+h*r[1],w*r[2],0,TAU); ctx.fill(); }
+    ctx.fillStyle="#6a7078"; ctx.beginPath(); ctx.arc(x+w*0.6,y+h*0.45,w*0.1,0,TAU); ctx.fill();
+  } else if(icon==="workshop"){
+    ctx.fillStyle="#2a2620"; roundRect(x,y,w,h,3); ctx.fill();
+    // gear
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(b.worked?G.bobT*1.5:0);
+    ctx.fillStyle=col; for(let i=0;i<8;i++){ const a=i/8*TAU; ctx.fillRect(Math.cos(a)*w*0.22-2,Math.sin(a)*w*0.22-2,4,4); }
+    ctx.beginPath(); ctx.arc(0,0,w*0.2,0,TAU); ctx.fill();
+    ctx.fillStyle="#2a2620"; ctx.beginPath(); ctx.arc(0,0,w*0.08,0,TAU); ctx.fill();
+    ctx.restore();
+  } else if(icon==="powder"){
+    ctx.fillStyle="#2a201c"; roundRect(x,y,w,h,3); ctx.fill();
+    ctx.fillStyle=col; ctx.beginPath(); ctx.arc(cx,cy+h*0.06,w*0.26,0,TAU); ctx.fill();
+    ctx.fillStyle="#2a201c"; ctx.fillRect(cx-w*0.05,y+h*0.12,w*0.1,h*0.3);
+    ctx.fillStyle="#e3a83a"; ctx.beginPath(); ctx.arc(cx,cy+h*0.06,w*0.1,0,TAU); ctx.fill();
+  } else if(icon==="lab"){
+    ctx.fillStyle="#1c2630"; roundRect(x,y,w,h,3); ctx.fill();
+    // flask
+    ctx.fillStyle="#cfe6ff"; ctx.beginPath(); ctx.moveTo(cx-w*0.06,y+h*0.2); ctx.lineTo(cx+w*0.06,y+h*0.2); ctx.lineTo(cx+w*0.18,y+h*0.7); ctx.lineTo(cx-w*0.18,y+h*0.7); ctx.closePath();
+    ctx.globalAlpha=0.3; ctx.fill(); ctx.globalAlpha=1; ctx.strokeStyle="#cfe6ff"; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(cx-w*0.13,y+h*0.7); ctx.lineTo(cx+w*0.13,y+h*0.7); ctx.lineTo(cx+w*0.08,y+h*0.52); ctx.lineTo(cx-w*0.08,y+h*0.52); ctx.closePath(); ctx.fill();
+    const by=y+h*0.6-Math.abs(Math.sin(G.bobT*4))*h*0.06;
+    ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(cx,by,w*0.03,0,TAU); ctx.fill();
+  } else if(icon==="granary"){
+    ctx.fillStyle="#2c2a18"; roundRect(x,y,w,h,3); ctx.fill();
+    ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(cx,y+h*0.1); ctx.lineTo(x+w*0.86,y+h*0.42); ctx.lineTo(x+w*0.14,y+h*0.42); ctx.closePath(); ctx.fill();
+    ctx.fillStyle="#5a5230"; ctx.fillRect(x+w*0.2,y+h*0.42,w*0.6,h*0.5);
+    ctx.fillStyle="#3a3520"; ctx.fillRect(cx-w*0.08,y+h*0.6,w*0.16,h*0.32);
+  } else if(icon==="warehouse"){
+    ctx.fillStyle="#26221c"; roundRect(x,y,w,h,3); ctx.fill();
+    ctx.fillStyle=col; ctx.fillRect(x+w*0.1,y+h*0.3,w*0.8,h*0.6);
+    ctx.fillStyle="#1a1712"; for(let i=0;i<3;i++) ctx.fillRect(x+w*0.16+i*w*0.26,y+h*0.4,w*0.16,h*0.4);
+    ctx.fillStyle="#3a3328"; ctx.fillRect(x+w*0.06,y+h*0.24,w*0.88,h*0.08);
+  } else if(icon==="infirmary"){
+    ctx.fillStyle="#23282c"; roundRect(x,y,w,h,3); ctx.fill();
+    ctx.fillStyle="#e8e6df"; roundRect(x+w*0.18,y+h*0.18,w*0.64,h*0.64,3); ctx.fill();
+    ctx.fillStyle="#c83232"; ctx.fillRect(cx-w*0.06,y+h*0.3,w*0.12,h*0.4); ctx.fillRect(cx-w*0.2,cy-w*0.06,w*0.4,w*0.12);
+  } else if(icon==="turret"){
+    ctx.fillStyle="#2a2e36"; ctx.beginPath(); ctx.arc(cx,cy,w*0.4,0,TAU); ctx.fill();
+    ctx.fillStyle="#3a3030"; ctx.beginPath(); ctx.arc(cx,cy,w*0.28,0,TAU); ctx.fill();
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(b.aimA);
+    ctx.fillStyle=col; roundRect(0,-w*0.07,w*0.46,w*0.14,2); ctx.fill();
+    ctx.fillStyle="#7a2418"; ctx.fillRect(w*0.4,-w*0.05,w*0.06,w*0.1); ctx.restore();
+    ctx.fillStyle="#d24b35"; ctx.beginPath(); ctx.arc(cx,cy,w*0.1,0,TAU); ctx.fill();
+  } else if(icon==="cannon"){
+    ctx.fillStyle="#2a2e36"; ctx.beginPath(); ctx.arc(cx,cy,w*0.42,0,TAU); ctx.fill();
+    ctx.fillStyle="#1c1f24"; ctx.beginPath(); ctx.arc(cx,cy,w*0.3,0,TAU); ctx.fill();
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(b.aimA);
+    ctx.fillStyle="#3a3530"; roundRect(-w*0.06,-w*0.13,w*0.5,w*0.26,3); ctx.fill();
+    ctx.fillStyle=col; ctx.fillRect(w*0.38,-w*0.11,w*0.08,w*0.22); ctx.restore();
+    ctx.fillStyle="#c98b4a"; ctx.beginPath(); ctx.arc(cx,cy,w*0.1,0,TAU); ctx.fill();
+  } else if(icon==="frost"){
+    ctx.fillStyle="#1c3038"; ctx.beginPath(); ctx.arc(cx,cy,w*0.4,0,TAU); ctx.fill();
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(G.bobT*0.6);
+    ctx.strokeStyle=col; ctx.lineWidth=2;
+    for(let i=0;i<6;i++){ const a=i/6*TAU; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*w*0.32,Math.sin(a)*w*0.32); ctx.stroke(); }
+    ctx.restore();
+    ctx.fillStyle="#cfe6ff"; ctx.beginPath(); ctx.arc(cx,cy,w*0.12,0,TAU); ctx.fill();
+  } else if(icon==="wall"){
+    ctx.fillStyle="#3a2e1c"; roundRect(x,y,w,h,2); ctx.fill();
+    ctx.fillStyle=col; const n=4;
+    for(let i=0;i<n;i++){ const px=x+(i+0.5)*(w/n);
+      ctx.beginPath(); ctx.moveTo(px-w/(n*2)+1,y+h*0.18); ctx.lineTo(px,y+h*0.02); ctx.lineTo(px+w/(n*2)-1,y+h*0.18);
+      ctx.lineTo(px+w/(n*2)-1,y+h); ctx.lineTo(px-w/(n*2)+1,y+h); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle="rgba(0,0,0,0.25)"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(px,y+h*0.2); ctx.lineTo(px,y+h); ctx.stroke(); }
+  } else if(icon==="swall"||icon==="bastion"){
+    ctx.fillStyle=icon==="bastion"?"#5a606a":"#3a3e44"; roundRect(x,y,w,h,2); ctx.fill();
+    ctx.fillStyle=col;
+    // brick pattern
+    for(let r=0;r<3;r++){ const ry=y+r*(h/3); const off=(r%2)*(w*0.16);
+      for(let c=0;c<3;c++){ ctx.fillRect(x+2+((c*w*0.32+off)%w),ry+2,w*0.28,h/3-3); } }
+    // crenellations
+    ctx.fillStyle=icon==="bastion"?"#7a818c":col;
+    for(let i=0;i<3;i++) ctx.fillRect(x+i*(w*0.36)+w*0.04,y-1,w*0.2,h*0.16);
+  } else if(icon==="gate"){
+    ctx.fillStyle="#3a2e1c"; roundRect(x,y,w,h,2); ctx.fill();
+    ctx.fillStyle="#5a4a2c"; ctx.fillRect(x+w*0.06,y+h*0.1,w*0.36,h*0.85);
+    ctx.fillStyle=col; ctx.fillRect(x+w*0.5,y+h*0.1,w*0.36,h*0.85);
+    ctx.strokeStyle="#2a2014"; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(cx,y+h*0.1); ctx.lineTo(cx,y+h*0.95); ctx.stroke();
+    ctx.fillStyle="#7a818c"; ctx.beginPath(); ctx.arc(x+w*0.4,cy,w*0.04,0,TAU); ctx.fill(); ctx.beginPath(); ctx.arc(x+w*0.6,cy,w*0.04,0,TAU); ctx.fill();
+  }
+}
+
+function drawFrostFields(){
+  for(const f of G.frostFields){
+    ctx.globalAlpha=clamp(f.life,0,1)*0.18;
+    const g=ctx.createRadialGradient(f.x,f.y,2,f.x,f.y,f.r);
+    g.addColorStop(0,"rgba(180,230,255,0.6)"); g.addColorStop(1,"rgba(127,200,255,0)");
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,TAU); ctx.fill();
+    ctx.globalAlpha=1;
+  }
+}
+function drawBullets(){
+  for(const b of G.bullets){
+    if(b.enemy){ ctx.fillStyle=b.ttype==="spit"?"#8ec547":"#c83232"; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,TAU); ctx.fill();
+      ctx.strokeStyle="rgba(142,197,71,0.5)"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(b.x,b.y); ctx.lineTo(b.x-b.vx*0.02,b.y-b.vy*0.02); ctx.stroke(); continue; }
+    ctx.fillStyle=b.ttype==="cannon"?"#ffb060":"#ffe49a"; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,TAU); ctx.fill();
+    ctx.strokeStyle=b.ttype==="cannon"?"rgba(255,160,80,0.5)":"rgba(255,210,120,0.5)"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(b.x,b.y); ctx.lineTo(b.x-b.vx*0.02,b.y-b.vy*0.02); ctx.stroke();
+  }
+}
+function drawMonsters(){
+  for(const m of G.monsters){
+    const bob=Math.sin(m.bob)*1.5;
+    const x=m.x, y=m.y+bob;
+    ctx.fillStyle="rgba(0,0,0,0.4)"; ctx.beginPath(); ctx.ellipse(m.x,m.y+m.r*0.7,m.r*0.8,m.r*0.35,0,0,TAU); ctx.fill();
+    // slow tint
+    if(m.slowT>0){ ctx.fillStyle="rgba(160,220,255,0.25)"; ctx.beginPath(); ctx.arc(x,y,m.r+3,0,TAU); ctx.fill(); }
+    ctx.fillStyle=m.hitFlash>0?"#fff":m.t.color; ctx.beginPath(); ctx.arc(x,y,m.r,0,TAU); ctx.fill();
+    ctx.fillStyle=m.hitFlash>0?"#fff":m.t.color2; ctx.beginPath(); ctx.arc(x,y+m.r*0.2,m.r*0.7,0,TAU); ctx.fill();
+    if(m.hitFlash<=0){
+      ctx.fillStyle=m.kind==="WARLORD"?"#ff3030":"#f0c24b"; const ex=m.r*0.32;
+      ctx.beginPath(); ctx.arc(x-ex,y-m.r*0.15,m.r*0.16,0,TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(x+ex,y-m.r*0.15,m.r*0.16,0,TAU); ctx.fill();
+      ctx.fillStyle="#000"; ctx.beginPath(); ctx.arc(x-ex,y-m.r*0.15,m.r*0.07,0,TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(x+ex,y-m.r*0.15,m.r*0.07,0,TAU); ctx.fill();
+    }
+    if(m.kind==="brute"||m.kind==="WARLORD"){
+      ctx.fillStyle=m.t.color2; const spikes=m.kind==="WARLORD"?8:5;
+      for(let i=0;i<spikes;i++){ const a=i/spikes*TAU-Math.PI/2;
+        ctx.beginPath(); ctx.moveTo(x+Math.cos(a)*m.r,y+Math.sin(a)*m.r);
+        ctx.lineTo(x+Math.cos(a)*(m.r+6),y+Math.sin(a)*(m.r+6));
+        ctx.lineTo(x+Math.cos(a+0.2)*m.r,y+Math.sin(a+0.2)*m.r); ctx.closePath(); ctx.fill(); }
+    }
+    if(m.kind==="stalker"){ ctx.strokeStyle="rgba(127,200,255,0.5)"; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(x,y,m.r+2,0,TAU); ctx.stroke(); }
+    if(m.kind==="WARLORD"){
+      // crown glow
+      ctx.fillStyle="rgba(200,50,50,0.18)"; ctx.beginPath(); ctx.arc(x,y,m.r*1.6,0,TAU); ctx.fill();
+    }
+    if(m.hp<m.maxHp){
+      const bw=m.r*2, bx=m.x-m.r, by=m.y-m.r-7;
+      ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillRect(bx,by,bw,3);
+      ctx.fillStyle=m.kind==="WARLORD"?"#f0c24b":"#c83232"; ctx.fillRect(bx,by,bw*clamp(m.hp/m.maxHp,0,1),3);
+    }
+  }
+}
+function drawParticles(){
+  for(const p of G.particles){ ctx.globalAlpha=clamp(p.life*1.6,0,1); ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,TAU); ctx.fill(); }
+  ctx.globalAlpha=1;
+}
+function drawFloaters(){
+  ctx.font="700 13px 'JetBrains Mono', monospace"; ctx.textAlign="center";
+  for(const f of G.floaters){ ctx.globalAlpha=clamp(f.life*1.4,0,1);
+    ctx.fillStyle="rgba(0,0,0,0.5)"; ctx.fillText(f.text,f.x+1,f.y+1); ctx.fillStyle=f.color; ctx.fillText(f.text,f.x,f.y); }
+  ctx.globalAlpha=1; ctx.textAlign="left";
+}
+
+function drawGhost(){
+  if(state!=="play" || !G.selected || researchOpen) return;
+  const cell=currentCellUnderMouse(); if(!cell) return;
+  const [cx,cy]=cell;
+  const def=BUILDINGS[G.selected];
+  const [sx,sy]=cellToScreen(cx,cy);
+  const techok=techOk(def);
+  const nearok=!def.near || adjacentTerrain(cx,cy,def.near);
+  const valid=!isOccupied(cx,cy) && canAfford(def.cost) && techok && nearok;
+  ctx.globalAlpha=0.5;
+  if(valid){ const fake={type:G.selected,def,cx,cy,x:sx+CELL/2,y:sy+CELL/2,hp:def.hp,maxHp:def.hp,worked:true,aimA:-Math.PI/2,flash:0};
+    drawBuildingArt(fake,sx+CELL*0.1,sy+CELL*0.1,CELL*0.8,CELL*0.8,sx+CELL/2,sy+CELL/2); }
+  ctx.globalAlpha=1;
+  ctx.lineWidth=2; ctx.strokeStyle=valid?"rgba(142,197,71,0.9)":"rgba(200,50,50,0.9)"; roundRect(sx+1,sy+1,CELL-2,CELL-2,4); ctx.stroke();
+  if(!valid){ ctx.strokeStyle="rgba(200,50,50,0.7)"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(sx+6,sy+6); ctx.lineTo(sx+CELL-6,sy+CELL-6); ctx.moveTo(sx+CELL-6,sy+6); ctx.lineTo(sx+6,sy+CELL-6); ctx.stroke(); }
+  // highlight required terrain when placing near-buildings
+  if(def.near && !nearok){
+    ctx.strokeStyle="rgba(127,200,255,0.6)"; ctx.lineWidth=1.5;
+    const ns=[[1,0],[-1,0],[0,1],[0,-1]];
+    for(const [dx,dy] of ns){ const tx=cx+dx, ty=cy+dy; if(terrainAt(tx,ty)===def.near){ const[ssx,ssy]=cellToScreen(tx,ty); roundRect(ssx+2,ssy+2,CELL-4,CELL-4,4); ctx.stroke(); } }
+  }
+  if(valid && def.range){
+    const rangePx=(def.range+(G.tech.gunnery?1:0))*CELL;
+    ctx.strokeStyle="rgba(210,75,53,0.3)"; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(sx+CELL/2,sy+CELL/2,rangePx,0,TAU); ctx.stroke();
+  }
+  // tooltip
+  drawTooltip(def, input.mx, input.my, valid, techok, nearok);
+}
+
+function drawTooltip(def,mx,my,valid,techok,nearok){
+  const lines=[];
+  lines.push({t:def.name,c:"#fff",f:"700 14px 'Manrope',sans-serif"});
+  lines.push({t:def.desc,c:"#b8bcc4",f:"600 11.5px 'Manrope',sans-serif"});
+  let costline=RES.filter(r=>def.cost&&def.cost[r]).map(r=>def.cost[r]+" "+RES_META[r].label.toLowerCase()).join(", ");
+  if(costline) lines.push({t:"Cost: "+costline,c:canAfford(def.cost)?"#8ec547":"#c83232",f:"700 11px 'JetBrains Mono',monospace"});
+  if(def.tech && !techok) lines.push({t:"⚠ Needs research: "+TECH[def.tech].name,c:"#7fc8ff",f:"600 11px 'Manrope',sans-serif"});
+  if(def.near && !nearok) lines.push({t:"⚠ Build beside "+def.near,c:"#e3a83a",f:"600 11px 'Manrope',sans-serif"});
+  // measure
+  let wmax=0; for(const l of lines){ ctx.font=l.f; wmax=Math.max(wmax,ctx.measureText(l.t).width); }
+  const pad=10, lh=17, w=wmax+pad*2, h=lines.length*lh+pad*2-4;
+  let bx=mx+16, by=my+16;
+  if(bx+w>VW-8) bx=mx-16-w; if(by+h>VH-TRAY_H-4) by=my-16-h;
+  ctx.fillStyle="rgba(12,14,18,0.96)"; ctx.strokeStyle="#2a2e36"; ctx.lineWidth=1;
+  roundRect(bx,by,w,h,4); ctx.fill(); ctx.stroke();
+  ctx.textAlign="left";
+  let ty=by+pad+10;
+  for(const l of lines){ ctx.font=l.f; ctx.fillStyle=l.c; ctx.fillText(l.t,bx+pad,ty); ty+=lh; }
+}
+
+// ============================================================ HUD
+function drawHUD(){
+  ctx.fillStyle="rgba(16,18,22,0.92)"; ctx.fillRect(0,0,VW,HUD_H);
+  ctx.strokeStyle="#2a2e36"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,HUD_H+0.5); ctx.lineTo(VW,HUD_H+0.5); ctx.stroke();
+  const cy=HUD_H/2;
+  let x=14;
+  for(const r of RES){
+    const cap=G.cap[r], val=Math.floor(G.res[r]), rate=G.rates[r];
+    x=hudStat(x,cy,RES_META[r].color,r,val,cap,rate,RES_META[r].label);
+    x+=14;
+  }
+  // pop
+  x+=4;
+  hudPop(x,cy);
+  drawDayBadge();
+  drawRightHUD();
+}
+function hudStat(x,cy,color,res,value,cap,rate,label){
+  ctx.fillStyle=color; roundRect(x,cy-13,24,24,4); ctx.fill();
+  ctx.fillStyle="#0b0c0e"; drawResIcon(RES_META[res].icon,x+12,cy);
+  const tx=x+30; ctx.textAlign="left";
+  ctx.fillStyle="#e8e6df"; ctx.font="700 22px 'Bebas Neue', Impact, sans-serif";
+  const vstr=String(value); ctx.fillText(vstr,tx,cy+1);
+  const vw=ctx.measureText(vstr).width;
+  // cap small
+  ctx.fillStyle="#5a5e66"; ctx.font="600 9px 'JetBrains Mono',monospace"; ctx.fillText("/"+cap,tx+vw+2,cy+0);
+  ctx.fillStyle="#7a7e88"; ctx.font="600 8.5px 'Manrope', sans-serif"; ctx.fillText(label,tx,cy+13);
+  let endx=tx+Math.max(vw+ctx.measureText("/"+cap).width+2,38);
+  const rstr=fmtRate(rate);
+  if(rstr){ ctx.fillStyle=rstr.startsWith("+")?"#8ec547":"#c83232"; ctx.font="600 10px 'JetBrains Mono', monospace"; ctx.fillText(rstr,tx,cy-9); endx=Math.max(endx,tx+ctx.measureText(rstr).width); }
+  return endx;
+}
+function fmtRate(r){ if(r===undefined||r===null) return null; const v=Math.round(r*10)/10; if(Math.abs(v)<0.05) return null; return (v>0?"+":"")+v.toFixed(1); }
+function hudPop(x,cy){
+  ctx.fillStyle="#7fb0d8"; roundRect(x,cy-13,24,24,4); ctx.fill();
+  ctx.fillStyle="#0b0c0e"; drawResIcon("pop",x+12,cy);
+  const tx=x+30; ctx.textAlign="left";
+  ctx.fillStyle="#e8e6df"; ctx.font="700 22px 'Bebas Neue', Impact, sans-serif";
+  ctx.fillText(G.popCap+"",tx,cy+1);
+  const vw=ctx.measureText(G.popCap+"").width;
+  ctx.fillStyle="#5a5e66"; ctx.font="600 9px 'JetBrains Mono',monospace";
+  ctx.fillText(G.idle>0?("("+G.idle+" idle)"):"(full)",tx+vw+4,cy+0);
+  ctx.fillStyle="#7a7e88"; ctx.font="600 8.5px 'Manrope', sans-serif"; ctx.fillText("SETTLERS",tx,cy+13);
+  // research chip
+  const rx=tx+Math.max(vw+ctx.measureText("(full)").width+10, 70);
+  ctx.fillStyle="#7fc8ff"; roundRect(rx,cy-13,24,24,4); ctx.fill();
+  ctx.fillStyle="#0b0c0e"; ctx.font="700 13px 'Bebas Neue',Impact"; ctx.textAlign="center"; ctx.fillText("R",rx+12,cy+4);
+  ctx.textAlign="left"; ctx.fillStyle="#e8e6df"; ctx.font="700 22px 'Bebas Neue', Impact, sans-serif";
+  ctx.fillText(Math.floor(G.research)+"",rx+30,cy+1);
+  ctx.fillStyle="#7a7e88"; ctx.font="600 8.5px 'Manrope', sans-serif"; ctx.fillText("RESEARCH · [R]",rx+30,cy+13);
+}
+function drawResIcon(icon,cx,cy){
+  ctx.save();
+  if(icon==="wood"){ ctx.fillStyle="#5a3d20"; ctx.fillRect(cx-7,cy-3,14,6); ctx.fillStyle="#0b0c0e"; ctx.beginPath(); ctx.arc(cx-7,cy,3,0,TAU); ctx.fill(); ctx.beginPath(); ctx.arc(cx+7,cy,3,0,TAU); ctx.fill(); }
+  else if(icon==="food"){ ctx.fillStyle="#0b0c0e"; ctx.beginPath(); ctx.arc(cx,cy+1,6,0,TAU); ctx.fill(); ctx.fillStyle="#2a4012"; ctx.fillRect(cx-1,cy-7,2,4); }
+  else if(icon==="stone"){ ctx.fillStyle="#0b0c0e"; ctx.beginPath(); ctx.moveTo(cx-6,cy+4); ctx.lineTo(cx-3,cy-5); ctx.lineTo(cx+4,cy-4); ctx.lineTo(cx+6,cy+4); ctx.closePath(); ctx.fill(); }
+  else if(icon==="tools"){ ctx.strokeStyle="#0b0c0e"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(cx-5,cy+5); ctx.lineTo(cx+5,cy-5); ctx.stroke(); ctx.fillStyle="#0b0c0e"; ctx.fillRect(cx+2,cy-7,4,4); }
+  else if(icon==="ammo"){ ctx.fillStyle="#0b0c0e"; ctx.beginPath(); ctx.arc(cx,cy,5,0,TAU); ctx.fill(); }
+  else if(icon==="pop"){ ctx.fillStyle="#0b0c0e"; ctx.beginPath(); ctx.arc(cx,cy-3,3.2,0,TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(cx-5,cy+6); ctx.quadraticCurveTo(cx,cy-1,cx+5,cy+6); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+}
+function drawDayBadge(){
+  const cx=VW/2, cy=HUD_H/2-4;
+  const night=G.phase==="night"; ctx.textAlign="center";
+  ctx.font="700 28px 'Bebas Neue', Impact, sans-serif";
+  ctx.fillStyle=night?(G.isBoss?"#c83232":"#d24b35"):"#f0c24b";
+  ctx.fillText("DAY "+G.day+" / "+DM.win, cx, cy);
+  ctx.font="600 10px 'Manrope', sans-serif";
+  if(night){ ctx.fillStyle=G.isBoss?"#c83232":"#d24b35"; ctx.fillText((G.isBoss?"☠ DARK MOON · ":"")+G.nightThreat+" THREATS REMAIN", cx, cy+14); }
+  else { const tleft=Math.max(0,G.dayLen-G.phaseT); ctx.fillStyle="#7a7e88"; ctx.fillText("NIGHTFALL IN "+Math.ceil(tleft)+"s"+(isBossDay(G.day)?"  ☠ BOSS":""), cx, cy+14); }
+  // phase progress bar
+  const pw=160, px=cx-pw/2, py=cy+20;
+  ctx.fillStyle="rgba(0,0,0,0.4)"; ctx.fillRect(px,py,pw,3);
+  let frac;
+  if(night){ frac=clamp(1-G.nightThreat/Math.max(1,G.nightThreatStart||G.nightThreat||1),0,1); }
+  else frac=clamp(G.phaseT/G.dayLen,0,1);
+  ctx.fillStyle=night?"#d24b35":"#f0c24b"; ctx.fillRect(px,py,pw*clamp(frac,0,1),3);
+  ctx.textAlign="left";
+}
+function drawRightHUD(){
+  const cy=HUD_H/2; let x=VW-16; ctx.textAlign="right";
+  ctx.font="700 20px 'Bebas Neue', Impact, sans-serif";
+  ctx.fillStyle=G.fastHold?"#f0c24b":G.speed>1?"#7fc8ff":"#7a7e88";
+  ctx.fillText(G.fastHold?"FAST":G.speed+"×", x, cy-3);
+  ctx.font="600 8.5px 'Manrope', sans-serif"; ctx.fillStyle="#7a7e88"; ctx.fillText("SPEED", x, cy+10);
+  x-=64;
+  ctx.font="700 20px 'Bebas Neue', Impact, sans-serif"; ctx.fillStyle="#e3a83a";
+  ctx.fillText(String(SAVE.best||0), x, cy-3);
+  ctx.font="600 8.5px 'Manrope', sans-serif"; ctx.fillStyle="#7a7e88"; ctx.fillText("BEST", x, cy+10);
+  x-=54;
+  ctx.font="700 20px 'Bebas Neue', Impact, sans-serif"; ctx.fillStyle="#b58ad6";
+  ctx.fillText(G.techCount+"/"+TECH_ORDER.length, x, cy-3);
+  ctx.font="600 8.5px 'Manrope', sans-serif"; ctx.fillStyle="#7a7e88"; ctx.fillText("TECH", x, cy+10);
+  ctx.textAlign="left";
+  drawThreatWarning();
+}
+function drawThreatWarning(){
+  let warn=null, col="#e3a83a";
+  if(G.phase==="day"){ const tleft=G.dayLen-G.phaseT;
+    if(isBossDay(G.day) && tleft<10){ warn="☠ DARK MOON RISES — A WARLORD IS COMING"; col="#c83232"; }
+    else if(tleft<6){ warn="⚠ NIGHTFALL APPROACHING — RAISE YOUR DEFENSES"; col="#e3a83a"; } }
+  else { warn=(G.isBoss?"☠ WARLORD SIEGE — ":"⚔ UNDER SIEGE — ")+G.nightThreat+" REMAIN"; col=G.isBoss?"#c83232":"#d24b35"; }
+  if(!warn) return;
+  ctx.save();
+  const pulse=0.6+0.4*Math.sin(G.bobT*6);
+  ctx.font="700 13px 'Manrope', sans-serif"; ctx.textAlign="center";
+  const w=ctx.measureText(warn).width+30; const bx=VW/2-w/2, by=HUD_H+6;
+  ctx.fillStyle="rgba(16,18,22,0.7)"; roundRect(bx,by,w,22,4); ctx.fill();
+  const rgb=col==="#c83232"?"200,50,50":col==="#d24b35"?"210,75,53":"227,168,58";
+  ctx.strokeStyle="rgba("+rgb+","+pulse+")"; ctx.lineWidth=1.5; roundRect(bx,by,w,22,4); ctx.stroke();
+  ctx.fillStyle=col; ctx.globalAlpha=0.7+0.3*pulse; ctx.fillText(warn, VW/2, by+15);
+  ctx.restore(); ctx.textAlign="left"; ctx.globalAlpha=1;
+}
+
+// ============================================================ build tray (categorized)
+let trayRects=[], catRects=[];
+function drawTray(){
+  const ty=VH-TRAY_H;
+  ctx.fillStyle="rgba(16,18,22,0.95)"; ctx.fillRect(0,ty,VW,TRAY_H);
+  ctx.strokeStyle="#2a2e36"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,ty+0.5); ctx.lineTo(VW,ty+0.5); ctx.stroke();
+
+  // category tabs (left)
+  catRects=[];
+  const tabW=92, tabX=12;
+  let tyy=ty+8;
+  for(let i=0;i<CATS.length;i++){
+    const cat=CATS[i]; const sel=G.selCat===cat.key;
+    const th=(TRAY_H-16)/CATS.length;
+    const r={x:tabX,y:tyy,w:tabW,h:th-2,key:cat.key};
+    catRects.push(r);
+    ctx.fillStyle=sel?"rgba(240,194,75,0.16)":"#1c1f25";
+    roundRect(r.x,r.y,r.w,r.h,3); ctx.fill();
+    ctx.strokeStyle=sel?"#f0c24b":"#2a2e36"; ctx.lineWidth=sel?1.6:1; roundRect(r.x,r.y,r.w,r.h,3); ctx.stroke();
+    ctx.fillStyle=sel?"#f0c24b":"#2a2e36"; roundRect(r.x+5,r.y+r.h/2-7,15,14,3); ctx.fill();
+    ctx.fillStyle="#0b0c0e"; ctx.font="700 10px 'JetBrains Mono',monospace"; ctx.textAlign="center"; ctx.fillText(String(i+1),r.x+12,r.y+r.h/2+4);
+    ctx.fillStyle=sel?"#fff":"#9aa0aa"; ctx.font="700 13px 'Bebas Neue',Impact,sans-serif"; ctx.textAlign="left"; ctx.fillText(cat.name.toUpperCase(),r.x+26,r.y+r.h/2+4);
+    tyy+=th;
+  }
+
+  // item cards (right of tabs)
+  const items=CATS.find(c=>c.key===G.selCat).items;
+  const startX=tabX+tabW+12;
+  const availW=VW-startX-14;
+  const n=items.length;
+  const cardW=Math.min(118,(availW)/n-7);
+  const cardH=TRAY_H-20;
+  let sx=startX; const cyy=ty+10;
+  trayRects=[];
+  for(const t of items){
+    const def=BUILDINGS[t];
+    const sel=G.selected===t;
+    const techok=techOk(def);
+    const afford=canAfford(def.cost);
+    const usable=techok && afford;
+    const r={x:sx,y:cyy,w:cardW,h:cardH,type:t}; trayRects.push(r);
+    ctx.fillStyle=sel?"rgba(240,194,75,0.16)":"#1c1f25"; roundRect(sx,cyy,cardW,cardH,4); ctx.fill();
+    ctx.strokeStyle=sel?"#f0c24b":"#2a2e36"; ctx.lineWidth=sel?2:1; roundRect(sx,cyy,cardW,cardH,4); ctx.stroke();
+    if(!usable) ctx.globalAlpha=0.4;
+    // icon
+    const iconSize=Math.min(30,cardH*0.46);
+    const ix=sx+cardW/2-iconSize/2, iy=cyy+6;
+    const fake={type:t,def,cx:0,cy:0,x:ix+iconSize/2,y:iy+iconSize/2,worked:true,aimA:-0.6,flash:0,hp:def.hp,maxHp:def.hp};
+    ctx.save(); drawBuildingArt(fake,ix,iy,iconSize,iconSize,ix+iconSize/2,iy+iconSize/2); ctx.restore();
+    // name
+    ctx.fillStyle=sel?"#fff":"#e8e6df"; ctx.font="700 10.5px 'Manrope',sans-serif"; ctx.textAlign="center";
+    ctx.fillText(def.name, sx+cardW/2, cyy+cardH-16);
+    // cost or lock
+    if(!techok){ ctx.fillStyle="#7fc8ff"; ctx.font="700 9px 'Manrope',sans-serif"; ctx.fillText("⚠ "+TECH[def.tech].name, sx+cardW/2, cyy+cardH-3); }
+    else { ctx.font="700 10px 'JetBrains Mono',monospace"; ctx.fillStyle=afford?"#c98b4a":"#c83232";
+      const cs=buildCostStr(def)||"free"; ctx.fillText(cs, sx+cardW/2, cyy+cardH-3); }
+    ctx.globalAlpha=1;
+    sx+=cardW+7;
+  }
+  // Q/E hint
+  ctx.fillStyle="#5a5e66"; ctx.font="600 9px 'Manrope',sans-serif"; ctx.textAlign="right";
+  ctx.fillText("[Q]/[E] cycle  ·  [1-5] category  ·  [R] research", VW-14, ty-3);
+  ctx.textAlign="left";
+}
+function trayClick(sx,sy){
+  for(const r of catRects){ if(sx>=r.x&&sx<=r.x+r.w&&sy>=r.y&&sy<=r.y+r.h){ setSelection(r.key,0); Sound.sfx.click(); return true; } }
+  for(const r of trayRects){ if(sx>=r.x&&sx<=r.x+r.w&&sy>=r.y&&sy<=r.y+r.h){
+    const items=CATS.find(c=>c.key===G.selCat).items; G.selIdx=items.indexOf(r.type); G.selected=r.type; Sound.sfx.click(); return true; } }
+  return false;
+}
+
+// ============================================================ event banner
+function drawEventBanner(){
+  eventBtns=[];
+  if(!G.event || G.phase!=="day") return;
+  const ev=G.event;
+  const w=Math.min(440,VW-40), h=92, bx=VW/2-w/2, by=HUD_H+34;
+  ctx.fillStyle="rgba(16,18,22,0.96)"; ctx.strokeStyle="#e3a83a"; ctx.lineWidth=1.5;
+  roundRect(bx,by,w,h,5); ctx.fill(); ctx.stroke();
+  ctx.textAlign="left";
+  ctx.fillStyle="#e3a83a"; ctx.font="700 16px 'Bebas Neue',Impact,sans-serif"; ctx.letterSpacing="1px";
+  let title=ev.kind==="trader"?"⚖ WANDERING TRADER":"⚑ REFUGEES AT THE GATE";
+  ctx.fillText(title, bx+14, by+22);
+  ctx.fillStyle="#b8bcc4"; ctx.font="600 12px 'Manrope',sans-serif";
+  let desc="";
+  if(ev.kind==="trader") desc="Give "+ev.giveAmt+" "+ev.give+"  →  receive "+ev.getAmt+" "+ev.get+".";
+  else desc="Shelter "+ev.n+" settlers for "+ev.foodCost+" food. +"+ev.n+" population.";
+  ctx.fillText(desc, bx+14, by+42);
+  ctx.fillStyle="#7a7e88"; ctx.font="600 10px 'JetBrains Mono',monospace"; ctx.fillText("offer leaves in "+Math.ceil(ev.t)+"s", bx+14, by+58);
+  // buttons
+  const bw=92, bh=22, gap=10;
+  const ay=by+h-bh-10;
+  const acc={x:bx+14,y:ay,w:bw,h:bh,action:"accept"};
+  const dec={x:bx+14+bw+gap,y:ay,w:bw,h:bh,action:"decline"};
+  eventBtns=[acc,dec];
+  ctx.fillStyle="rgba(142,197,71,0.18)"; ctx.strokeStyle="#8ec547"; ctx.lineWidth=1.4; roundRect(acc.x,acc.y,acc.w,acc.h,3); ctx.fill(); ctx.stroke();
+  ctx.fillStyle="#8ec547"; ctx.font="700 13px 'Bebas Neue',Impact,sans-serif"; ctx.textAlign="center"; ctx.fillText(ev.kind==="trader"?"TRADE":"TAKE IN", acc.x+acc.w/2, acc.y+15);
+  ctx.fillStyle="rgba(122,126,136,0.14)"; ctx.strokeStyle="#7a7e88"; roundRect(dec.x,dec.y,dec.w,dec.h,3); ctx.fill(); ctx.stroke();
+  ctx.fillStyle="#9aa0aa"; ctx.fillText("DECLINE", dec.x+dec.w/2, dec.y+15);
+  ctx.textAlign="left";
+}
+
+// ============================================================ onboarding / objectives
+// A light, self-dismissing day-1 guide. Each step checks live game state so the
+// player learns by doing. It only shows on the very first day of a run (and only
+// until the player has cleared their first night), so it never nags veterans.
+const TUT_STEPS=[
+  {id:"house", txt:"You start with a Hearth, Cabin, Farm, Lumberyard & Tower. Add another CABIN (Housing ▸ 1) for more settlers.", color:"#7fb0d8",
+   done:()=>G.buildings.filter(b=>b.type==="house"||b.type==="manor").length>=2},
+  {id:"farm",  txt:"Add a 2nd FARM (Industry ▸ 2) — more settlers means more mouths, and an empty larder starves the Hearth.", color:"#8ec547",
+   done:()=>G.buildings.filter(b=>b.def.job==="food").length>=2},
+  {id:"prod",  txt:"Boost income: build a LUMBERYARD beside a FOREST or a QUARRY beside ORE (glowing tiles) for +50%.", color:"#c98b4a",
+   done:()=>G.buildings.filter(b=>b.type==="lumber"||b.type==="quarry").length>=2},
+  {id:"def",   txt:"Ring the Hearth with WALLS & ARROW TOWERS (Defense ▸ 3) before nightfall — funnel the swarm.", color:"#d24b35",
+   done:()=>G.buildings.filter(b=>b.def.range).length>=2 && G.buildings.filter(b=>b.def.blocks).length>=2},
+  {id:"night", txt:"Hold the line — survive Night 1!  (Hold SPACE to fast-forward the day. Press R to research.)", color:"#f0c24b",
+   done:()=>G.day>=2},
+];
+function updateTutorial(){
+  if(!G || G.tutDone) return;
+  if(G.day>=2){ G.tutDone=true; saveBest({tutDone:true}); return; }
+  // advance past any already-satisfied steps
+  while(G.tutStep<TUT_STEPS.length && TUT_STEPS[G.tutStep].done()){
+    G.tutStep++;
+    if(G.tutStep<TUT_STEPS.length) Sound.sfx.click();
+  }
+  if(G.tutStep>=TUT_STEPS.length){ G.tutDone=true; saveBest({tutDone:true}); }
+}
+function drawTutorial(){
+  if(!G || G.tutDone || G.phase!=="day" || researchOpen || (G.event&&G.event.kind!=="disaster")) return;
+  const step=TUT_STEPS[G.tutStep]; if(!step) return;
+  const total=TUT_STEPS.length;
+  ctx.textAlign="left";
+  const pad=14, w=Math.min(420,VW-28);
+  // measure wrapped lines
+  ctx.font="600 13px 'Manrope',sans-serif";
+  const words=step.txt.split(" "); let line="", lines=[];
+  for(const wd of words){ const t=line+wd+" "; if(ctx.measureText(t).width>w-pad*2 && line){ lines.push(line.trim()); line=wd+" "; } else line=t; }
+  if(line.trim()) lines.push(line.trim());
+  const h=26+lines.length*17+14;
+  const bx=14, by=VH-TRAY_H-h-10;
+  ctx.globalAlpha=0.97;
+  ctx.fillStyle="rgba(14,16,20,0.96)"; ctx.strokeStyle=step.color; ctx.lineWidth=1.5; roundRect(bx,by,w,h,5); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=step.color; ctx.fillRect(bx,by,4,h);
+  ctx.fillStyle=step.color; ctx.font="700 12px 'Bebas Neue',Impact,sans-serif"; ctx.letterSpacing="1.5px";
+  ctx.fillText("◆ GETTING STARTED  ·  "+(G.tutStep+1)+"/"+total, bx+pad, by+18);
+  ctx.letterSpacing="0px";
+  ctx.fillStyle="#e8e6df"; ctx.font="600 13px 'Manrope',sans-serif";
+  let ty=by+38; for(const l of lines){ ctx.fillText(l,bx+pad,ty); ty+=17; }
+  // progress pips
+  for(let i=0;i<total;i++){ ctx.fillStyle=i<G.tutStep?step.color:(i===G.tutStep?"#e8e6df":"#3a3e46");
+    ctx.beginPath(); ctx.arc(bx+pad+i*14+3,by+h-9,3,0,TAU); ctx.fill(); }
+  ctx.globalAlpha=1;
+}
+
+// ============================================================ notifications
+function drawNotes(){
+  ctx.textAlign="left";
+  let yy=HUD_H+34;
+  // place on right side so it doesn't clash with event banner (centered)
+  for(let i=0;i<G.notes.length;i++){
+    const nn=G.notes[i]; const a=clamp(nn.life,0,1);
+    ctx.font="600 12px 'Manrope',sans-serif";
+    const w=ctx.measureText(nn.text).width+22; const bx=VW-w-14;
+    ctx.globalAlpha=a*0.95;
+    ctx.fillStyle="rgba(16,18,22,0.92)"; ctx.strokeStyle=nn.color; ctx.lineWidth=1; roundRect(bx,yy,w,24,3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle=nn.color; ctx.fillRect(bx,yy,3,24);
+    ctx.fillStyle="#e8e6df"; ctx.fillText(nn.text,bx+12,yy+16);
+    ctx.globalAlpha=1;
+    yy+=30;
+  }
+}
+
+// ============================================================ wave banner
+function drawWaveBanner(){
+  if(G.waveBanner<=0) return;
+  const dawn=G.phase==="day" && G.bannerWin;
+  if(!dawn && G.phase!=="night") return;
+  const a=clamp(G.waveBanner/(dawn?2.0:2.4),0,1);
+  ctx.save(); ctx.globalAlpha=Math.min(1,a*1.6); ctx.textAlign="center";
+  const y=ORY+BOARD*0.5;
+  ctx.font="700 clamp(36px,8vw,80px) 'Bebas Neue', Impact, sans-serif";
+  const txt=dawn?"DAWN BREAKS":(G.isBoss?"DARK MOON":"NIGHT "+G.day);
+  ctx.fillStyle="rgba(0,0,0,0.5)"; ctx.fillText(txt,VW/2+2,y+2);
+  ctx.fillStyle=dawn?"#f0c24b":(G.isBoss?"#c83232":"#d24b35"); ctx.fillText(txt,VW/2,y);
+  ctx.font="600 16px 'Manrope',sans-serif"; ctx.fillStyle="#e8e6df";
+  const sub=dawn?"The hold stands — rebuild and prepare for nightfall"
+    :(G.isBoss?"A WARLORD LEADS THE SWARM":(G.nightThreatStart||G.nightThreat)+" husks march on Emberhold");
+  ctx.fillText(sub, VW/2, y+34);
+  ctx.restore(); ctx.textAlign="left";
+}
+
+// ============================================================ center message
+function drawCenterMsg(){
+  if(!G.msg || G.msgT<=0) return;
+  const a=clamp(G.msgT,0,1); ctx.save(); ctx.globalAlpha=a; ctx.textAlign="center";
+  ctx.font="700 clamp(26px,5.5vw,52px) 'Bebas Neue', Impact, sans-serif";
+  const y=ORY+BOARD*0.26;
+  ctx.fillStyle="rgba(0,0,0,0.55)"; ctx.fillText(G.msg, VW/2+2, y+2);
+  ctx.fillStyle="rgb("+(G.msgColor||"232,230,223")+")"; ctx.fillText(G.msg, VW/2, y);
+  ctx.restore(); ctx.textAlign="left";
+}
+
+// ============================================================ research panel (canvas modal)
+function drawResearch(){
+  ctx.fillStyle="rgba(6,7,10,0.82)"; ctx.fillRect(0,0,VW,VH);
+  const pw=Math.min(760,VW-40), ph=Math.min(520,VH-80);
+  const px=VW/2-pw/2, py=VH/2-ph/2;
+  ctx.fillStyle="rgba(16,18,22,0.98)"; ctx.strokeStyle="#7fc8ff"; ctx.lineWidth=1.5; roundRect(px,py,pw,ph,5); ctx.fill(); ctx.stroke();
+  ctx.textAlign="center";
+  ctx.fillStyle="#7fc8ff"; ctx.font="700 30px 'Bebas Neue',Impact,sans-serif"; ctx.fillText("RESEARCH LAB", VW/2, py+34);
+  ctx.fillStyle="#b8bcc4"; ctx.font="600 12px 'Manrope',sans-serif";
+  ctx.fillText("Research: "+Math.floor(G.research)+"   ·   Build Labs and staff them to generate points   ·   [R] or [Esc] to close", VW/2, py+54);
+  ctx.textAlign="left";
+  // grid of techs
+  techRects=[];
+  const cols=2, gap=14, padIn=20;
+  const gw=(pw-padIn*2-gap)/cols, gh=86;
+  let i=0;
+  for(const id of TECH_ORDER){
+    const t=TECH[id];
+    const col=i%cols, row=Math.floor(i/cols);
+    const cx=px+padIn+col*(gw+gap), cyy=py+74+row*(gh+10);
+    const owned=!!G.tech[id];
+    const needsOk=t.needs.every(n=>G.tech[n]);
+    const rp=researchCost(id);
+    const affordRp=G.research>=rp, affordRes=canAfford(t.cost);
+    const can=!owned && needsOk && affordRp && affordRes;
+    techRects.push({x:cx,y:cyy,w:gw,h:gh,id});
+    ctx.fillStyle=owned?"rgba(142,197,71,0.12)":(can?"rgba(127,200,255,0.1)":"#1c1f25");
+    roundRect(cx,cyy,gw,gh,4); ctx.fill();
+    ctx.strokeStyle=owned?"#8ec547":(can?"#7fc8ff":(needsOk?"#3a3e46":"#2a2e36")); ctx.lineWidth=can?1.6:1; roundRect(cx,cyy,gw,gh,4); ctx.stroke();
+    if(!needsOk && !owned) ctx.globalAlpha=0.55;
+    ctx.fillStyle=owned?"#8ec547":"#fff"; ctx.font="700 16px 'Bebas Neue',Impact,sans-serif"; ctx.textAlign="left";
+    ctx.fillText(t.name.toUpperCase()+(owned?"  ✓":""), cx+12, cyy+20);
+    ctx.fillStyle="#9aa6b2"; ctx.font="600 11px 'Manrope',sans-serif";
+    wrapText(t.desc, cx+12, cyy+36, gw-24, 14, 2);
+    if(!owned){
+      const costStr="Cost: "+rp+" RP"+(Object.keys(t.cost).length?" + "+RES.filter(r=>t.cost[r]).map(r=>t.cost[r]+" "+r).join(", "):"");
+      ctx.font="700 10.5px 'JetBrains Mono',monospace"; ctx.fillStyle=(affordRp&&affordRes)?"#c98b4a":"#c83232";
+      ctx.fillText(costStr, cx+12, cyy+gh-10);
+      if(!needsOk){ ctx.fillStyle="#e3a83a"; ctx.font="600 10px 'Manrope',sans-serif"; ctx.fillText("Requires: "+t.needs.map(n=>TECH[n].name).join(", "), cx+12, cyy+gh-24); }
+    } else { ctx.fillStyle="#8ec547"; ctx.font="600 10px 'Manrope',sans-serif"; ctx.fillText("RESEARCHED", cx+12, cyy+gh-10); }
+    ctx.globalAlpha=1;
+    i++;
+  }
+  ctx.textAlign="left";
+}
+function researchClick(sx,sy){
+  if(!researchOpen) return false;
+  for(const r of techRects){ if(sx>=r.x&&sx<=r.x+r.w&&sy>=r.y&&sy<=r.y+r.h){ tryResearch(r.id); return true; } }
+  return true; // swallow clicks while open (modal)
+}
+function wrapText(text,x,y,maxW,lh,maxLines){
+  const words=text.split(" "); let line="", lines=0;
+  for(let i=0;i<words.length;i++){
+    const test=line+words[i]+" ";
+    if(ctx.measureText(test).width>maxW && line){ ctx.fillText(line,x,y); line=words[i]+" "; y+=lh; lines++; if(maxLines&&lines>=maxLines){ return; } }
+    else line=test;
+  }
+  ctx.fillText(line,x,y);
+}
+
+// wrap handleClick: research panel modal first
+const _handleClickBase=handleClick;
+handleClick=function(sx,sy){
+  if(state!=="play") return;
+  if(researchOpen){ researchClick(sx,sy); return; }
+  _handleClickBase(sx,sy);
+};
+
+// ============================================================ helpers
+function roundRect(x,y,w,h,r){
+  r=Math.min(r,w/2,h/2); ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+
+// track night start threat for progress bar
+const _startNight=startNight;
+startNight=function(){ _startNight(); G.nightThreatStart=G.nightThreat; };
+
+// ============================================================ loop
+let last=performance.now(), acc=0; const DT=1/60;
+function loop(t){
+  let dt=Math.min(0.1,(t-last)/1000); last=t; acc+=dt;
+  let mult=1;
+  if(state==="play"){ G.fastHold=input.keys.has(" ") && !researchOpen; mult=G.fastHold?3:G.speed; }
+  let steps=0;
+  while(acc>=DT && steps<8){
+    if(state==="play"){ for(let s=0;s<mult;s++) update(DT); }
+    else update(DT);
+    acc-=DT; steps++;
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(t=>{ last=t; requestAnimationFrame(loop); });
+
+// ============================================================ UI / screens
+const elMenu=document.getElementById("menu");
+const elPause=document.getElementById("pause");
+const elOver=document.getElementById("over");
+function show(el,on){ el.classList.toggle("show",on); }
+function startGame(){
+  Sound.ensure(); newGame(); researchOpen=false; state="play";
+  show(elMenu,false); show(elPause,false); show(elOver,false);
+  Sound.sfx.dayStart();
+  note("Settle Emberhold. Build housing & industry, then defend.","#f0c24b");
+  flash("Found your colony","240,194,75");
+}
+function backToMenu(){ state="menu"; updateMenuBest(); show(elMenu,true); show(elPause,false); show(elOver,false); }
+function togglePause(){
+  if(researchOpen){ researchOpen=false; return; }
+  if(state==="play"){ state="pause"; show(elPause,true); Sound.sfx.click(); }
+  else if(state==="pause"){ state="play"; show(elPause,false); Sound.sfx.click(); }
+}
+function tierFor(days,won){
+  if(won) return {t:"WARDEN OF EMBERHOLD",c:"#f0c24b"};
+  if(days>=DM.win*0.75) return {t:"Captain — so close",c:"#e3a83a"};
+  if(days>=DM.win*0.5) return {t:"Sentinel",c:"#8ec547"};
+  if(days>=DM.win*0.25) return {t:"Watcher",c:"#7fc8ff"};
+  return {t:"Settler",c:"#7a7e88"};
+}
+function showOver(won){
+  state="over";
+  let dval=won?DM.win:(G.day-1); if(dval<0) dval=0;
+  const best=SAVE.best||0; const isNew=dval>best;
+  if(isNew){ SAVE.best=dval; saveBest({best:dval}); }
+  document.getElementById("overTitle").textContent=won?"Emberhold Endures":"The Hold Has Fallen";
+  document.getElementById("overDays").textContent=dval;
+  document.getElementById("overReason").textContent=G.reason;
+  const tier=tierFor(dval,won);
+  const te=document.getElementById("overTier"); te.style.display="block"; te.textContent=tier.t; te.style.color=tier.c;
+  document.getElementById("overBestWrap").style.display=isNew?"block":"none";
+  document.getElementById("overBest").innerHTML="Best&nbsp; <b>"+(SAVE.best||0)+" days</b>";
+  const stats=[
+    ["Husks Slain", G.monstersKilled],
+    ["Warlords Felled", G.bossesKilled],
+    ["Tech Researched", G.techCount+"/"+TECH_ORDER.length],
+    ["Buildings", G.buildings.length],
+    ["Settlers", G.popCap],
+    ["Built (total)", G.builtCount],
+  ];
+  document.getElementById("overStats").innerHTML=stats.map(s=>'<div class="stat"><div class="v">'+s[1]+'</div><div class="l">'+s[0]+'</div></div>').join("");
+  show(elOver,true);
+}
+function updateMenuBest(){ document.getElementById("menuBest").innerHTML="Best&nbsp; <b>"+(SAVE.best||0)+" days</b>"; }
+
+// difficulty selector
+document.querySelectorAll("#diffMode .opt").forEach(opt=>{
+  opt.addEventListener("click",()=>{
+    document.querySelectorAll("#diffMode .opt").forEach(o=>o.classList.remove("sel"));
+    opt.classList.add("sel"); DIFF=opt.dataset.diff; saveBest({diff:DIFF}); Sound.ensure(); Sound.sfx.click();
+  });
+});
+function syncDiffUI(){ document.querySelectorAll("#diffMode .opt").forEach(o=>o.classList.toggle("sel",o.dataset.diff===DIFF)); }
+
+// button wiring
+document.getElementById("playBtn").onclick=()=>{ Sound.ensure(); startGame(); };
+document.getElementById("resumeBtn").onclick=togglePause;
+document.getElementById("quitBtn").onclick=()=>{ backToMenu(); };
+document.getElementById("againBtn").onclick=startGame;
+document.getElementById("menuBtn").onclick=backToMenu;
+
+// ============================================================ boot
+resize();
+updateMenuBest();
+syncDiffUI();
+newGame(); state="menu";
+
+// Optional test/debug hook — only active with #ehdebug in the URL. Lets an
+// automated harness drive a fast headless playthrough; no effect on real play.
+if(location.hash.indexOf("ehdebug")>=0){
+  window.__EH={
+    start:(diff)=>{ if(diff){ DIFF=diff; } startGame(); },
+    sim:(seconds)=>{ const n=Math.round(seconds*60); for(let i=0;i<n;i++){ if(state==="play") update(DT); } },
+    state:()=>state,
+    grant:(r)=>{ for(const k in r){ if(G.res[k]!=null) G.res[k]=Math.min(99999,G.res[k]+r[k]); } },
+    research:(id)=>{ G.research+=999; tryResearch(id); },
+    place:(type,cx,cy)=>{ const def=BUILDINGS[type]; if(!def) return false;
+      if(isOccupied(cx,cy)||!techOk(def)) return false;
+      if(def.near&&!adjacentTerrain(cx,cy,def.near)) return false;
+      if(!canAfford(def.cost)) return false; payCost(def.cost); placeBuilding(type,cx,cy); recompute(); return true; },
+    snap:()=>G?{day:G.day,phase:G.phase,over:G.over,won:G.won,popCap:G.popCap,
+      buildings:G.buildings.length,monsters:G.monsters.length,killed:G.monstersKilled,
+      res:Object.assign({},G.res),reason:G.reason,grid:GRID}:null,
+  };
+}
+
+})();
+</script>
+</body>
+</html>

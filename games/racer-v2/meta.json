@@ -1,0 +1,28 @@
+{
+  "slug": "racer-v2",
+  "title": "Drift Circuit 2: Championship",
+  "genre": "Top-Down Racer",
+  "tagline": "Drift a five-track season against a rival field.",
+  "blurb": "Drift Circuit grown up: 5 themed circuits, a points-scoring championship, an AI field with rubber-banding, selectable cars, and nitro boost.",
+  "controls": [
+    {"key": "W / Up", "action": "throttle"},
+    {"key": "S / Down", "action": "brake / reverse"},
+    {"key": "A / D", "action": "steer"},
+    {"key": "Space", "action": "handbrake drift"},
+    {"key": "J / Shift", "action": "nitro boost"},
+    {"key": "Esc / P", "action": "pause"},
+    {"key": "R", "action": "reset to track"},
+    {"key": "Enter", "action": "start / continue"}
+  ],
+  "accent": "#d24b35",
+  "expandsSlug": "racer",
+  "basedOnTitle": "Drift Circuit",
+  "whatsNew": [
+    "5 themed circuits with distinct layouts (Speedway, Switchback, Coil, Dunes, Tempest)",
+    "Championship season: race a 5-round series for points and the title",
+    "AI rival field (3/5/7 cars) with three difficulty tiers and mild rubber-banding",
+    "Car selection with speed/grip/accel trade-offs, plus unlockable machines",
+    "Nitro boost meter, refilled by drifting and clean laps",
+    "Per-track best laps and ghosts saved separately under a new save key"
+  ]
+}

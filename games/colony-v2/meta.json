@@ -1,0 +1,33 @@
+{
+  "slug": "colony-v2",
+  "title": "EMBERHOLD II — Embers of the Long Night",
+  "genre": "Colony Builder",
+  "tagline": "Build the chain. Hold the line. Outlast the dark moon.",
+  "blurb": "Mine, farm and forge along the river, research new tech, grow your settlers, then ring the hold with arrow, frost and cannon towers before the husks — and the Warlord — swarm in.",
+  "controls": [
+    {"key": "1-5", "action": "switch build category"},
+    {"key": "Q / E", "action": "cycle item in category"},
+    {"key": "L-Click", "action": "place / pick / confirm"},
+    {"key": "R-Click", "action": "sell building"},
+    {"key": "X", "action": "cancel current tool"},
+    {"key": "R", "action": "open research lab"},
+    {"key": "Space", "action": "fast-forward (hold)"},
+    {"key": "Tab", "action": "cycle 1x / 2x / 3x speed"},
+    {"key": "Esc / P", "action": "pause"},
+    {"key": "M", "action": "mute"}
+  ],
+  "accent": "#f0c24b",
+  "expandsSlug": "colony",
+  "basedOnTitle": "Emberhold",
+  "whatsNew": [
+    "Day-1 onboarding: a starter settlement (cabin, farm, lumberyard & tower) plus a step-by-step Getting Started guide",
+    "Balance pass — gentler first nights, a reachable Gunnery branch, a tougher Hearth and a fairer, beatable dark-moon WARLORD",
+    "Production chains: 5 resources feed a workshop, powder mill, tools & ammo economy",
+    "A 7-node research tree gating fisheries, cannons, frost towers, manors, infirmaries & more",
+    "Terrain map with forest, ore and water nodes you build beside for +50% bonuses",
+    "Richer nights: spitters, stalkers, brutes plus an escalating dark-moon WARLORD boss",
+    "Juicier feel — dawn 'Night Held' celebration, settler-growth pops, sparks, shake & dedicated sfx",
+    "Events — wandering traders, refugees to shelter, and disasters (blight, fire, quakes)",
+    "Categorised build menu with tooltips, costs, storage caps, threat warnings & win/lose ranks"
+  ]
+}

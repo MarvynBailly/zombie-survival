@@ -1,0 +1,31 @@
+{
+  "slug": "crawler-v2",
+  "title": "Gravecrawl II: Deeper Dark",
+  "genre": "Roguelike Dungeon Crawler",
+  "tagline": "Pick a class, loot the dark, fall to the Throne of Ash.",
+  "blurb": "Gravecrawl, deepened: classes, equipable gear, scrolls & potions, ranged and poisonous foes, themed biomes and a boss every fourth floor down to depth 12.",
+  "controls": [
+    {"key": "WASD / Arrows", "action": "Move & bump-attack"},
+    {"key": "Q E Z C", "action": "Move diagonally"},
+    {"key": "Space / .", "action": "Wait a turn"},
+    {"key": "G", "action": "Grab item / use shrine / open chest"},
+    {"key": "F", "action": "Descend stairs"},
+    {"key": "I", "action": "Inventory (equip gear, use items)"},
+    {"key": "1-5", "action": "Quick-use belt slot"},
+    {"key": "H", "action": "Quaff health potion"},
+    {"key": "J", "action": "Rest to heal"},
+    {"key": "Y / N", "action": "Accept / decline at shrines & chests"},
+    {"key": "P / Esc", "action": "Pause"}
+  ],
+  "accent": "#8ec547",
+  "expandsSlug": "crawler",
+  "basedOnTitle": "Gravecrawl",
+  "whatsNew": [
+    "Three classes (Warrior / Rogue / Sorcerer) with distinct kits & perks",
+    "Inventory + equipment: weapons, armor, potions & scrolls in a 5-slot belt",
+    "New foes incl. ranged archers/imps and poison/weaken/burn status appliers",
+    "Three themed biomes — Crypt, Caverns, Inferno — each tougher than the last",
+    "A boss every 4 floors, ending at the Ashen Throne (depth 12)",
+    "Risk/reward shrines & trapped chests scattered through the dark"
+  ]
+}
