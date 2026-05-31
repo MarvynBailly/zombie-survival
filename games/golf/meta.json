@@ -1,0 +1,16 @@
+{
+  "slug": "golf",
+  "title": "PAR",
+  "genre": "Mini-Golf",
+  "tagline": "Drag, putt, bank the bumpers, beat par.",
+  "blurb": "Top-down mini-golf with click-drag aiming and a real rolling ball. Nine holes of bumpers, sand, and water. Sink it under par and brag forever.",
+  "controls": [
+    {"key": "Click + Drag", "action": "aim & set power (pull back from ball)"},
+    {"key": "Release", "action": "putt"},
+    {"key": "R", "action": "re-putt from last spot"},
+    {"key": "Space", "action": "skip to next hole when sunk"},
+    {"key": "Esc / P", "action": "pause"},
+    {"key": "M", "action": "mute"}
+  ],
+  "accent": "#8ec547"
+}

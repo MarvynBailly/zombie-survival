@@ -1,0 +1,16 @@
+{
+  "slug": "blocks",
+  "title": "FLUX",
+  "genre": "Falling-Block Puzzle",
+  "tagline": "Match four, detonate, chain the cascade.",
+  "blurb": "A color-merge twist on falling blocks: clusters of 4+ same-color cells explode, survivors fall and chain into combos. Clear rows for bonuses. Speed ramps fast.",
+  "controls": [
+    {"key": "A / D / Arrows", "action": "move left / right"},
+    {"key": "W / Up / J", "action": "rotate"},
+    {"key": "S / Down", "action": "soft drop"},
+    {"key": "Space", "action": "hard drop"},
+    {"key": "Esc / P", "action": "pause"},
+    {"key": "M", "action": "mute"}
+  ],
+  "accent": "#b07fff"
+}

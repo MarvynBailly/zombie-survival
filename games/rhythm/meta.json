@@ -1,0 +1,16 @@
+{
+  "slug": "rhythm",
+  "title": "Pulse Code",
+  "genre": "Rhythm",
+  "tagline": "Four lanes. One beat. Don't flatline the grid.",
+  "blurb": "Strike notes on a procedurally-synthesized track that builds from a heartbeat to a full synth drop. Chain Perfects, ride the combo, hit your grade.",
+  "controls": [
+    {"key": "D", "action": "lane 1"},
+    {"key": "F", "action": "lane 2"},
+    {"key": "J", "action": "lane 3"},
+    {"key": "K", "action": "lane 4"},
+    {"key": "Esc / P", "action": "pause"},
+    {"key": "M", "action": "mute"}
+  ],
+  "accent": "#34e0d8"
+}

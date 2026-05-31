@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EMBERHOLD — Colony Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#0b0c0e; --panel:#14161a; --panel2:#1c1f25; --border:#2a2e36;
+    --fg:#e8e6df; --muted:#7a7e88; --accent:#d24b35; --toxic:#8ec547;
+    --warn:#e3a83a; --danger:#c83232; --blue:#7fc8ff; --gold:#f0c24b;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%; width:100%; overflow:hidden; background:var(--ink); color:var(--fg);
+    font-family:"Manrope", system-ui, sans-serif; -webkit-font-smoothing:antialiased; user-select:none;}
+  #game{display:block; position:absolute; inset:0; touch-action:none; cursor:default;}
+  .display{font-family:"Bebas Neue", Impact, sans-serif; letter-spacing:.06em; text-transform:uppercase;}
+  .mono{font-family:"JetBrains Mono", ui-monospace, monospace;}
+
+  /* Overlay screens */
+  .overlay{position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    z-index:20; pointer-events:none;}
+  .overlay.show{display:flex; pointer-events:auto;}
+  .panel{background:rgba(16,18,22,.94); border:1px solid var(--border);
+    backdrop-filter:blur(6px); padding:34px 40px; max-width:min(94vw,680px);
+    box-shadow:0 20px 70px rgba(0,0,0,.6); border-radius:3px;}
+
+  .title{font-family:"Bebas Neue", Impact, sans-serif; letter-spacing:.04em;
+    font-size:clamp(64px,15vw,150px); line-height:.84; text-transform:uppercase;
+    background:linear-gradient(160deg,#fff 0%, var(--gold) 45%, var(--accent) 110%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 0 44px rgba(240,194,75,.22); margin-bottom:2px;}
+  .subtitle{color:var(--muted); font-size:15px; letter-spacing:.34em; text-transform:uppercase;
+    margin-bottom:20px; font-weight:600;}
+  .tag{color:var(--fg); font-size:16px; line-height:1.55; margin-bottom:22px; max-width:52ch;}
+  .tag b{color:var(--gold);} .tag .a{color:var(--accent);} .tag .t{color:var(--toxic);}
+
+  .controls{display:grid; grid-template-columns:auto 1fr; gap:7px 18px; margin:16px auto 24px;
+    font-size:14px; align-items:center; max-width:430px; text-align:left;}
+  .controls .k{display:inline-flex; gap:6px; flex-wrap:wrap;}
+  kbd{font-family:"JetBrains Mono", monospace; background:var(--panel2); border:1px solid var(--border);
+    border-bottom-width:2px; border-radius:4px; padding:3px 8px; font-size:12px; color:var(--fg);
+    min-width:26px; text-align:center; display:inline-block;}
+  .controls .act{color:var(--muted);}
+
+  .btn{display:inline-block; cursor:pointer; pointer-events:auto; border:1px solid var(--accent);
+    background:linear-gradient(180deg, rgba(210,75,53,.24), rgba(210,75,53,.08));
+    color:var(--fg); font-family:"Bebas Neue", Impact, sans-serif; letter-spacing:.14em;
+    font-size:24px; padding:11px 32px; text-transform:uppercase; border-radius:3px;
+    transition:transform .08s ease, background .15s ease, box-shadow .15s ease;}
+  .btn:hover{background:linear-gradient(180deg, rgba(210,75,53,.42), rgba(210,75,53,.16));
+    box-shadow:0 6px 24px rgba(210,75,53,.3); transform:translateY(-1px);}
+  .btn:active{transform:translateY(1px);}
+  .btn.ghost{border-color:var(--border); background:var(--panel2);}
+  .btn.ghost:hover{background:#23272f; box-shadow:none;}
+
+  .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap;}
+  .best{color:var(--warn); font-family:"JetBrains Mono", monospace; font-size:14px; margin-top:16px;
+    letter-spacing:.08em;}
+  .best b{color:var(--fg);}
+  .go-num{font-family:"Bebas Neue", Impact, sans-serif; font-size:clamp(54px,11vw,96px); line-height:.9;
+    color:var(--gold);}
+  .go-label{color:var(--muted); letter-spacing:.3em; text-transform:uppercase; font-size:13px; font-weight:600;}
+  .newbest{color:var(--warn); font-weight:800; letter-spacing:.2em; text-transform:uppercase;
+    font-size:14px; margin-top:6px; animation:pulse 1s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+  .hint{color:var(--muted); font-size:12.5px; margin-top:14px; letter-spacing:.04em; line-height:1.5;}
+  .footer{position:absolute; bottom:9px; left:0; right:0; text-align:center; color:#44484f;
+    font-size:11px; letter-spacing:.18em; z-index:5; text-transform:uppercase; pointer-events:none;}
+  #touchNote{display:none; color:var(--warn); margin-top:14px; font-size:13px;}
+  @media (pointer:coarse){ #touchNote{display:block;} }
+
+  .statgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:18px 0;}
+  .stat{background:var(--panel2); border:1px solid var(--border); border-radius:3px; padding:10px 6px;}
+  .stat .v{font-family:"Bebas Neue",Impact,sans-serif; font-size:34px; line-height:1; color:var(--fg);}
+  .stat .l{color:var(--muted); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; margin-top:3px;}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- MENU -->
+<div class="overlay show" id="menu">
+  <div class="panel" style="text-align:center;">
+    <div class="title">EMBERHOLD</div>
+    <div class="subtitle">Last Light Colony Builder</div>
+    <div class="tag">By <b>day</b> you build — farms for <span class="t">food</span>,
+      a lumberyard and quarry for <span class="a">materials</span>, houses for settlers.
+      By <b>night</b> the <a>husks</a> come for your walls. Ring your hold with
+      <b>turrets</b> and <b>palisades</b>, hold the line, and survive as many
+      <b>days</b> as you can.</div>
+    <div class="controls">
+      <span class="k"><kbd>1</kbd>&hellip;<kbd>7</kbd></span><span class="act">Select a building to place</span>
+      <span class="k"><kbd>L-Click</kbd></span><span class="act">Place building / confirm</span>
+      <span class="k"><kbd>R-Click</kbd> <kbd>X</kbd></span><span class="act">Sell / cancel placement</span>
+      <span class="k"><kbd>Space</kbd></span><span class="act">Speed up time (hold)</span>
+      <span class="k"><kbd>Tab</kbd></span><span class="act">Toggle 1&times; / 2&times; / 3&times; speed</span>
+      <span class="k"><kbd>Esc</kbd> <kbd>P</kbd></span><span class="act">Pause</span>
+      <span class="k"><kbd>M</kbd></span><span class="act">Mute</span>
+    </div>
+    <div class="row" style="justify-content:center;">
+      <button class="btn" id="playBtn">Build</button>
+    </div>
+    <div class="best mono" id="menuBest">Best&nbsp; <b>0 days</b></div>
+    <div id="touchNote">Desktop only — this game needs a mouse &amp; keyboard.</div>
+  </div>
+</div>
+
+<!-- PAUSE -->
+<div class="overlay" id="pause">
+  <div class="panel" style="text-align:center;">
+    <div class="title" style="font-size:clamp(48px,11vw,96px);">Paused</div>
+    <div class="hint" style="margin-bottom:18px;">The watchfires hold for now.</div>
+    <div class="row" style="justify-content:center;">
+      <button class="btn" id="resumeBtn">Resume</button>
+      <button class="btn ghost" id="quitBtn">Abandon</button>
+    </div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div class="overlay" id="over">
+  <div class="panel" style="text-align:center;">
+    <div class="go-label" id="overTitle">The Hold Has Fallen</div>
+    <div class="go-num" id="overDays">0</div>
+    <div class="go-label">days survived</div>
+    <div id="overBestWrap" class="newbest" style="display:none;">New Record!</div>
+    <div class="statgrid" id="overStats"></div>
+    <div class="hint" id="overReason"></div>
+    <div class="row" style="justify-content:center; margin-top:18px;">
+      <button class="btn" id="againBtn">Rebuild</button>
+      <button class="btn ghost" id="menuBtn">Menu</button>
+    </div>
+    <div class="best mono" id="overBest">Best&nbsp; <b>0 days</b></div>
+  </div>
+</div>
+
+<div class="footer">EMBERHOLD &middot; Build by day &middot; Hold by night</div>
+
+<script>
+"use strict";
+(function(){
+// ============================================================ utils
+const rand=(a,b)=>a+Math.random()*(b-a);
+const randi=(a,b)=>Math.floor(rand(a,b));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const len=(x,y)=>Math.hypot(x,y);
+const choice=a=>a[Math.floor(Math.random()*a.length)];
+const TAU=Math.PI*2;
+function circleRectCollide(cx,cy,cr,rx,ry,rw,rh){
+  const nx=clamp(cx,rx,rx+rw), ny=clamp(cy,ry,ry+rh);
+  const dx=cx-nx, dy=cy-ny; return dx*dx+dy*dy<cr*cr;
+}
+
+// ============================================================ persistence
+const SAVE_KEY="arcade:colony";
+function loadSave(){
+  try{ const r=JSON.parse(localStorage.getItem(SAVE_KEY)); return (r&&typeof r==="object")?r:{}; }
+  catch{ return {}; }
+}
+function saveBest(rec){
+  try{
+    const cur=loadSave();
+    const merged=Object.assign({},cur,rec);
+    localStorage.setItem(SAVE_KEY, JSON.stringify(merged));
+  }catch{}
+}
+let SAVE=loadSave();
+let MUTED=!!SAVE.muted;
+
+// ============================================================ audio (adapted from engine synth)
+const Sound=(()=>{
+  let ctx=null, master=null;
+  function ensure(){
+    if(ctx) return;
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC) return;
+    ctx=new AC();
+    master=ctx.createGain();
+    master.gain.value=MUTED?0:0.3;
+    master.connect(ctx.destination);
+  }
+  function setMuted(m){ MUTED=m; if(master) master.gain.value=m?0:0.3; saveBest({muted:m}); }
+  function tone(freq,dur,type="square",vol=0.2,slide=0){
+    if(MUTED) return; ensure(); if(!ctx) return;
+    const osc=ctx.createOscillator(), g=ctx.createGain();
+    osc.type=type; osc.frequency.value=freq;
+    if(slide) osc.frequency.exponentialRampToValueAtTime(Math.max(40,freq+slide),ctx.currentTime+dur);
+    g.gain.value=vol; g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+dur);
+    osc.connect(g); g.connect(master); osc.start(); osc.stop(ctx.currentTime+dur);
+  }
+  function noise(dur,vol=0.3,bp=1200){
+    if(MUTED) return; ensure(); if(!ctx) return;
+    const buf=ctx.createBuffer(1,Math.max(1,ctx.sampleRate*dur),ctx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length);
+    const src=ctx.createBufferSource(); src.buffer=buf;
+    const f=ctx.createBiquadFilter(); f.type="bandpass"; f.frequency.value=bp; f.Q.value=0.8;
+    const g=ctx.createGain(); g.gain.value=vol;
+    src.connect(f); f.connect(g); g.connect(master); src.start();
+  }
+  const sfx={
+    place:()=>{ tone(380,0.07,"square",0.16); setTimeout(()=>tone(520,0.07,"square",0.14),55); },
+    sell:()=>{ tone(440,0.06,"triangle",0.12,-160); },
+    deny:()=>{ tone(150,0.1,"square",0.14); },
+    shoot:()=>{ tone(620,0.04,"square",0.07,-180); noise(0.03,0.06,3200); },
+    hitMonster:()=>{ tone(160,0.06,"sawtooth",0.08,-40); },
+    monsterHit:()=>{ noise(0.06,0.12,900); tone(120,0.07,"sawtooth",0.1,-30); },
+    buildingHit:()=>{ noise(0.08,0.14,500); tone(90,0.09,"sawtooth",0.12,-20); },
+    explode:()=>{ noise(0.4,0.4,260); tone(70,0.35,"sawtooth",0.25,-30); },
+    groan:()=>{ tone(80+Math.random()*24,0.3,"sawtooth",0.06,-26); },
+    nightStart:()=>{ tone(180,0.4,"sawtooth",0.16,-60); setTimeout(()=>tone(120,0.5,"sawtooth",0.14,-40),180); },
+    dayStart:()=>{ tone(440,0.18,"triangle",0.12); setTimeout(()=>tone(660,0.22,"triangle",0.12),140); setTimeout(()=>tone(880,0.3,"triangle",0.1),300); },
+    coin:()=>{ tone(720,0.06,"square",0.1); setTimeout(()=>tone(960,0.08,"square",0.08),50); },
+    starve:()=>{ tone(220,0.3,"sawtooth",0.16,-90); },
+    click:()=>{ tone(820,0.03,"square",0.08); },
+    dead:()=>{ tone(200,0.45,"sawtooth",0.26,-130); setTimeout(()=>tone(100,0.7,"sawtooth",0.26,-70),220); },
+    win:()=>{ tone(520,0.12,"square",0.12); setTimeout(()=>tone(660,0.12,"square",0.12),120); setTimeout(()=>tone(880,0.3,"square",0.12),260); },
+  };
+  return {sfx,setMuted,ensure};
+})();
+
+// ============================================================ canvas / DPR
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+let DPR=1, VW=1280, VH=800;
+function resize(){
+  DPR=Math.min(2, window.devicePixelRatio||1);
+  VW=window.innerWidth; VH=window.innerHeight;
+  canvas.width=Math.floor(VW*DPR); canvas.height=Math.floor(VH*DPR);
+  canvas.style.width=VW+"px"; canvas.style.height=VH+"px";
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  layout();
+}
+window.addEventListener("resize",resize);
+
+// ============================================================ grid + layout
+const GRID=15;              // grid is GRID x GRID cells
+let CELL=44;                // px per cell (recomputed on layout)
+let BOARD=GRID*CELL;        // board pixel size
+let ORX=0, ORY=0;          // board origin (top-left) in screen px
+const HUD_H=64;             // top HUD height
+const TRAY_H=92;            // bottom build tray height
+function layout(){
+  const availW=VW-24;
+  const availH=VH-HUD_H-TRAY_H-24;
+  CELL=Math.max(20,Math.floor(Math.min(availW,availH)/GRID));
+  BOARD=GRID*CELL;
+  ORX=Math.floor((VW-BOARD)/2);
+  ORY=Math.floor(HUD_H+8+(availH-BOARD)/2);
+  if(ORY<HUD_H+8) ORY=HUD_H+8;
+}
+function cellToScreen(cx,cy){ return [ORX+cx*CELL, ORY+cy*CELL]; }
+function screenToCell(sx,sy){
+  const cx=Math.floor((sx-ORX)/CELL), cy=Math.floor((sy-ORY)/CELL);
+  return [cx,cy];
+}
+const cellCenter=(cx,cy)=>[ORX+cx*CELL+CELL/2, ORY+cy*CELL+CELL/2];
+
+// ============================================================ input
+const input={keys:new Set(),mx:VW/2,my:VH/2,down:false};
+function isTypingTarget(){
+  const a=document.activeElement;
+  return a && (a.tagName==="INPUT"||a.tagName==="TEXTAREA"||a.isContentEditable);
+}
+window.addEventListener("keydown",e=>{
+  if(isTypingTarget()) return;
+  const k=e.key.toLowerCase();
+  if([" ","arrowup","arrowdown","arrowleft","arrowright","tab"].includes(k)||k===" ") e.preventDefault();
+  input.keys.add(k);
+  handleKey(k,e);
+});
+window.addEventListener("keyup",e=>{ input.keys.delete(e.key.toLowerCase()); });
+function canvasCoords(e){
+  const r=canvas.getBoundingClientRect();
+  return [ (e.clientX-r.left)*(VW/r.width), (e.clientY-r.top)*(VH/r.height) ];
+}
+canvas.addEventListener("mousemove",e=>{ const c=canvasCoords(e); input.mx=c[0]; input.my=c[1]; });
+canvas.addEventListener("mousedown",e=>{
+  const c=canvasCoords(e); input.mx=c[0]; input.my=c[1];
+  Sound.ensure();
+  if(e.button===0){ input.down=true; handleClick(c[0],c[1]); }
+  else if(e.button===2){ handleRightClick(c[0],c[1]); }
+});
+canvas.addEventListener("mouseup",()=>{ input.down=false; });
+canvas.addEventListener("contextmenu",e=>e.preventDefault());
+canvas.addEventListener("mouseleave",()=>{ input.mx=-999; input.my=-999; });
+
+// ============================================================ building defs
+// cost: {wood, food?}  -- wood is "materials"
+const BUILDINGS={
+  house:    {key:"1", name:"House",      cost:{wood:18},          color:"#7fb0d8", icon:"house",  hp:60,  pop:3,   desc:"+3 settler capacity"},
+  farm:     {key:"2", name:"Farm",       cost:{wood:14},          color:"#8ec547", icon:"farm",   hp:50,  food:1.2,desc:"grows food (needs a worker)"},
+  lumber:   {key:"3", name:"Lumberyard", cost:{wood:12},          color:"#c98b4a", icon:"lumber", hp:50,  wood:0.9,desc:"cuts materials (needs a worker)"},
+  quarry:   {key:"4", name:"Quarry",     cost:{wood:22},          color:"#9aa0aa", icon:"quarry", hp:70,  wood:1.5,desc:"mines materials (needs a worker)"},
+  turret:   {key:"5", name:"Turret",     cost:{wood:30},          color:"#d24b35", icon:"turret", hp:55,  range:3.1,dmg:7,rate:0.55, desc:"shoots husks (no worker)"},
+  wall:     {key:"6", name:"Palisade",   cost:{wood:6},           color:"#6b5536", icon:"wall",   hp:120, desc:"blocks & soaks hits"},
+  hearth:   {key:"7", name:"Hearth",     cost:{wood:0},           color:"#f0c24b", icon:"hearth", hp:200, core:true, desc:"your colony heart — protect it"},
+};
+const ORDER=["house","farm","lumber","quarry","turret","wall","hearth"];
+const SELL_REFUND=0.5;
+
+// ============================================================ game state
+let G=null;
+function newGame(){
+  layout();
+  const cells=[];
+  for(let y=0;y<GRID;y++){ const row=[]; for(let x=0;x<GRID;x++) row.push(null); cells.push(row); }
+  G={
+    cells, buildings:[], monsters:[], particles:[], floaters:[], bullets:[],
+    res:{wood:60, food:30},
+    pop:0, popCap:0, workers:0,
+    day:1, phase:"day", phaseT:0, // phase: day | night
+    dayLen:26, nightActive:false,
+    selected:"house", // current building tool
+    speed:1, fastHold:false,
+    shake:0, flash:0, flashColor:"255,80,40",
+    incoming:0, // monsters left to spawn this night
+    spawnTimer:0, spawnQueue:[], monstersKilled:0, woodGathered:0,
+    over:false, won:false, reason:"",
+    starveT:0, msg:"", msgT:0,
+    nightThreat:0,
+    foodAccum:0,
+    bobT:0,
+  };
+  // place hearth at center
+  const c=Math.floor(GRID/2);
+  placeBuilding("hearth", c, c, true);
+  G.selected="house";
+  return G;
+}
+
+function buildingAt(cx,cy){
+  if(cx<0||cy<0||cx>=GRID||cy>=GRID) return null;
+  return G.cells[cy][cx];
+}
+function isBlocked(cx,cy){ return !!buildingAt(cx,cy); }
+
+function placeBuilding(type,cx,cy,free){
+  const def=BUILDINGS[type];
+  const [sx,sy]=cellCenter(cx,cy);
+  const b={
+    type, def, cx, cy,
+    hp:def.hp, maxHp:def.hp,
+    x:sx, y:sy,
+    cool:0, worked:false, prodT:0,
+    flash:0, born:0,
+    aimA:-Math.PI/2,
+  };
+  G.cells[cy][cx]=b;
+  G.buildings.push(b);
+  return b;
+}
+function removeBuilding(b){
+  if(G.cells[b.cy][b.cx]===b) G.cells[b.cy][b.cx]=null;
+  const i=G.buildings.indexOf(b); if(i>=0) G.buildings.splice(i,1);
+}
+
+function canAfford(cost){
+  return (G.res.wood>=(cost.wood||0)) && (G.res.food>=(cost.food||0));
+}
+function payCost(cost){
+  G.res.wood-=(cost.wood||0); G.res.food-=(cost.food||0);
+}
+
+// ============================================================ messages / floaters
+function flash(msg,color){ G.msg=msg; G.msgT=2.2; if(color) G.msgColor=color; else G.msgColor="232,230,223"; }
+function floater(x,y,text,color){
+  G.floaters.push({x,y,text,color:color||"#e8e6df",life:1.1,vy:-26});
+}
+function burst(x,y,color,n,spd){
+  n=n||8; spd=spd||90;
+  for(let i=0;i<n;i++){
+    const a=rand(0,TAU), s=rand(spd*0.3,spd);
+    G.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(0.3,0.7),r:rand(1.5,3.5),color});
+  }
+}
+function addShake(a){ G.shake=Math.min(16,G.shake+a); }
+
+// ============================================================ placement / tool handling
+let ghostValid=false;
+
+function currentCellUnderMouse(){
+  const [cx,cy]=screenToCell(input.mx,input.my);
+  if(cx<0||cy<0||cx>=GRID||cy>=GRID) return null;
+  return [cx,cy];
+}
+
+function handleKey(k,e){
+  if(state==="menu"){
+    if(k==="enter"||k===" ") startGame();
+    return;
+  }
+  if(state==="over"){
+    if(k==="enter") { startGame(); }
+    return;
+  }
+  if(k==="m"){ Sound.setMuted(!MUTED); flash(MUTED?"Muted":"Sound on"); return; }
+  if(k==="escape"||k==="p"){ togglePause(); return; }
+  if(state!=="play") return;
+
+  // building hotkeys 1..7
+  for(const t of ORDER){
+    if(BUILDINGS[t].key===k && t!=="hearth"){ // can't place another hearth
+      G.selected=t; Sound.sfx.click(); return;
+    }
+  }
+  if(k==="x"){ G.selected=null; return; } // cancel tool
+  if(k==="tab"){
+    G.speed = G.speed>=3?1:G.speed+1;
+    flash(G.speed+"× speed");
+    return;
+  }
+}
+
+function handleClick(sx,sy){
+  if(state!=="play") return;
+  const [cx,cy]=screenToCell(sx,sy);
+  if(cx<0||cy<0||cx>=GRID||cy>=GRID) return;
+  if(!G.selected){ Sound.sfx.click(); return; }
+  const def=BUILDINGS[G.selected];
+  if(isBlocked(cx,cy)){ Sound.sfx.deny(); addShake(1.5); return; }
+  if(!canAfford(def.cost)){ Sound.sfx.deny(); flash("Not enough materials", "232,168,58"); addShake(1.5); return; }
+  payCost(def.cost);
+  const b=placeBuilding(G.selected,cx,cy);
+  b.flash=0.5;
+  Sound.sfx.place();
+  const [px,py]=cellCenter(cx,cy);
+  burst(px,py,def.color,10,120);
+  recomputePop();
+}
+
+function handleRightClick(sx,sy){
+  if(state!=="play") return;
+  // cancel current tool OR sell hovered building
+  const [cx,cy]=screenToCell(sx,sy);
+  const b=buildingAt(cx,cy);
+  if(b && !b.def.core){
+    const refund=Math.floor((b.def.cost.wood||0)*SELL_REFUND);
+    G.res.wood+=refund;
+    removeBuilding(b);
+    const [px,py]=cellCenter(cx,cy);
+    burst(px,py,"#caa", 8,90);
+    if(refund>0) floater(px,py,"+"+refund,"#c98b4a");
+    Sound.sfx.sell();
+    recomputePop();
+    return;
+  }
+  // otherwise just deselect tool
+  G.selected=null;
+}
+
+// ============================================================ pop / economy
+function recomputePop(){
+  let cap=2; // base settlers
+  for(const b of G.buildings){
+    if(b.type==="house") cap+=b.def.pop;
+  }
+  G.popCap=cap;
+}
+
+// assign workers to production buildings each tick (food first if hungry, else balanced)
+function assignWorkers(){
+  // pop available = popCap (settlers). Each farm/lumber/quarry needs 1 worker.
+  let workers=G.popCap;
+  // turrets need no worker. priority: farms (if food low) then materials buildings
+  const farms=G.buildings.filter(b=>b.type==="farm");
+  const mats=G.buildings.filter(b=>b.type==="lumber"||b.type==="quarry");
+  for(const b of G.buildings) b.worked=false;
+  // Decide priority: keep food positive
+  const foodLow = G.res.food < 18;
+  let order = foodLow ? farms.concat(mats) : interleave(farms,mats);
+  for(const b of order){
+    if(workers>0){ b.worked=true; workers--; }
+  }
+  G.workers=G.popCap-workers;
+  G.idle=workers;
+}
+function interleave(a,b){
+  const out=[]; const n=Math.max(a.length,b.length);
+  for(let i=0;i<n;i++){ if(i<a.length) out.push(a[i]); if(i<b.length) out.push(b[i]); }
+  return out;
+}
+
+// ============================================================ night / waves
+function startNight(){
+  G.phase="night"; G.phaseT=0;
+  Sound.sfx.nightStart();
+  // threat scales with day
+  const d=G.day;
+  const count=Math.round(4 + d*1.7 + Math.pow(d,1.35));
+  G.incoming=count;
+  G.spawnQueue=[];
+  const hpScale=1 + d*0.22;
+  const spdScale=1 + d*0.04;
+  for(let i=0;i<count;i++){
+    let kind="husk";
+    const r=Math.random();
+    if(d>=3 && r<0.18+d*0.012) kind="runner";
+    if(d>=5 && r>0.86) kind="brute";
+    G.spawnQueue.push({kind,hpScale,spdScale});
+  }
+  // shuffle a bit so brutes aren't all last
+  for(let i=G.spawnQueue.length-1;i>0;i--){ const j=randi(0,i+1); const t=G.spawnQueue[i]; G.spawnQueue[i]=G.spawnQueue[j]; G.spawnQueue[j]=t; }
+  G.spawnTimer=1.0;
+  G.nightThreat=count;
+  flash("NIGHT "+G.day+" — they come","210,75,53");
+}
+function startDay(){
+  G.day++;
+  G.phase="day"; G.phaseT=0;
+  Sound.sfx.dayStart();
+  if(G.day>WIN_DAY){ winGame(); return; }
+  flash("Dawn — Day "+G.day,"142,197,71");
+}
+
+const WIN_DAY=18; // surviving past this = victory
+
+const MONSTER_TYPES={
+  husk:  {r:11, hp:16, spd:34, dmg:6,  color:"#6f7d4e", color2:"#4c5836"},
+  runner:{r:9,  hp:10, spd:62, dmg:5,  color:"#c06a3a", color2:"#7a3f20"},
+  brute: {r:16, hp:54, spd:24, dmg:14, color:"#8a5a8f", color2:"#532f57"},
+};
+
+function spawnMonster(spec){
+  const t=MONSTER_TYPES[spec.kind];
+  // spawn outside the board edge, pick a side
+  const side=randi(0,4);
+  let x,y;
+  const pad=CELL*1.2;
+  if(side===0){ x=ORX+rand(0,BOARD); y=ORY-pad; }
+  else if(side===1){ x=ORX+BOARD+pad; y=ORY+rand(0,BOARD); }
+  else if(side===2){ x=ORX+rand(0,BOARD); y=ORY+BOARD+pad; }
+  else { x=ORX-pad; y=ORY+rand(0,BOARD); }
+  G.monsters.push({
+    kind:spec.kind, t, x, y,
+    r:t.r,
+    hp:t.hp*spec.hpScale, maxHp:t.hp*spec.hpScale,
+    spd:t.spd*spec.spdScale,
+    dmg:t.dmg,
+    target:null, attackCool:0,
+    flash:0, hitFlash:0,
+    bob:rand(0,TAU),
+    groanT:rand(1,4),
+  });
+}
+
+// find nearest building (prefer attacking what's in the way; target hearth)
+function pickTarget(m){
+  // target: nearest building (any). Monsters chew through walls to reach core.
+  let best=null, bd=Infinity;
+  for(const b of G.buildings){
+    const dx=b.x-m.x, dy=b.y-m.y;
+    const d=dx*dx+dy*dy;
+    // weight hearth slightly so they converge
+    const w = b.def.core?0.6:1;
+    const dw=d*w*w;
+    if(dw<bd){ bd=dw; best=b; }
+  }
+  return best;
+}
+
+// ============================================================ update
+let state="menu"; // menu | play | pause | over
+
+function update(dt){
+  G.bobT+=dt;
+  // decay juice
+  G.shake=Math.max(0,G.shake-dt*30);
+  G.flash=Math.max(0,G.flash-dt*2.4);
+  if(G.msgT>0) G.msgT-=dt;
+
+  // particles
+  for(let i=G.particles.length-1;i>=0;i--){
+    const p=G.particles[i];
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.95; p.vy*=0.95; p.vy+=40*dt;
+    p.life-=dt; if(p.life<=0) G.particles.splice(i,1);
+  }
+  for(let i=G.floaters.length-1;i>=0;i--){
+    const f=G.floaters[i]; f.y+=f.vy*dt; f.vy*=0.94; f.life-=dt;
+    if(f.life<=0) G.floaters.splice(i,1);
+  }
+  for(let i=G.bullets.length-1;i>=0;i--){
+    const b=G.bullets[i];
+    b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt;
+    if(b.life<=0){ G.bullets.splice(i,1); }
+  }
+
+  if(state!=="play") return;
+
+  // phase timer
+  G.phaseT+=dt;
+
+  assignWorkers();
+
+  // production (only during the whole cycle; production paused for buildings being attacked? keep simple: always)
+  let foodRate=0, woodRate=0;
+  for(const b of G.buildings){
+    if(b.flash>0) b.flash-=dt;
+    if(b.type==="farm" && b.worked){ foodRate+=b.def.food; }
+    else if((b.type==="lumber"||b.type==="quarry") && b.worked){ woodRate+=b.def.wood; }
+    // turret firing handled in night/always
+    if(b.type==="turret"){ updateTurret(b,dt); }
+    // production puff
+    if((b.type==="farm"||b.type==="lumber"||b.type==="quarry") && b.worked){
+      b.prodT+=dt;
+      if(b.prodT>=1.4){ b.prodT=0; burst(b.x,b.y-2, b.type==="farm"?"#8ec547":"#c98b4a", 3, 30); }
+    }
+  }
+  // food consumption: each settler eats
+  const eat = G.popCap*0.16;
+  G.res.food += (foodRate - eat)*dt;
+  G.res.wood += woodRate*dt;
+  G.foodRate=foodRate-eat; G.woodRate=woodRate;
+  if(woodRate>0) G.woodGathered+=woodRate*dt;
+
+  if(G.res.food<0){
+    G.res.food=0;
+    G.starveT+=dt;
+    if(G.starveT>0.5){ Sound.sfx.starve(); flash("STARVING — build farms!","200,50,50"); G.starveT=0; addShake(2); G.flash=0.4; G.flashColor="200,50,50"; }
+    // starvation slowly kills the hearth (colony morale collapse)
+    const hearth=G.buildings.find(b=>b.def.core);
+    if(hearth){ hearth.hp-=6*dt; if(hearth.hp<=0){ loseGame("Your colony starved."); return; } }
+  } else { G.starveT=0; }
+  if(G.res.food>999) G.res.food=999;
+  if(G.res.wood>999) G.res.wood=999;
+
+  // phase transitions
+  if(G.phase==="day"){
+    if(G.phaseT>=G.dayLen){ startNight(); }
+  } else { // night
+    // spawn queue
+    if(G.spawnQueue.length>0){
+      G.spawnTimer-=dt;
+      if(G.spawnTimer<=0){
+        spawnMonster(G.spawnQueue.shift());
+        const base=Math.max(0.35, 1.4 - G.day*0.04);
+        G.spawnTimer=rand(base*0.6,base);
+      }
+    }
+    // night ends when all spawned & all dead
+    if(G.spawnQueue.length===0 && G.monsters.length===0){
+      // small grace pause then dawn
+      G.nightClearT=(G.nightClearT||0)+dt;
+      if(G.nightClearT>1.2){ G.nightClearT=0; startDay(); }
+    } else { G.nightClearT=0; }
+  }
+
+  updateMonsters(dt);
+
+  // recompute pop count for display
+  G.nightThreat = G.spawnQueue.length + G.monsters.length;
+}
+
+function updateTurret(b,dt){
+  if(b.cool>0) b.cool-=dt;
+  // find nearest monster in range
+  const rangePx=b.def.range*CELL;
+  let best=null, bd=Infinity;
+  for(const m of G.monsters){
+    const dx=m.x-b.x, dy=m.y-b.y, d=dx*dx+dy*dy;
+    if(d<rangePx*rangePx && d<bd){ bd=d; best=m; }
+  }
+  if(best){
+    const ang=Math.atan2(best.y-b.y,best.x-b.x);
+    // smooth aim
+    let da=ang-b.aimA; while(da>Math.PI)da-=TAU; while(da<-Math.PI)da+=TAU;
+    b.aimA+=da*Math.min(1,dt*12);
+    if(b.cool<=0){
+      b.cool=b.def.rate;
+      fireBullet(b,best);
+    }
+  }
+}
+function fireBullet(b,target){
+  const ang=Math.atan2(target.y-b.y,target.x-b.x);
+  const spd=520;
+  const mx=b.x+Math.cos(b.aimA)*(CELL*0.32), my=b.y+Math.sin(b.aimA)*(CELL*0.32);
+  G.bullets.push({x:mx,y:my,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,life:0.6,dmg:b.def.dmg,from:b});
+  Sound.sfx.shoot();
+  burst(mx,my,"#ffd27f",2,140);
+}
+
+function updateMonsters(dt){
+  // bullets hit monsters
+  for(let bi=G.bullets.length-1;bi>=0;bi--){
+    const bl=G.bullets[bi];
+    let hit=false;
+    for(const m of G.monsters){
+      const dx=m.x-bl.x, dy=m.y-bl.y;
+      if(dx*dx+dy*dy < (m.r+3)*(m.r+3)){
+        damageMonster(m,bl.dmg);
+        hit=true; break;
+      }
+    }
+    if(hit){ G.bullets.splice(bi,1); }
+  }
+
+  for(let i=G.monsters.length-1;i>=0;i--){
+    const m=G.monsters[i];
+    if(m.hitFlash>0) m.hitFlash-=dt;
+    m.bob+=dt*8;
+    if(m.attackCool>0) m.attackCool-=dt;
+    m.groanT-=dt;
+    if(m.groanT<=0){ m.groanT=rand(2.5,6); if(Math.random()<0.5) Sound.sfx.groan(); }
+
+    // pick / refresh target
+    if(!m.target || m.target.hp<=0 || G.buildings.indexOf(m.target)<0){
+      m.target=pickTarget(m);
+    }
+    if(!m.target){ // nothing left — should be game over but guard
+      m.x+=0; continue;
+    }
+    const tx=m.target.x, ty=m.target.y;
+    const dx=tx-m.x, dy=ty-m.y;
+    const d=Math.hypot(dx,dy)||1;
+    const reach=m.r + CELL*0.42;
+    if(d>reach){
+      // move toward target; simple steering, avoid stacking on each other lightly
+      let mvx=dx/d, mvy=dy/d;
+      m.x+=mvx*m.spd*dt;
+      m.y+=mvy*m.spd*dt;
+    } else {
+      // attack target building
+      if(m.attackCool<=0){
+        m.attackCool=0.7;
+        damageBuilding(m.target,m.dmg);
+        m.lunge=0.2;
+      }
+    }
+    if(m.lunge>0) m.lunge-=dt;
+
+    // separation: nudge apart from nearby monsters so they don't fully overlap
+    for(let j=i+1;j<G.monsters.length;j++){
+      const o=G.monsters[j];
+      const ddx=o.x-m.x, ddy=o.y-m.y; const dd=Math.hypot(ddx,ddy);
+      const minD=m.r+o.r;
+      if(dd>0 && dd<minD){
+        const push=(minD-dd)*0.5;
+        const nx=ddx/dd, ny=ddy/dd;
+        m.x-=nx*push; m.y-=ny*push; o.x+=nx*push; o.y+=ny*push;
+      }
+    }
+  }
+}
+
+function damageMonster(m,dmg){
+  m.hp-=dmg; m.hitFlash=0.12;
+  burst(m.x,m.y,m.t.color,3,80);
+  Sound.sfx.hitMonster();
+  if(m.hp<=0){ killMonster(m); }
+}
+function killMonster(m){
+  const i=G.monsters.indexOf(m); if(i<0) return;
+  G.monsters.splice(i,1);
+  G.monstersKilled++;
+  burst(m.x,m.y,m.t.color2,12,130);
+  burst(m.x,m.y,m.t.color,8,90);
+  Sound.sfx.monsterHit();
+  addShake(2);
+  // reward: small materials drop
+  const drop=m.kind==="brute"?4:m.kind==="runner"?2:1;
+  G.res.wood+=drop;
+  floater(m.x,m.y,"+"+drop,"#c98b4a");
+}
+function damageBuilding(b,dmg){
+  b.hp-=dmg; b.flash=0.25;
+  Sound.sfx.buildingHit();
+  burst(b.x,b.y, b.def.core?"#f0c24b":"#caa", 4, 70);
+  addShake(b.def.core?2.4:1.2);
+  if(b.def.core){ G.flash=0.35; G.flashColor="210,75,53"; }
+  if(b.hp<=0){ destroyBuilding(b); }
+}
+function destroyBuilding(b){
+  const core=b.def.core;
+  removeBuilding(b);
+  burst(b.x,b.y,"#888",16,150);
+  burst(b.x,b.y,b.def.color,10,110);
+  Sound.sfx.explode();
+  addShake(6); G.flash=0.5; G.flashColor="255,120,40";
+  // retarget monsters that were on it
+  for(const m of G.monsters){ if(m.target===b) m.target=null; }
+  recomputePop();
+  if(core){ loseGame("Your Hearth was destroyed."); }
+}
+
+// ============================================================ end states
+function loseGame(reason){
+  if(G.over) return;
+  G.over=true; G.won=false; G.reason=reason||"The hold has fallen.";
+  Sound.sfx.dead();
+  addShake(10); G.flash=0.7; G.flashColor="200,40,40";
+  setTimeout(()=>showOver(false),700);
+}
+function winGame(){
+  if(G.over) return;
+  G.over=true; G.won=true; G.reason="You held Emberhold through the long siege. The colony endures.";
+  G.day=WIN_DAY; // cap shown
+  Sound.sfx.win();
+  setTimeout(()=>showOver(true),500);
+}
+
+// ============================================================ render
+function render(){
+  ctx.clearRect(0,0,VW,VH);
+
+  // dynamic sky background tied to phase
+  drawBackground();
+
+  ctx.save();
+  if(G && G.shake>0){
+    ctx.translate(rand(-G.shake,G.shake),rand(-G.shake,G.shake));
+  }
+
+  if(G){
+    drawBoard();
+    drawBuildings();
+    drawBullets();
+    drawMonsters();
+    drawParticles();
+    drawGhost();
+    drawFloaters();
+  }
+  ctx.restore();
+
+  if(G){
+    drawHUD();
+    drawTray();
+    drawCenterMsg();
+  }
+
+  // global flash
+  if(G && G.flash>0){
+    ctx.fillStyle="rgba("+G.flashColor+","+(G.flash*0.5)+")";
+    ctx.fillRect(0,0,VW,VH);
+  }
+}
+
+function phaseDarkness(){
+  if(!G) return 0;
+  // 0 at full day, ~0.62 at deep night
+  if(G.phase==="day"){
+    const t=G.phaseT/G.dayLen;
+    // dusk in last 18%
+    return t>0.82? lerp(0,0.5,(t-0.82)/0.18) : 0;
+  } else {
+    const total=G.nightTotalEst||10;
+    return 0.55;
+  }
+}
+function drawBackground(){
+  const dark=phaseDarkness();
+  // sky gradient
+  const g=ctx.createLinearGradient(0,0,0,VH);
+  if(G && G.phase==="night"){
+    g.addColorStop(0,"#0a0c14"); g.addColorStop(1,"#05060a");
+  } else if(dark>0){
+    g.addColorStop(0,lerpHex("#16202c","#0a0c14",dark*2)); g.addColorStop(1,"#08090d");
+  } else {
+    g.addColorStop(0,"#12161c"); g.addColorStop(1,"#0b0c0e");
+  }
+  ctx.fillStyle=g; ctx.fillRect(0,0,VW,VH);
+  // subtle stars at night
+  if(G && (G.phase==="night")){
+    ctx.fillStyle="rgba(200,210,255,0.5)";
+    for(let i=0;i<40;i++){
+      const sx=(i*137.5)%VW, sy=(i*89.3)%(VH*0.5);
+      const tw=0.5+0.5*Math.sin(G.bobT*2+i);
+      ctx.globalAlpha=0.3*tw; ctx.fillRect(sx,sy,2,2);
+    }
+    ctx.globalAlpha=1;
+  }
+}
+function lerpHex(a,b,t){
+  t=clamp(t,0,1);
+  const pa=hx(a), pb=hx(b);
+  return "rgb("+Math.round(lerp(pa[0],pb[0],t))+","+Math.round(lerp(pa[1],pb[1],t))+","+Math.round(lerp(pa[2],pb[2],t))+")";
+}
+function hx(h){ h=h.replace("#",""); return [parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)]; }
+
+function drawBoard(){
+  const dark=G.phase==="night"?0.5:phaseDarkness();
+  // ground
+  ctx.fillStyle="#15181a";
+  roundRect(ORX-4,ORY-4,BOARD+8,BOARD+8,6); ctx.fill();
+  // grass-ish cells
+  for(let y=0;y<GRID;y++){
+    for(let x=0;x<GRID;x++){
+      const [sx,sy]=cellToScreen(x,y);
+      const checker=((x+y)&1);
+      let base = checker? "#1d2a1c":"#1a261a";
+      if(dark>0.3) base = checker? "#141d16":"#121b14";
+      ctx.fillStyle=base;
+      ctx.fillRect(sx+1,sy+1,CELL-2,CELL-2);
+    }
+  }
+  // grid lines
+  ctx.strokeStyle="rgba(255,255,255,0.04)"; ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let i=0;i<=GRID;i++){
+    ctx.moveTo(ORX+i*CELL,ORY); ctx.lineTo(ORX+i*CELL,ORY+BOARD);
+    ctx.moveTo(ORX,ORY+i*CELL); ctx.lineTo(ORX+BOARD,ORY+i*CELL);
+  }
+  ctx.stroke();
+  // border glow tinted by phase
+  ctx.strokeStyle = G.phase==="night"? "rgba(210,75,53,0.5)":"rgba(142,197,71,0.32)";
+  ctx.lineWidth=2;
+  roundRect(ORX-4,ORY-4,BOARD+8,BOARD+8,6); ctx.stroke();
+}
+
+function drawBuildings(){
+  for(const b of G.buildings){
+    drawBuilding(b);
+  }
+}
+function drawBuilding(b){
+  const [sx,sy]=cellToScreen(b.cx,b.cy);
+  const cs=CELL, pad=Math.max(3,CELL*0.10);
+  const x=sx+pad, y=sy+pad, w=cs-pad*2, h=cs-pad*2;
+  const cx=sx+cs/2, cy=sy+cs/2;
+  const def=b.def;
+  // flash overlay when hit/placed
+  const flashT=b.flash>0? b.flash : 0;
+
+  // shadow
+  ctx.fillStyle="rgba(0,0,0,0.35)";
+  roundRect(x+2,y+3,w,h,4); ctx.fill();
+
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.translate(-cx,-cy);
+
+  // base plate
+  ctx.fillStyle="#0f1113";
+  roundRect(x,y,w,h,4); ctx.fill();
+
+  // type-specific procedural art
+  drawBuildingArt(b,x,y,w,h,cx,cy);
+
+  // hit flash
+  if(flashT>0){
+    ctx.fillStyle="rgba(255,255,255,"+(flashT*0.8)+")";
+    roundRect(x,y,w,h,4); ctx.fill();
+  }
+  ctx.restore();
+
+  // worker indicator (small green dot) for producers
+  if((b.type==="farm"||b.type==="lumber"||b.type==="quarry")){
+    ctx.fillStyle=b.worked? "#8ec547":"#55585f";
+    ctx.beginPath(); ctx.arc(sx+cs-7,sy+7,3,0,TAU); ctx.fill();
+    if(!b.worked){
+      // "no worker" subtle
+      ctx.strokeStyle="rgba(232,168,58,0.5)"; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(sx+cs-7,sy+7,5,0,TAU); ctx.stroke();
+    }
+  }
+
+  // hp bar if damaged
+  if(b.hp<b.maxHp){
+    const bw=cs-10, bx=sx+5, by=sy+cs-6;
+    ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillRect(bx,by,bw,4);
+    const frac=clamp(b.hp/b.maxHp,0,1);
+    ctx.fillStyle=frac>0.5?"#8ec547":frac>0.25?"#e3a83a":"#c83232";
+    ctx.fillRect(bx,by,bw*frac,4);
+  }
+}
+
+function drawBuildingArt(b,x,y,w,h,cx,cy){
+  const icon=b.def.icon;
+  const col=b.def.color;
+  if(icon==="hearth"){
+    // stone ring with flickering fire
+    ctx.fillStyle="#3a3530"; roundRect(x,y,w,h,5); ctx.fill();
+    ctx.fillStyle="#2a2722"; roundRect(x+w*0.16,y+h*0.16,w*0.68,h*0.68,4); ctx.fill();
+    // fire
+    const f=0.7+0.3*Math.sin(G.bobT*9)+0.15*Math.sin(G.bobT*17);
+    const fh=h*0.5*f;
+    const grad=ctx.createRadialGradient(cx,cy+h*0.08,2,cx,cy,w*0.4);
+    grad.addColorStop(0,"#fff2b0"); grad.addColorStop(0.4,"#f0c24b"); grad.addColorStop(0.8,"#d24b35"); grad.addColorStop(1,"rgba(210,75,53,0)");
+    ctx.fillStyle=grad;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy-fh+h*0.1);
+    ctx.quadraticCurveTo(cx+w*0.22,cy,cx+w*0.1,cy+h*0.22);
+    ctx.lineTo(cx-w*0.1,cy+h*0.22);
+    ctx.quadraticCurveTo(cx-w*0.22,cy,cx,cy-fh+h*0.1);
+    ctx.fill();
+    // ember glow
+    ctx.fillStyle="rgba(240,194,75,0.12)";
+    ctx.beginPath(); ctx.arc(cx,cy,w*0.6,0,TAU); ctx.fill();
+  } else if(icon==="house"){
+    // walls
+    ctx.fillStyle="#3c4a57"; roundRect(x,y+h*0.34,w,h*0.66,3); ctx.fill();
+    // roof
+    ctx.fillStyle=col;
+    ctx.beginPath();
+    ctx.moveTo(x-1,y+h*0.42); ctx.lineTo(cx,y); ctx.lineTo(x+w+1,y+h*0.42);
+    ctx.closePath(); ctx.fill();
+    // door
+    ctx.fillStyle="#26303a"; ctx.fillRect(cx-w*0.11,y+h*0.6,w*0.22,h*0.4);
+    // window
+    ctx.fillStyle="#f0c24b"; ctx.globalAlpha=G.phase==="night"?0.9:0.4;
+    ctx.fillRect(x+w*0.16,y+h*0.5,w*0.16,w*0.16);
+    ctx.globalAlpha=1;
+  } else if(icon==="farm"){
+    ctx.fillStyle="#3a2c1c"; roundRect(x,y,w,h,3); ctx.fill();
+    // rows of crops
+    const rows=3;
+    for(let r=0;r<rows;r++){
+      const ry=y+h*0.2+r*(h*0.26);
+      ctx.fillStyle="#2c220f"; ctx.fillRect(x+2,ry,w-4,h*0.12);
+      ctx.fillStyle=col;
+      const sway=b.worked? Math.sin(G.bobT*3+r)*1.5:0;
+      for(let c=0;c<4;c++){
+        const px=x+w*0.16+c*(w*0.22)+sway;
+        ctx.beginPath(); ctx.arc(px,ry+h*0.02,w*0.05,0,TAU); ctx.fill();
+      }
+    }
+  } else if(icon==="lumber"){
+    ctx.fillStyle="#2c2418"; roundRect(x,y,w,h,3); ctx.fill();
+    // log stack
+    ctx.fillStyle=col;
+    for(let r=0;r<2;r++){
+      for(let c=0;c<3;c++){
+        ctx.beginPath(); ctx.arc(x+w*0.24+c*(w*0.26), y+h*0.34+r*(h*0.34), w*0.11,0,TAU); ctx.fill();
+        ctx.fillStyle="#7a5530";
+        ctx.beginPath(); ctx.arc(x+w*0.24+c*(w*0.26), y+h*0.34+r*(h*0.34), w*0.05,0,TAU); ctx.fill();
+        ctx.fillStyle=col;
+      }
+    }
+    // axe
+    ctx.strokeStyle="#9aa0aa"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(x+w*0.7,y+h*0.2); ctx.lineTo(x+w*0.82,y+h*0.52); ctx.stroke();
+  } else if(icon==="quarry"){
+    ctx.fillStyle="#23262b"; roundRect(x,y,w,h,3); ctx.fill();
+    // rocks
+    ctx.fillStyle=col;
+    const rocks=[[0.3,0.6,0.16],[0.6,0.45,0.2],[0.5,0.72,0.13],[0.72,0.68,0.12]];
+    for(const r of rocks){
+      ctx.beginPath(); ctx.arc(x+w*r[0],y+h*r[1],w*r[2],0,TAU); ctx.fill();
+    }
+    ctx.fillStyle="#6a7078";
+    ctx.beginPath(); ctx.arc(x+w*0.6,y+h*0.45,w*0.1,0,TAU); ctx.fill();
+    // pick sheen
+    ctx.fillStyle="rgba(255,255,255,0.12)";
+    ctx.beginPath(); ctx.arc(x+w*0.5,y+h*0.66,w*0.05,0,TAU); ctx.fill();
+  } else if(icon==="turret"){
+    // base
+    ctx.fillStyle="#2a2e36"; ctx.beginPath(); ctx.arc(cx,cy,w*0.4,0,TAU); ctx.fill();
+    ctx.fillStyle="#3a3030"; ctx.beginPath(); ctx.arc(cx,cy,w*0.28,0,TAU); ctx.fill();
+    // barrel
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(b.aimA);
+    ctx.fillStyle=col; roundRect(0,-w*0.07,w*0.46,w*0.14,2); ctx.fill();
+    ctx.fillStyle="#7a2418"; ctx.fillRect(w*0.4,-w*0.05,w*0.06,w*0.1);
+    ctx.restore();
+    // hub
+    ctx.fillStyle="#d24b35"; ctx.beginPath(); ctx.arc(cx,cy,w*0.1,0,TAU); ctx.fill();
+  } else if(icon==="wall"){
+    // palisade logs
+    ctx.fillStyle="#3a2e1c"; roundRect(x,y,w,h,2); ctx.fill();
+    ctx.fillStyle=col;
+    const n=4;
+    for(let i=0;i<n;i++){
+      const px=x+ (i+0.5)*(w/n);
+      ctx.beginPath();
+      ctx.moveTo(px-w/(n*2)+1,y+h*0.18);
+      ctx.lineTo(px+w/(n*2)-1,y+h*0.18);
+      ctx.lineTo(px+w/(n*2)-1,y+h);
+      ctx.lineTo(px-w/(n*2)+1,y+h);
+      ctx.closePath(); ctx.fill();
+      // pointed top
+      ctx.beginPath();
+      ctx.moveTo(px-w/(n*2)+1,y+h*0.18);
+      ctx.lineTo(px,y+h*0.02);
+      ctx.lineTo(px+w/(n*2)-1,y+h*0.18);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle="rgba(0,0,0,0.25)"; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(px,y+h*0.2); ctx.lineTo(px,y+h); ctx.stroke();
+    }
+  }
+}
+
+function drawBullets(){
+  for(const b of G.bullets){
+    ctx.fillStyle="#ffe49a";
+    ctx.beginPath(); ctx.arc(b.x,b.y,2.6,0,TAU); ctx.fill();
+    // trail
+    ctx.strokeStyle="rgba(255,210,120,0.5)"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(b.x,b.y); ctx.lineTo(b.x-b.vx*0.02,b.y-b.vy*0.02); ctx.stroke();
+  }
+}
+
+function drawMonsters(){
+  for(const m of G.monsters){
+    const bob=Math.sin(m.bob)*1.5;
+    const lunge=m.lunge>0? m.lunge*10:0;
+    const x=m.x, y=m.y+bob;
+    // shadow
+    ctx.fillStyle="rgba(0,0,0,0.4)";
+    ctx.beginPath(); ctx.ellipse(m.x,m.y+m.r*0.7,m.r*0.8,m.r*0.35,0,0,TAU); ctx.fill();
+    // body
+    ctx.fillStyle=m.hitFlash>0? "#fff": m.t.color;
+    ctx.beginPath(); ctx.arc(x,y,m.r,0,TAU); ctx.fill();
+    ctx.fillStyle=m.hitFlash>0? "#fff": m.t.color2;
+    ctx.beginPath(); ctx.arc(x,y+m.r*0.2,m.r*0.7,0,TAU); ctx.fill();
+    // eyes
+    if(m.hitFlash<=0){
+      ctx.fillStyle="#f0c24b";
+      const ex=m.r*0.32;
+      ctx.beginPath(); ctx.arc(x-ex,y-m.r*0.15,m.r*0.16,0,TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(x+ex,y-m.r*0.15,m.r*0.16,0,TAU); ctx.fill();
+      ctx.fillStyle="#000";
+      ctx.beginPath(); ctx.arc(x-ex,y-m.r*0.15,m.r*0.07,0,TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(x+ex,y-m.r*0.15,m.r*0.07,0,TAU); ctx.fill();
+    }
+    // brute spikes
+    if(m.kind==="brute"){
+      ctx.fillStyle=m.t.color2;
+      for(let i=0;i<5;i++){
+        const a=i/5*TAU - Math.PI/2;
+        ctx.beginPath();
+        ctx.moveTo(x+Math.cos(a)*m.r, y+Math.sin(a)*m.r);
+        ctx.lineTo(x+Math.cos(a)*(m.r+5), y+Math.sin(a)*(m.r+5));
+        ctx.lineTo(x+Math.cos(a+0.2)*m.r, y+Math.sin(a+0.2)*m.r);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+    // hp bar
+    if(m.hp<m.maxHp){
+      const bw=m.r*2, bx=m.x-m.r, by=m.y-m.r-7;
+      ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillRect(bx,by,bw,3);
+      ctx.fillStyle="#c83232"; ctx.fillRect(bx,by,bw*clamp(m.hp/m.maxHp,0,1),3);
+    }
+  }
+}
+
+function drawParticles(){
+  for(const p of G.particles){
+    ctx.globalAlpha=clamp(p.life*1.6,0,1);
+    ctx.fillStyle=p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,TAU); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+function drawFloaters(){
+  ctx.font="700 14px 'JetBrains Mono', monospace";
+  ctx.textAlign="center";
+  for(const f of G.floaters){
+    ctx.globalAlpha=clamp(f.life*1.4,0,1);
+    ctx.fillStyle="rgba(0,0,0,0.5)"; ctx.fillText(f.text,f.x+1,f.y+1);
+    ctx.fillStyle=f.color; ctx.fillText(f.text,f.x,f.y);
+  }
+  ctx.globalAlpha=1; ctx.textAlign="left";
+}
+
+function drawGhost(){
+  if(state!=="play" || !G.selected) return;
+  const cell=currentCellUnderMouse();
+  if(!cell) return;
+  const [cx,cy]=cell;
+  const def=BUILDINGS[G.selected];
+  const [sx,sy]=cellToScreen(cx,cy);
+  const valid = !isBlocked(cx,cy) && canAfford(def.cost);
+  ctx.globalAlpha=0.5;
+  // mock building
+  const fake={type:G.selected,def,cx,cy,x:sx+CELL/2,y:sy+CELL/2,hp:def.hp,maxHp:def.hp,worked:true,aimA:-Math.PI/2,flash:0};
+  if(valid){
+    drawBuildingArt(fake, sx+CELL*0.1, sy+CELL*0.1, CELL*0.8, CELL*0.8, sx+CELL/2, sy+CELL/2);
+  }
+  ctx.globalAlpha=1;
+  // outline
+  ctx.lineWidth=2;
+  ctx.strokeStyle=valid? "rgba(142,197,71,0.9)":"rgba(200,50,50,0.9)";
+  roundRect(sx+1,sy+1,CELL-2,CELL-2,4); ctx.stroke();
+  if(!valid){
+    ctx.strokeStyle="rgba(200,50,50,0.7)"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(sx+6,sy+6); ctx.lineTo(sx+CELL-6,sy+CELL-6);
+    ctx.moveTo(sx+CELL-6,sy+6); ctx.lineTo(sx+6,sy+CELL-6); ctx.stroke();
+  }
+  // turret range preview
+  if(valid && def.range){
+    ctx.strokeStyle="rgba(210,75,53,0.3)"; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(sx+CELL/2,sy+CELL/2,def.range*CELL,0,TAU); ctx.stroke();
+  }
+}
+
+// ============================================================ HUD
+function drawHUD(){
+  // top bar
+  ctx.fillStyle="rgba(16,18,22,0.92)";
+  ctx.fillRect(0,0,VW,HUD_H);
+  ctx.strokeStyle="#2a2e36"; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,HUD_H+0.5); ctx.lineTo(VW,HUD_H+0.5); ctx.stroke();
+
+  const cy=HUD_H/2;
+  let x=20;
+  // materials
+  x=hudStat(x,cy,"#c98b4a","wood", Math.floor(G.res.wood), fmtRate(G.woodRate), "MATERIALS");
+  x+=22;
+  // food
+  x=hudStat(x,cy,"#8ec547","food", Math.floor(G.res.food), fmtRate(G.foodRate), "FOOD");
+  x+=22;
+  // pop
+  x=hudStat(x,cy,"#7fb0d8","pop", G.popCap, null, "SETTLERS");
+
+  // center: day + phase
+  drawDayBadge();
+
+  // right: best + speed + threat
+  drawRightHUD();
+}
+function fmtRate(r){
+  if(r===undefined||r===null) return null;
+  const v=Math.round(r*10)/10;
+  if(Math.abs(v)<0.05) return null;
+  return (v>0?"+":"")+v.toFixed(1)+"/s";
+}
+function hudStat(x,cy,color,icon,value,rate,label){
+  // icon chip
+  ctx.fillStyle=color; roundRect(x,cy-13,26,26,4); ctx.fill();
+  ctx.fillStyle="#0b0c0e";
+  drawResIcon(icon,x+13,cy);
+  const tx=x+34;
+  ctx.textAlign="left";
+  ctx.fillStyle="#e8e6df"; ctx.font="700 24px 'Bebas Neue', Impact, sans-serif";
+  ctx.fillText(String(value),tx,cy+1);
+  const vw=ctx.measureText(String(value)).width;
+  ctx.fillStyle="#7a7e88"; ctx.font="600 9px 'Manrope', sans-serif";
+  ctx.fillText(label,tx,cy+14);
+  let endx=tx+Math.max(vw,40);
+  if(rate){
+    ctx.fillStyle=rate.startsWith("+")?"#8ec547":"#c83232";
+    ctx.font="600 11px 'JetBrains Mono', monospace";
+    ctx.fillText(rate,tx,cy-9);
+    endx=Math.max(endx, tx+ctx.measureText(rate).width);
+  }
+  return endx;
+}
+function drawResIcon(icon,cx,cy){
+  ctx.save();
+  if(icon==="wood"){
+    ctx.fillStyle="#5a3d20";
+    ctx.fillRect(cx-7,cy-3,14,6);
+    ctx.fillStyle="#0b0c0e";
+    ctx.beginPath(); ctx.arc(cx-7,cy,3,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx+7,cy,3,0,TAU); ctx.fill();
+  } else if(icon==="food"){
+    ctx.fillStyle="#0b0c0e";
+    ctx.beginPath(); ctx.arc(cx,cy+1,6,0,TAU); ctx.fill();
+    ctx.fillStyle="#2a4012"; ctx.fillRect(cx-1,cy-7,2,4);
+  } else if(icon==="pop"){
+    ctx.fillStyle="#0b0c0e";
+    ctx.beginPath(); ctx.arc(cx,cy-3,3.2,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx-5,cy+6); ctx.quadraticCurveTo(cx,cy-1,cx+5,cy+6); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawDayBadge(){
+  const cx=VW/2, cy=HUD_H/2;
+  const night = G.phase==="night";
+  ctx.textAlign="center";
+  // phase progress (day length or night)
+  ctx.font="700 30px 'Bebas Neue', Impact, sans-serif";
+  ctx.fillStyle= night? "#d24b35":"#f0c24b";
+  ctx.fillText("DAY "+G.day, cx, cy-2);
+  ctx.font="600 10px 'Manrope', sans-serif";
+  ctx.fillStyle="#7a7e88";
+  if(night){
+    ctx.fillStyle="#d24b35";
+    ctx.fillText((G.nightThreat)+" THREATS REMAIN", cx, cy+14);
+  } else {
+    // time to dusk bar
+    const tleft=Math.max(0,G.dayLen-G.phaseT);
+    ctx.fillStyle="#7a7e88";
+    ctx.fillText("NIGHTFALL IN "+Math.ceil(tleft)+"s", cx, cy+14);
+  }
+  ctx.textAlign="left";
+  // small sun/moon icon
+  const ix=cx-78, iy=cy-2;
+  if(night){
+    ctx.fillStyle="#cfd6e6"; ctx.beginPath(); ctx.arc(ix,iy,9,0,TAU); ctx.fill();
+    ctx.fillStyle= night?"#0a0c14":"#16202c";
+    ctx.beginPath(); ctx.arc(ix+4,iy-2,8,0,TAU); ctx.fill();
+  } else {
+    ctx.fillStyle="#f0c24b"; ctx.beginPath(); ctx.arc(ix,iy,8,0,TAU); ctx.fill();
+    ctx.strokeStyle="#f0c24b"; ctx.lineWidth=2;
+    for(let i=0;i<8;i++){ const a=i/8*TAU; ctx.beginPath(); ctx.moveTo(ix+Math.cos(a)*11,iy+Math.sin(a)*11); ctx.lineTo(ix+Math.cos(a)*14,iy+Math.sin(a)*14); ctx.stroke(); }
+  }
+}
+function drawRightHUD(){
+  const cy=HUD_H/2;
+  let x=VW-18;
+  ctx.textAlign="right";
+  // speed indicator
+  const spd = G.speed + (G.fastHold?"":"")+"×";
+  ctx.font="700 22px 'Bebas Neue', Impact, sans-serif";
+  ctx.fillStyle=G.fastHold? "#f0c24b" : G.speed>1?"#7fc8ff":"#7a7e88";
+  ctx.fillText((G.fastHold?"FAST":G.speed+"×"), x, cy-3);
+  ctx.font="600 9px 'Manrope', sans-serif"; ctx.fillStyle="#7a7e88";
+  ctx.fillText("SPEED", x, cy+11);
+  x-=78;
+  // best
+  ctx.font="700 22px 'Bebas Neue', Impact, sans-serif"; ctx.fillStyle="#e3a83a";
+  ctx.fillText(String(SAVE.best||0), x, cy-3);
+  ctx.font="600 9px 'Manrope', sans-serif"; ctx.fillStyle="#7a7e88";
+  ctx.fillText("BEST DAYS", x, cy+11);
+  ctx.textAlign="left";
+
+  // threat warning banner near dusk / during night
+  drawThreatWarning();
+}
+function drawThreatWarning(){
+  let warn=null, col="#e3a83a";
+  if(G.phase==="day"){
+    const tleft=G.dayLen-G.phaseT;
+    if(tleft<6){ warn="⚠ NIGHTFALL APPROACHING — RAISE YOUR DEFENSES"; col="#e3a83a"; }
+  } else {
+    warn="⚔ UNDER SIEGE — "+G.nightThreat+" REMAIN"; col="#d24b35";
+  }
+  if(!warn) return;
+  ctx.save();
+  const pulse=0.6+0.4*Math.sin(G.bobT*6);
+  ctx.font="700 13px 'Manrope', sans-serif"; ctx.textAlign="center";
+  const w=ctx.measureText(warn).width+30;
+  const bx=VW/2-w/2, by=HUD_H+6;
+  ctx.fillStyle="rgba(16,18,22,"+(0.7)+")";
+  roundRect(bx,by,w,22,4); ctx.fill();
+  ctx.strokeStyle="rgba("+(col==="#d24b35"?"210,75,53":"227,168,58")+","+pulse+")"; ctx.lineWidth=1.5;
+  roundRect(bx,by,w,22,4); ctx.stroke();
+  ctx.fillStyle=col; ctx.globalAlpha=0.7+0.3*pulse;
+  ctx.fillText(warn, VW/2, by+15);
+  ctx.restore();
+  ctx.textAlign="left"; ctx.globalAlpha=1;
+}
+
+// ============================================================ build tray
+let trayRects=[];
+function drawTray(){
+  const ty=VH-TRAY_H;
+  ctx.fillStyle="rgba(16,18,22,0.94)";
+  ctx.fillRect(0,ty,VW,TRAY_H);
+  ctx.strokeStyle="#2a2e36"; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,ty+0.5); ctx.lineTo(VW,ty+0.5); ctx.stroke();
+
+  const items=ORDER.filter(t=>t!=="hearth");
+  const n=items.length;
+  const cardW=Math.min(140, (VW-40)/n - 8);
+  const cardH=TRAY_H-20;
+  const totalW=n*(cardW+8)-8;
+  let sx=(VW-totalW)/2;
+  const cy=ty+10;
+  trayRects=[];
+  for(const t of items){
+    const def=BUILDINGS[t];
+    const sel=G.selected===t;
+    const afford=canAfford(def.cost);
+    const r={x:sx,y:cy,w:cardW,h:cardH,type:t};
+    trayRects.push(r);
+    // card bg
+    ctx.fillStyle= sel? "rgba(210,75,53,0.18)": "#1c1f25";
+    roundRect(sx,cy,cardW,cardH,4); ctx.fill();
+    ctx.strokeStyle= sel? "#d24b35": "#2a2e36";
+    ctx.lineWidth= sel?2:1;
+    roundRect(sx,cy,cardW,cardH,4); ctx.stroke();
+    if(!afford){ ctx.globalAlpha=0.42; }
+
+    // hotkey badge
+    ctx.fillStyle= sel?"#d24b35":"#2a2e36";
+    roundRect(sx+5,cy+5,16,16,3); ctx.fill();
+    ctx.fillStyle="#e8e6df"; ctx.font="700 11px 'JetBrains Mono',monospace"; ctx.textAlign="center";
+    ctx.fillText(def.key, sx+13, cy+16);
+
+    // icon
+    const iconSize=Math.min(34,cardH*0.5);
+    const ix=sx+cardW/2 - iconSize/2, iy=cy+8;
+    const fake={type:t,def,cx:0,cy:0,x:ix+iconSize/2,y:iy+iconSize/2,worked:true,aimA:-0.6,flash:0,hp:def.hp,maxHp:def.hp};
+    ctx.save();
+    drawBuildingArt(fake, ix, iy, iconSize, iconSize, ix+iconSize/2, iy+iconSize/2);
+    ctx.restore();
+
+    // name
+    ctx.fillStyle= sel?"#fff":"#e8e6df"; ctx.font="700 12px 'Manrope',sans-serif"; ctx.textAlign="center";
+    ctx.fillText(def.name, sx+cardW/2, cy+cardH-16);
+    // cost
+    ctx.font="700 12px 'JetBrains Mono',monospace";
+    ctx.fillStyle= afford? "#c98b4a":"#c83232";
+    const costStr=(def.cost.wood||0)+"⬣";
+    ctx.fillText(costStr, sx+cardW/2, cy+cardH-3);
+    ctx.globalAlpha=1;
+
+    sx+=cardW+8;
+  }
+  ctx.textAlign="left";
+}
+// tray clicks handled in handleClick via screen coords -> check first
+const _origHandleClick=handleClick;
+function trayClick(sx,sy){
+  for(const r of trayRects){
+    if(sx>=r.x&&sx<=r.x+r.w&&sy>=r.y&&sy<=r.y+r.h){
+      G.selected=r.type; Sound.sfx.click(); return true;
+    }
+  }
+  return false;
+}
+// wrap handleClick to check tray first
+handleClick=function(sx,sy){
+  if(state!=="play") return;
+  if(trayClick(sx,sy)) return;
+  _origHandleClick(sx,sy);
+};
+
+// ============================================================ center message
+function drawCenterMsg(){
+  if(!G.msg || G.msgT<=0) return;
+  const a=clamp(G.msgT,0,1);
+  ctx.save();
+  ctx.globalAlpha=a;
+  ctx.textAlign="center";
+  ctx.font="700 clamp(28px,6vw,56px) 'Bebas Neue', Impact, sans-serif";
+  const y=ORY+BOARD*0.32;
+  ctx.fillStyle="rgba(0,0,0,0.55)"; ctx.fillText(G.msg, VW/2+2, y+2);
+  ctx.fillStyle="rgb("+(G.msgColor||"232,230,223")+")";
+  ctx.fillText(G.msg, VW/2, y);
+  ctx.restore();
+  ctx.textAlign="left";
+}
+
+// ============================================================ helpers
+function roundRect(x,y,w,h,r){
+  r=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+// ============================================================ loop
+let last=performance.now(), acc=0;
+const DT=1/60;
+function loop(t){
+  let dt=Math.min(0.1,(t-last)/1000); last=t; acc+=dt;
+  // speed multiplier
+  let mult=1;
+  if(state==="play"){
+    G.fastHold = input.keys.has(" ");
+    mult = G.fastHold? 3 : G.speed;
+  }
+  let steps=0;
+  while(acc>=DT && steps<8){
+    if(state==="play"){
+      for(let s=0;s<mult;s++) update(DT);
+    } else {
+      update(DT); // keep particles alive on menus/over
+    }
+    acc-=DT; steps++;
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(t=>{ last=t; requestAnimationFrame(loop); });
+
+// ============================================================ UI / screens
+const elMenu=document.getElementById("menu");
+const elPause=document.getElementById("pause");
+const elOver=document.getElementById("over");
+
+function show(el,on){ el.classList.toggle("show",on); }
+function startGame(){
+  Sound.ensure();
+  newGame();
+  recomputePop();
+  state="play";
+  show(elMenu,false); show(elPause,false); show(elOver,false);
+  Sound.sfx.dayStart();
+}
+function backToMenu(){
+  state="menu";
+  updateMenuBest();
+  show(elMenu,true); show(elPause,false); show(elOver,false);
+}
+function togglePause(){
+  if(state==="play"){ state="pause"; show(elPause,true); Sound.sfx.click(); }
+  else if(state==="pause"){ state="play"; show(elPause,false); Sound.sfx.click(); }
+}
+function showOver(won){
+  state="over";
+  // Days survived = full days/nights cleared before death (or WIN_DAY on victory).
+  // A night belongs to the day it begins; dying during night N means you cleared
+  // N-1 full cycles, so survived = day-1. Surviving past WIN_DAY caps at WIN_DAY.
+  let dval = won? WIN_DAY : (G.day-1);
+  if(dval<0) dval=0;
+  const best=SAVE.best||0;
+  const isNew = dval>best;
+  if(isNew){ SAVE.best=dval; saveBest({best:dval}); }
+  document.getElementById("overTitle").textContent = won? "Emberhold Endures" : "The Hold Has Fallen";
+  document.getElementById("overDays").textContent = dval;
+  document.getElementById("overReason").textContent = G.reason;
+  document.getElementById("overBestWrap").style.display = isNew? "block":"none";
+  document.getElementById("overBest").innerHTML = "Best&nbsp; <b>"+(SAVE.best||0)+" days</b>";
+  // stats
+  const stats=[
+    ["Monsters Slain", G.monstersKilled],
+    ["Buildings", G.buildings.length],
+    ["Settlers", G.popCap],
+  ];
+  document.getElementById("overStats").innerHTML = stats.map(s=>
+    '<div class="stat"><div class="v">'+s[1]+'</div><div class="l">'+s[0]+'</div></div>').join("");
+  show(elOver,true);
+}
+function updateMenuBest(){
+  document.getElementById("menuBest").innerHTML = "Best&nbsp; <b>"+(SAVE.best||0)+" days</b>";
+}
+
+// button wiring
+document.getElementById("playBtn").onclick=()=>{ Sound.ensure(); startGame(); };
+document.getElementById("resumeBtn").onclick=togglePause;
+document.getElementById("quitBtn").onclick=()=>{ state="over"; backToMenu(); };
+document.getElementById("againBtn").onclick=startGame;
+document.getElementById("menuBtn").onclick=backToMenu;
+
+// ============================================================ boot
+resize();
+updateMenuBest();
+// kick a dummy game for menu particle bg? keep null; render guards on G.
+// Create a quiet background game state for menu ambiance:
+newGame(); state="menu";
+
+})();
+</script>
+</body>
+</html>

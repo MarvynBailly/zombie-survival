@@ -1,0 +1,16 @@
+{
+  "slug": "racer",
+  "title": "Drift Circuit",
+  "genre": "Top-Down Racer",
+  "tagline": "Tail-out arcade drifting against your own ghost.",
+  "blurb": "Real momentum + handbrake drift physics on procedural circuits. Bank clean checkpoint laps, smoke the tires, and chase the ghost of your best run.",
+  "controls": [
+    {"key": "W / Up", "action": "throttle"},
+    {"key": "S / Down", "action": "brake / reverse"},
+    {"key": "A / D", "action": "steer"},
+    {"key": "Space", "action": "handbrake drift"},
+    {"key": "Esc / P", "action": "pause"},
+    {"key": "R", "action": "reset to track"}
+  ],
+  "accent": "#7fc8ff"
+}

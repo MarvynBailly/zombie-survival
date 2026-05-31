@@ -1,0 +1,18 @@
+{
+  "slug": "crawler",
+  "title": "Gravecrawl",
+  "genre": "Roguelike Dungeon Crawler",
+  "tagline": "Bump to fight, step to descend, die in the dark.",
+  "blurb": "A tight turn-based roguelike: seeded dungeons, fog-of-war, bump combat, hungry monsters, loot, and stairs down into worse. Permadeath, every run new.",
+  "controls": [
+    {"key": "WASD / Arrows", "action": "Move & bump-attack"},
+    {"key": "Q E Z C", "action": "Move diagonally"},
+    {"key": "Space / .", "action": "Wait a turn"},
+    {"key": "G", "action": "Grab item"},
+    {"key": "F", "action": "Descend stairs"},
+    {"key": "H", "action": "Quaff potion"},
+    {"key": "J", "action": "Rest to heal"},
+    {"key": "P / Esc", "action": "Pause"}
+  ],
+  "accent": "#8ec547"
+}

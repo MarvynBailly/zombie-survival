@@ -1,0 +1,15 @@
+{
+  "slug": "stealth",
+  "title": "NIGHTFALL PROTOCOL",
+  "genre": "Stealth Infiltration",
+  "tagline": "Slip past the cones. Steal the intel. Vanish.",
+  "blurb": "Sneak through a guarded compound where vision cones are blocked by walls. Sneak silent or sprint loud — fill the alarm and you're made. Beat your clear time.",
+  "controls": [
+    {"key": "WASD / Arrows", "action": "move"},
+    {"key": "Shift", "action": "hold to sneak (silent, smaller profile)"},
+    {"key": "Space", "action": "hold to sprint (fast but loud)"},
+    {"key": "P / Esc", "action": "pause"},
+    {"key": "M", "action": "mute"}
+  ],
+  "accent": "#3fd6c0"
+}

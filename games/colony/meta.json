@@ -1,0 +1,17 @@
+{
+  "slug": "colony",
+  "title": "EMBERHOLD",
+  "genre": "Colony Builder",
+  "tagline": "Build by day. Hold the line by night.",
+  "blurb": "Place farms, lumberyards and quarries to feed and arm your colony, then ring it with turrets and palisades before the husks swarm in at dusk. Survive the long siege.",
+  "controls": [
+    {"key": "1-7", "action": "select a building"},
+    {"key": "L-Click", "action": "place building"},
+    {"key": "R-Click / X", "action": "sell / cancel"},
+    {"key": "Space", "action": "fast-forward (hold)"},
+    {"key": "Tab", "action": "cycle 1x / 2x / 3x speed"},
+    {"key": "Esc / P", "action": "pause"},
+    {"key": "M", "action": "mute"}
+  ],
+  "accent": "#f0c24b"
+}

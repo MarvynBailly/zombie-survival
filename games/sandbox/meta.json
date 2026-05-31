@@ -1,0 +1,20 @@
+{
+  "slug": "sandbox",
+  "title": "POWDER",
+  "genre": "Falling-Sand Sandbox",
+  "tagline": "Paint living matter. Watch it collide.",
+  "blurb": "A powder game: pour sand, water, oil and acid, then set it ablaze. Fire eats wood, water makes steam, acid dissolves all. Pure emergent, mesmerizing chaos.",
+  "controls": [
+    {"key": "L-Click", "action": "paint material"},
+    {"key": "R-Click", "action": "erase"},
+    {"key": "1-9 / 0", "action": "pick material"},
+    {"key": "[ / ] / Wheel", "action": "brush size"},
+    {"key": "Space / P", "action": "pause sim"},
+    {"key": "N", "action": "step one tick"},
+    {"key": "G", "action": "flip gravity"},
+    {"key": "C", "action": "clear world"},
+    {"key": "Esc", "action": "menu"},
+    {"key": "M", "action": "mute"}
+  ],
+  "accent": "#ffb84a"
+}

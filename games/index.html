@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OUTBREAK ARCADE — A cabinet of games grown from a zombie engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#0b0c0e; --panel:#14161a; --panel2:#1c1f25; --border:#2a2e36;
+    --fg:#e8e6df; --muted:#7a7e88; --accent:#d24b35; --toxic:#8ec547;
+    --warn:#e3a83a; --danger:#c83232; --blue:#7fc8ff; --purple:#b07fff;
+    --disp:'Bebas Neue', Impact, sans-serif;
+    --body:'Manrope', system-ui, sans-serif;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ scroll-behavior:smooth; }
+  body{
+    background:
+      radial-gradient(1400px 900px at 50% -20%, rgba(210,75,53,0.12), transparent 62%),
+      radial-gradient(1100px 800px at 90% 8%, rgba(127,200,255,0.06), transparent 60%),
+      radial-gradient(1000px 800px at 8% 30%, rgba(142,197,71,0.05), transparent 60%),
+      var(--ink);
+    color:var(--fg); font-family:var(--body); min-height:100%;
+    -webkit-font-smoothing:antialiased; line-height:1.5;
+  }
+  a{ color:inherit; text-decoration:none; }
+  .wrap{ max-width:1320px; margin:0 auto; padding:0 22px 80px; }
+
+  /* ---------- header ---------- */
+  header.hero{
+    position:relative; padding:64px 22px 40px; text-align:center;
+    border-bottom:1px solid var(--border); overflow:hidden;
+  }
+  header.hero::after{
+    content:""; position:absolute; left:0; right:0; bottom:-1px; height:1px;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent); opacity:0.7;
+  }
+  .kicker{
+    font-weight:800; letter-spacing:0.5em; text-transform:uppercase;
+    font-size:12px; color:var(--accent); padding-left:0.5em; margin-bottom:14px;
+  }
+  h1.title{
+    font-family:var(--disp); font-size:clamp(64px,13vw,168px); line-height:0.86;
+    letter-spacing:0.04em; text-transform:uppercase;
+    background:linear-gradient(180deg,#fff 0%, #ddd9cd 52%, #8d8a82 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 6px 0 rgba(0,0,0,0.55));
+  }
+  h1.title .arc{
+    -webkit-text-fill-color:transparent;
+    background:linear-gradient(180deg,#f0a08f 0%, var(--accent) 60%, #8f2e1f 100%);
+    -webkit-background-clip:text; background-clip:text;
+  }
+  .intro{
+    max-width:680px; margin:20px auto 0; color:#c9c7be; font-size:clamp(14px,1.6vw,17px);
+  }
+  .intro b{ color:var(--fg); font-weight:600; }
+  .meta-row{
+    display:flex; gap:14px; justify-content:center; flex-wrap:wrap;
+    margin-top:26px; align-items:stretch;
+  }
+  .stat{
+    display:flex; align-items:center; gap:10px; padding:10px 16px;
+    background:var(--panel); border:1px solid var(--border); border-radius:4px;
+  }
+  .stat .num{ font-family:var(--mono); font-weight:700; font-size:22px; color:var(--accent); }
+  .stat .lbl{ font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); }
+  .stat.alt .num{ color:var(--blue); }
+  .stat.alt2 .num{ color:var(--toxic); }
+
+  /* ---------- section label ---------- */
+  .section-label{
+    display:flex; align-items:center; gap:16px; margin:46px 0 22px;
+  }
+  .section-label h2{
+    font-family:var(--disp); font-size:30px; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--fg); white-space:nowrap;
+  }
+  .section-label .line{ flex:1; height:1px; background:var(--border); }
+  .section-label .count{
+    font-family:var(--mono); font-size:13px; color:var(--muted);
+    border:1px solid var(--border); border-radius:99px; padding:3px 12px;
+  }
+
+  /* ---------- featured origin card ---------- */
+  .featured{
+    --fa:var(--accent);
+    display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);
+    gap:0; background:var(--panel); border:1px solid var(--border);
+    border-radius:6px; overflow:hidden; position:relative;
+    transition:border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+  }
+  .featured::before{
+    content:"THE ORIGIN"; position:absolute; top:0; left:0; z-index:3;
+    font-family:var(--mono); font-weight:700; font-size:11px; letter-spacing:0.22em;
+    color:var(--ink); background:var(--fa); padding:6px 14px; border-bottom-right-radius:6px;
+  }
+  .featured:hover{
+    border-color:var(--fa); transform:translateY(-3px);
+    box-shadow:0 18px 50px -22px rgba(210,75,53,0.55);
+  }
+  .featured .shot{
+    position:relative; min-height:300px; overflow:hidden; background:#000;
+  }
+  .featured .shot img{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; image-rendering:auto; display:block;
+  }
+  .featured .shot::after{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(90deg,transparent 55%, rgba(20,22,26,0.9) 100%),
+              linear-gradient(0deg, rgba(11,12,14,0.55), transparent 45%);
+  }
+  .featured .body{
+    padding:34px 36px; display:flex; flex-direction:column; gap:14px; justify-content:center;
+    position:relative; z-index:2;
+  }
+  .featured h3{
+    font-family:var(--disp); font-size:clamp(54px,8vw,86px); line-height:0.84;
+    letter-spacing:0.03em; text-transform:uppercase;
+    background:linear-gradient(180deg,#fff,#c8c4b8);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .featured .genre{ width:max-content; }
+  .featured p{ color:#c4c2ba; font-size:15px; max-width:52ch; }
+  .featured p .hl{ color:var(--fa); font-weight:600; }
+  .featured .feats{ display:flex; flex-wrap:wrap; gap:8px; margin-top:2px; }
+  .feat{
+    font-family:var(--mono); font-size:11px; color:var(--muted);
+    border:1px solid var(--border); border-radius:3px; padding:4px 9px;
+  }
+
+  /* ---------- grid ---------- */
+  .grid{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(300px,1fr));
+    gap:24px;
+  }
+  .card{
+    --ca:var(--accent);
+    display:flex; flex-direction:column; background:var(--panel);
+    border:1px solid var(--border); border-radius:6px; overflow:hidden;
+    transition:border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+    position:relative;
+  }
+  .card:hover{
+    border-color:var(--ca); transform:translateY(-5px);
+    box-shadow:0 16px 40px -20px color-mix(in srgb, var(--ca) 70%, transparent),
+               0 0 0 1px color-mix(in srgb, var(--ca) 35%, transparent);
+  }
+  .card .cover{
+    position:relative; aspect-ratio:16/10; overflow:hidden; background:#000;
+    border-bottom:1px solid var(--border);
+  }
+  .card .cover img{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; image-rendering:auto; display:block;
+    transition:transform .35s ease;
+  }
+  .card:hover .cover img{ transform:scale(1.045); }
+  .card .cover::after{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(0deg, rgba(11,12,14,0.62), transparent 46%);
+    pointer-events:none;
+  }
+  .ph{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    text-align:center; padding:14px;
+  }
+  .ph .pht{
+    font-family:var(--disp); font-size:clamp(34px,6vw,52px); letter-spacing:0.05em;
+    text-transform:uppercase; color:rgba(255,255,255,0.92);
+    filter:drop-shadow(0 3px 0 rgba(0,0,0,0.5));
+  }
+  .badge{
+    position:absolute; top:10px; right:10px; z-index:2;
+    font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--ink);
+    background:var(--ca); border-radius:3px; padding:4px 8px;
+  }
+  .card .body{ padding:18px 18px 20px; display:flex; flex-direction:column; gap:12px; flex:1; }
+  .card .top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .card h3{
+    font-family:var(--disp); font-size:38px; line-height:0.9; letter-spacing:0.03em;
+    text-transform:uppercase; color:var(--fg);
+  }
+  .genre{
+    display:inline-block; font-family:var(--mono); font-size:10px; font-weight:700;
+    letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--ca); border:1px solid color-mix(in srgb, var(--ca) 55%, var(--border));
+    background:color-mix(in srgb, var(--ca) 12%, transparent);
+    border-radius:99px; padding:4px 10px; white-space:nowrap;
+  }
+  .tagline2{ color:var(--fg); font-weight:600; font-size:14px; }
+  .blurb{ color:var(--muted); font-size:13px; line-height:1.55; flex:1; }
+
+  .legend{
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px 12px;
+    padding:12px; background:var(--panel2); border:1px solid var(--border);
+    border-radius:4px; margin-top:2px;
+  }
+  .legend .row{ display:flex; align-items:baseline; gap:8px; min-width:0; }
+  .legend .k{
+    font-family:var(--mono); font-size:10.5px; font-weight:700; color:var(--fg);
+    background:#0e1014; border:1px solid var(--border); border-radius:3px;
+    padding:2px 6px; white-space:nowrap; flex-shrink:0;
+  }
+  .legend .a{
+    font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .play{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    margin-top:4px; padding:13px 16px; border-radius:4px; cursor:pointer;
+    font-family:var(--disp); font-size:22px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--ink); background:var(--ca);
+    border:1px solid var(--ca); transition:filter .15s ease, transform .1s ease;
+  }
+  .play:hover{ filter:brightness(1.1); }
+  .play:active{ transform:translateY(1px); }
+  .play .arrow{ font-size:16px; transform:translateY(-1px); }
+  .featured .play{ max-width:280px; font-size:26px; margin-top:8px; }
+
+  /* ---------- footer ---------- */
+  footer{
+    margin-top:60px; padding-top:26px; border-top:1px solid var(--border);
+    display:flex; flex-wrap:wrap; gap:12px 24px; align-items:center; justify-content:space-between;
+    color:var(--muted); font-size:12px;
+  }
+  footer .brand{ font-family:var(--disp); font-size:22px; letter-spacing:0.1em; color:var(--fg); }
+  footer .dot{ color:var(--accent); }
+  footer code{ font-family:var(--mono); color:#9a9ea8; }
+
+  @media (max-width:760px){
+    .featured{ grid-template-columns:1fr; }
+    .featured .shot{ min-height:200px; aspect-ratio:16/9; }
+    .featured .shot::after{ background:linear-gradient(0deg, rgba(20,22,26,0.95) 2%, transparent 55%); }
+    .featured .body{ padding:26px 22px; }
+    .featured .play{ max-width:none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="kicker">Outbreak Arcade</div>
+  <h1 class="title">OUTBREAK <span class="arc">ARCADE</span></h1>
+  <p class="intro">
+    One <b>zombie-survival engine</b> grew a whole cabinet of games — towers, dungeons, drifters,
+    rhythm, sand, and sieges, all sharing the same warm-red DNA. Pick a machine and press start.
+  </p>
+  <div class="meta-row">
+    <div class="stat"><span class="num" id="gcount">0</span><span class="lbl">Games in the cabinet</span></div>
+    <div class="stat alt"><span class="num">1</span><span class="lbl">Shared engine</span></div>
+    <div class="stat alt2"><span class="num">100%</span><span class="lbl">Keyboard &amp; mouse</span></div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- FEATURED ORIGIN -->
+  <div class="section-label">
+    <h2>The Engine It Grew From</h2>
+    <span class="line"></span>
+  </div>
+
+  <article class="featured" style="--fa:var(--accent)">
+    <div class="shot" id="origin-shot">
+      <img src="./origin-cover.png" alt="Outbreak cover" />
+    </div>
+    <div class="body">
+      <span class="genre">Top-Down Survival Shooter</span>
+      <h3>Outbreak</h3>
+      <p>
+        The original. A sprawling <span class="hl">~35,000-line zombie-survival engine</span> —
+        crafting, vehicles, drivable bases, and a deep foundry — built from scratch.
+        Every game in this arcade was assembled from <span class="hl">its building blocks</span>:
+        the renderer, the input layer, the audio synth, the juice.
+      </p>
+      <div class="feats">
+        <span class="feat">Crafting</span>
+        <span class="feat">Vehicles</span>
+        <span class="feat">Mobile bases</span>
+        <span class="feat">The Foundry</span>
+        <span class="feat">~35k lines</span>
+      </div>
+      <a class="play" href="../index.html"><span class="arrow">&#9654;</span> Play Outbreak</a>
+    </div>
+  </article>
+
+  <!-- THE CABINET -->
+  <div class="section-label">
+    <h2>The Cabinet</h2>
+    <span class="line"></span>
+    <span class="count" id="cabinet-count">0 machines</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    <div class="brand">OUTBREAK <span class="dot">/</span> ARCADE</div>
+    <div>Grown from a <code>zombie-survival</code> engine. Built to run on a Raspberry Pi over the tailnet.</div>
+    <div><span id="fcount">0</span> games &middot; one shared accent &middot; all keyboard &amp; mouse</div>
+  </footer>
+</div>
+
+<script>
+  // Game data baked from each game's meta.json. Covers load from ./<slug>/cover.png,
+  // falling back to a CSS accent placeholder if the image is missing.
+  var GAMES = [
+    {slug:"towers", title:"Ironline", genre:"Tower Defense", accent:"#7fc8ff",
+      tagline:"Build the line. Hold the canyon. Outlast 20 waves.",
+      blurb:"Place gun, frost, and mortar towers on the ridges, upgrade them mid-fight, and stop the swarm before it reaches your reactor. Tight, juicy, 3-minute runs.",
+      controls:[["1 2 3","choose tower"],["Click","build / select"],["U","upgrade selected"],["S","sell selected"],["Space","start next wave"],["Esc / P","pause"]]},
+    {slug:"crawler", title:"Gravecrawl", genre:"Roguelike Crawler", accent:"#8ec547",
+      tagline:"Bump to fight, step to descend, die in the dark.",
+      blurb:"A tight turn-based roguelike: seeded dungeons, fog-of-war, bump combat, hungry monsters, loot, and stairs down into worse. Permadeath, every run new.",
+      controls:[["WASD","move & bump-attack"],["Q E Z C","move diagonally"],["Space / .","wait a turn"],["G","grab item"],["F","descend stairs"],["H","quaff potion"],["J","rest to heal"],["P / Esc","pause"]]},
+    {slug:"racer", title:"Drift Circuit", genre:"Top-Down Racer", accent:"#7fc8ff",
+      tagline:"Tail-out arcade drifting against your own ghost.",
+      blurb:"Real momentum + handbrake drift physics on procedural circuits. Bank clean checkpoint laps, smoke the tires, and chase the ghost of your best run.",
+      controls:[["W / Up","throttle"],["S / Down","brake / reverse"],["A / D","steer"],["Space","handbrake drift"],["Esc / P","pause"],["R","reset to track"]]},
+    {slug:"rhythm", title:"Pulse Code", genre:"Rhythm", accent:"#34e0d8",
+      tagline:"Four lanes. One beat. Don't flatline the grid.",
+      blurb:"Strike notes on a procedurally-synthesized track that builds from a heartbeat to a full synth drop. Chain Perfects, ride the combo, hit your grade.",
+      controls:[["D","lane 1"],["F","lane 2"],["J","lane 3"],["K","lane 4"],["Esc / P","pause"],["M","mute"]]},
+    {slug:"blocks", title:"FLUX", genre:"Falling-Block Puzzle", accent:"#b07fff",
+      tagline:"Match four, detonate, chain the cascade.",
+      blurb:"A color-merge twist on falling blocks: clusters of 4+ same-color cells explode, survivors fall and chain into combos. Clear rows for bonuses. Speed ramps fast.",
+      controls:[["A / D","move left / right"],["W / Up / J","rotate"],["S / Down","soft drop"],["Space","hard drop"],["Esc / P","pause"],["M","mute"]]},
+    {slug:"platformer", title:"Vaultrunner", genre:"Precision Platformer", accent:"#34d6c2",
+      tagline:"Run, vault, and beat the clock to the flag.",
+      blurb:"A tight precision platformer with float-perfect jumps, coyote time and buffered hops. Dodge spikes and spinning saws, bank gems, and chase your best time.",
+      controls:[["A / D","run left / right"],["Space / W","jump (hold higher)"],["R","respawn at checkpoint"],["Esc / P","pause"],["M","mute"]]},
+    {slug:"stealth", title:"Nightfall Protocol", genre:"Stealth Infiltration", accent:"#3fd6c0",
+      tagline:"Slip past the cones. Steal the intel. Vanish.",
+      blurb:"Sneak through a guarded compound where vision cones are blocked by walls. Sneak silent or sprint loud — fill the alarm and you're made. Beat your clear time.",
+      controls:[["WASD","move"],["Shift","hold to sneak"],["Space","hold to sprint"],["P / Esc","pause"],["M","mute"]]},
+    {slug:"sandbox", title:"Powder", genre:"Falling-Sand Sandbox", accent:"#ffb84a",
+      tagline:"Paint living matter. Watch it collide.",
+      blurb:"A powder game: pour sand, water, oil and acid, then set it ablaze. Fire eats wood, water makes steam, acid dissolves all. Pure emergent, mesmerizing chaos.",
+      controls:[["L-Click","paint material"],["R-Click","erase"],["1-9 / 0","pick material"],["[ ] / Wheel","brush size"],["Space / P","pause sim"],["N","step one tick"],["G","flip gravity"],["C","clear world"]]},
+    {slug:"golf", title:"PAR", genre:"Mini-Golf", accent:"#8ec547",
+      tagline:"Drag, putt, bank the bumpers, beat par.",
+      blurb:"Top-down mini-golf with click-drag aiming and a real rolling ball. Nine holes of bumpers, sand, and water. Sink it under par and brag forever.",
+      controls:[["Click+Drag","aim & set power"],["Release","putt"],["R","re-putt from last spot"],["Space","next hole when sunk"],["Esc / P","pause"],["M","mute"]]},
+    {slug:"colony", title:"Emberhold", genre:"Colony Builder", accent:"#f0c24b",
+      tagline:"Build by day. Hold the line by night.",
+      blurb:"Place farms, lumberyards and quarries to feed and arm your colony, then ring it with turrets and palisades before the husks swarm in at dusk. Survive the long siege.",
+      controls:[["1-7","select a building"],["L-Click","place building"],["R-Click / X","sell / cancel"],["Space","fast-forward (hold)"],["Tab","cycle 1x/2x/3x"],["Esc / P","pause"]]}
+  ];
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  function cardHTML(g){
+    var a = g.accent;
+    var legendRows = g.controls.slice(0,8).map(function(c){
+      return '<div class="row"><span class="k">'+esc(c[0])+'</span><span class="a">'+esc(c[1])+'</span></div>';
+    }).join('');
+    // CSS gradient placeholder, shown only if the cover image fails to load
+    var phStyle = 'background:'+
+      'radial-gradient(120% 120% at 80% 0%, '+a+'55, transparent 60%),'+
+      'linear-gradient(135deg, '+a+'33, #0e1014 70%);';
+    var cover =
+      '<div class="cover">'+
+        '<span class="badge">'+esc(g.slug)+'</span>'+
+        '<img src="./'+esc(g.slug)+'/cover.png" alt="'+esc(g.title)+' cover" loading="lazy" '+
+          'onerror="this.parentNode.querySelector(\'.ph\').style.display=\'flex\';this.remove();" />'+
+        '<div class="ph" style="display:none;'+phStyle+'"><span class="pht">'+esc(g.title)+'</span></div>'+
+      '</div>';
+    return '<article class="card" style="--ca:'+a+'">'+
+      cover+
+      '<div class="body">'+
+        '<div class="top">'+
+          '<h3>'+esc(g.title)+'</h3>'+
+          '<span class="genre">'+esc(g.genre)+'</span>'+
+        '</div>'+
+        '<div class="tagline2">'+esc(g.tagline)+'</div>'+
+        '<div class="blurb">'+esc(g.blurb)+'</div>'+
+        '<div class="legend">'+legendRows+'</div>'+
+        '<a class="play" href="./'+esc(g.slug)+'/index.html"><span class="arrow">&#9654;</span> Play</a>'+
+      '</div>'+
+    '</article>';
+  }
+
+  var grid = document.getElementById('grid');
+  grid.innerHTML = GAMES.map(cardHTML).join('');
+
+  var n = GAMES.length;
+  document.getElementById('gcount').textContent = n;
+  document.getElementById('fcount').textContent = n;
+  document.getElementById('cabinet-count').textContent = n + (n===1?' machine':' machines');
+
+  // origin cover fallback -> CSS placeholder
+  (function(){
+    var shot = document.getElementById('origin-shot');
+    var img = shot.querySelector('img');
+    function fallback(){
+      shot.style.background =
+        'radial-gradient(120% 120% at 75% 0%, rgba(210,75,53,0.5), transparent 60%),'+
+        'linear-gradient(135deg, rgba(210,75,53,0.28), #0c0e12 72%)';
+      var span = document.createElement('div');
+      span.className = 'ph';
+      span.innerHTML = '<span class="pht" style="color:#f0d0c8">OUTBREAK</span>';
+      shot.appendChild(span);
+      if(img){ img.remove(); }
+    }
+    if(img){ img.addEventListener('error', fallback); }
+  })();
+</script>
+</body>
+</html>

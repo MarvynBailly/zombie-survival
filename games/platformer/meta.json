@@ -1,0 +1,15 @@
+{
+  "slug": "platformer",
+  "title": "VAULTRUNNER",
+  "genre": "Precision Platformer",
+  "tagline": "Run, vault, and beat the clock to the flag.",
+  "blurb": "A tight precision platformer with float-perfect jumps, coyote time and buffered hops. Dodge spikes and spinning saws, bank gems, and chase your best time.",
+  "controls": [
+    {"key": "A / D / Arrows", "action": "run left / right"},
+    {"key": "Space / W / Up", "action": "jump (hold for higher)"},
+    {"key": "R", "action": "respawn at checkpoint"},
+    {"key": "Esc / P", "action": "pause"},
+    {"key": "M", "action": "mute"}
+  ],
+  "accent": "#34d6c2"
+}

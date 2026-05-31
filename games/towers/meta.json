@@ -1,0 +1,16 @@
+{
+  "slug": "towers",
+  "title": "Ironline",
+  "genre": "Tower Defense",
+  "tagline": "Build the line. Hold the canyon. Outlast 20 waves.",
+  "blurb": "Place gun, frost, and mortar towers on the ridges, upgrade them mid-fight, and stop the swarm before it reaches your reactor. Tight, juicy, 3-minute runs.",
+  "controls": [
+    {"key": "1 2 3", "action": "choose tower"},
+    {"key": "Click", "action": "build / select"},
+    {"key": "U", "action": "upgrade selected"},
+    {"key": "S", "action": "sell selected"},
+    {"key": "Space", "action": "start next wave"},
+    {"key": "Esc / P", "action": "pause"}
+  ],
+  "accent": "#7fc8ff"
+}
